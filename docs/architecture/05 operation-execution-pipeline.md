@@ -225,7 +225,7 @@ Operations are stored before execution.
 Example:
 
 | Id | Status |
-|----|--------|
+| -- | ------ |
 | 101 | Pending |
 | 102 | Pending |
 | 103 | Pending |

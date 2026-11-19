@@ -10,10 +10,10 @@ permissions:
   contents: read
 
 env:
-  DOTNET_VERSION: '11.0.x'
+  DOTNET_VERSION: "11.0.x"
+  SOLUTION_FILE: "AStarDev.slnx"
 
 jobs:
-
   architecture:
     name: Architecture Tests
     runs-on: ubuntu-latest
@@ -32,7 +32,7 @@ jobs:
       - name: Run Architecture Tests
         run: >
           dotnet test
-          tests/AStarDev.AStarDev.CloudSync.ArchitectureTests
+          apps/desktop/AStarDev.CloudSync/AStarDev.CloudSync.TestsArchitecture/AStarDev.CloudSync.TestsArchitecture.csproj
           --configuration Release
           --verbosity normal
 
@@ -71,12 +71,9 @@ jobs:
         with:
           dotnet-version: ${{ env.DOTNET_VERSION }}
 
-      - name: Run Unit Tests
-        run: >
-          dotnet test
-          tests/AStarDev.CloudSync.UnitTests
-          --configuration Release
-          --no-build
+      - name: Run unit tests and collect coverage (XPlat)
+        run: |
+          dotnet test --solution ${{ env.SOLUTION_FILE }} --configuration Release --results-directory TestResults --coverage --coverage-output-format cobertura --filter-not-namespace "*Integration*" --filter-not-namespace "*Architecture*"
 
   integration-tests:
     name: Integration Tests
@@ -92,8 +89,4 @@ jobs:
           dotnet-version: ${{ env.DOTNET_VERSION }}
 
       - name: Run Integration Tests
-        run: >
-          dotnet test
-          tests/AStarDev.CloudSync.IntegrationTests
-          --configuration Release
-          --no-build
+        run: dotnet test --solution ${{ env.SOLUTION_FILE }} --configuration Release --results-directory TestResults --coverage --coverage-output-format cobertura --filter-namespace "*Integration*"

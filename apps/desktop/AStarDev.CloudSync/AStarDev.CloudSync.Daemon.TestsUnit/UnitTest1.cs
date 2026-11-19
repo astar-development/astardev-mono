@@ -2,9 +2,7 @@ namespace AStarDev.CloudSync.Daemon.TestsUnit;
 
 public class UnitTest1
 {
+
     [Fact]
-    public void Test1()
-    {
-        Assert.True(true);
-    }
+    public void placeholder_test_just_so_there_is_one() => true.ShouldBeTrue();
 }

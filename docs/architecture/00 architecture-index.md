@@ -16,7 +16,7 @@ This index should be updated whenever a new architectural document is added.
 
 ---
 
-# Core Architectural Philosophy
+## Core Architectural Philosophy
 
 AStarDev.CloudSync optimises for:
 
@@ -46,11 +46,11 @@ Never silently lose user data.
 
 ---
 
-# Recommended Reading Order
+## Recommended Reading Order
 
-## Foundation Layer
+### Foundation Layer
 
-### 1. Sync State Model
+#### 1. Sync State Model
 
 Purpose:
 
@@ -66,7 +66,7 @@ Key Decisions:
 
 ---
 
-### 2. Reconciliation Algorithm
+#### 2. Reconciliation Algorithm
 
 Purpose:
 
@@ -82,7 +82,7 @@ Key Decisions:
 
 ---
 
-### 3. Reconciliation Decision Table
+#### 3. Reconciliation Decision Table
 
 Purpose:
 
@@ -97,7 +97,7 @@ Key Decisions:
 
 ---
 
-### 4. Rename Detection Rules
+#### 4. Rename Detection Rules
 
 Purpose:
 
@@ -112,9 +112,9 @@ Key Decisions:
 
 ---
 
-## Execution Layer
+### Execution Layer
 
-### 5. Operation Execution Pipeline
+#### 5. Operation Execution Pipeline
 
 Purpose:
 
@@ -130,7 +130,7 @@ Key Decisions:
 
 ---
 
-### 6. Initial Crawl and Delta Synchronisation
+#### 6. Initial Crawl and Delta Synchronisation
 
 Purpose:
 
@@ -146,7 +146,7 @@ Key Decisions:
 
 ---
 
-### 7. Daemon and UI IPC Contract
+#### 7. Daemon and UI Inter-Process Communication Contract
 
 Purpose:
 
@@ -162,9 +162,9 @@ Key Decisions:
 
 ---
 
-## User Safety Layer
+### User Safety Layer
 
-### 8. Conflict Resolution UX
+#### 8. Conflict Resolution UX
 
 Purpose:
 
@@ -179,7 +179,7 @@ Key Decisions:
 
 ---
 
-### 9. Provider Abstraction and OneDrive Integration
+#### 9. Provider Abstraction and OneDrive Integration
 
 Purpose:
 
@@ -195,7 +195,7 @@ Key Decisions:
 
 ---
 
-### 10. Error Handling and Recovery Strategy
+#### 10. Error Handling and Recovery Strategy
 
 Purpose:
 
@@ -211,9 +211,9 @@ Key Decisions:
 
 ---
 
-## Governance Layer
+### Governance Layer
 
-### 11. Solution Structure and Module Boundaries
+#### 11. Solution Structure and Module Boundaries
 
 Purpose:
 
@@ -229,7 +229,7 @@ Key Decisions:
 
 ---
 
-### 12. Observability and Telemetry Strategy
+#### 12. Observability and Telemetry Strategy
 
 Purpose:
 
@@ -245,7 +245,7 @@ Key Decisions:
 
 ---
 
-### 13. User Trust and Activity Model
+#### 13. User Trust and Activity Model
 
 Purpose:
 
@@ -261,7 +261,7 @@ Key Decisions:
 
 ---
 
-# Architectural Invariants
+## Architectural Invariants
 
 The following statements should always remain true.
 
@@ -307,23 +307,7 @@ The user should never have to guess whether progress is being made.
 
 ---
 
-# Future Documents
-
-Potential future documents:
-
-```text
-14 Solution Startup and Composition
-15 Architecture Testing and Governance
-16 Data Model and Persistence Design
-17 Notifications and User Attention Model
-18 Files On-Demand Architecture
-19 Security and Secrets Management
-20 Release and Upgrade Strategy
-```
-
----
-
-# Final Principle
+## Final Principle
 
 When uncertain, prefer the option that best preserves:
 

@@ -28,7 +28,7 @@ public enum ChangeSet
 ### Examples
 
 | Known | Current | ChangeSet |
-|---------|---------|---------|
+| ------- | ------- | ------- |
 | Missing | Exists | Created |
 | Exists | Missing | Deleted |
 | Path changed | Exists | Renamed |
@@ -50,7 +50,7 @@ R = Remote ChangeSet
 ## No Changes
 
 | L | R | Decision |
-|---|---|---|
+| - | - | - |
 | None | None | NoOp |
 
 ---
@@ -58,7 +58,7 @@ R = Remote ChangeSet
 ## Creates
 
 | L | R | Decision |
-|---|---|---|
+| - | - | - |
 | Created | None | CreateRemote |
 | None | Created | CreateLocal |
 
@@ -67,7 +67,7 @@ R = Remote ChangeSet
 ## Modifications
 
 | L | R | Decision |
-|---|---|---|
+| - | - | - |
 | Modified | None | UpdateRemote |
 | None | Modified | UpdateLocal |
 
@@ -76,7 +76,7 @@ R = Remote ChangeSet
 ## Renames
 
 | L | R | Decision |
-|---|---|---|
+| - | - | - |
 | Renamed | None | RenameRemote |
 | None | Renamed | RenameLocal |
 
@@ -85,7 +85,7 @@ R = Remote ChangeSet
 ## Deletes
 
 | L | R | Decision |
-|---|---|---|
+| - | - | - |
 | Deleted | None | DeleteRemote |
 | None | Deleted | DeleteLocal |
 
@@ -94,7 +94,7 @@ R = Remote ChangeSet
 ## Symmetric Deletes
 
 | L | R | Decision |
-|---|---|---|
+| - | - | - |
 | Deleted | Deleted | NoOp |
 
 Both sides independently agree the item should no longer exist.
@@ -104,7 +104,7 @@ Both sides independently agree the item should no longer exist.
 ## Concurrent Content Changes
 
 | L | R | Decision |
-|---|---|---|
+| - | - | - |
 | Modified | Modified | Conflict |
 
 ### Principle
@@ -164,7 +164,7 @@ Conflict
 ## Rename + Content Change
 
 | L | R | Decision |
-|---|---|---|
+| - | - | - |
 | Renamed | Modified | Merge |
 | Modified | Renamed | Merge |
 
