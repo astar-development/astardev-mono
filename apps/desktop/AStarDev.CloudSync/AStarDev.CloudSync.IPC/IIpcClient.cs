@@ -5,7 +5,7 @@ public interface IIpcClient : IAsyncDisposable
 {
     Task ConnectAsync(CancellationToken cancellationToken = default);
 
-    /// <summary>Completes when the connection ends: the server went away or the client was disposed.</summary>
+    /// <summary>Completes when the connection ends: the server went away or the client was disposed. One client is one connection.</summary>
     Task Disconnected { get; }
 
     /// <exception cref="IpcException">The server reported a failure.</exception>

@@ -39,7 +39,7 @@ public sealed class UnixSocketTransportShould : IAsyncLifetime
         _server.MapQuery((GetDaemonStatus _, CancellationToken _) => Task.FromResult(Status));
         await StartAndConnectAsync();
 
-        var result = await _client.QueryAsync(new GetDaemonStatus(), TestContext.Current.CancellationToken).WaitAsync(Timeout);
+        var result = await _client.QueryAsync(new GetDaemonStatus(), TestContext.Current.CancellationToken).WaitAsync(Timeout, TestContext.Current.CancellationToken);
 
         result.ShouldBe(Status);
     }
@@ -50,23 +50,23 @@ public sealed class UnixSocketTransportShould : IAsyncLifetime
         var received = new TaskCompletionSource<DaemonStatusChanged>(TaskCreationOptions.RunContinuationsAsynchronously);
         _client.OnEvent<DaemonStatusChanged>(received.SetResult);
         await StartAndConnectAsync();
-        await _client.SubscribeAsync(TestContext.Current.CancellationToken).WaitAsync(Timeout);
+        await _client.SubscribeAsync(TestContext.Current.CancellationToken).WaitAsync(Timeout, TestContext.Current.CancellationToken);
 
         await _server.PublishAsync(new DaemonStatusChanged(Status), TestContext.Current.CancellationToken);
 
-        (await received.Task.WaitAsync(Timeout)).ShouldBe(new DaemonStatusChanged(Status));
+        (await received.Task.WaitAsync(Timeout, TestContext.Current.CancellationToken)).ShouldBe(new DaemonStatusChanged(Status));
     }
 
     [Fact]
     public async Task tell_the_client_when_the_server_goes_away()
     {
         await StartAndConnectAsync();
-        await _client.SubscribeAsync(TestContext.Current.CancellationToken).WaitAsync(Timeout);
+        await _client.SubscribeAsync(TestContext.Current.CancellationToken).WaitAsync(Timeout, TestContext.Current.CancellationToken);
         _client.Disconnected.IsCompleted.ShouldBeFalse();
 
         await _server.DisposeAsync();
 
-        await _client.Disconnected.WaitAsync(Timeout);
+        await _client.Disconnected.WaitAsync(Timeout, TestContext.Current.CancellationToken);
         await Should.ThrowAsync<IOException>(async () =>
             await _client.QueryAsync(new GetDaemonStatus(), TestContext.Current.CancellationToken));
     }
@@ -78,7 +78,7 @@ public sealed class UnixSocketTransportShould : IAsyncLifetime
             Task.FromResult(new CommandResult(CommandOutcome.Accepted, command.Text)));
         await StartAndConnectAsync();
 
-        var result = await _client.SendAsync(new PingCommand("hello"), TestContext.Current.CancellationToken).WaitAsync(Timeout);
+        var result = await _client.SendAsync(new PingCommand("hello"), TestContext.Current.CancellationToken).WaitAsync(Timeout, TestContext.Current.CancellationToken);
 
         result.ShouldBe(new CommandResult(CommandOutcome.Accepted, "hello"));
     }
@@ -91,15 +91,16 @@ public sealed class UnixSocketTransportShould : IAsyncLifetime
         await StartAndConnectAsync();
 
         var failure = await Should.ThrowAsync<IpcException>(async () =>
-            await _client.QueryAsync(new GetDaemonStatus(), TestContext.Current.CancellationToken).WaitAsync(Timeout));
+            await _client.QueryAsync(new GetDaemonStatus(), TestContext.Current.CancellationToken).WaitAsync(Timeout, TestContext.Current.CancellationToken));
         failure.Message.ShouldContain("boom");
 
         // an unmapped message type is also reported rather than left to hang
         await Should.ThrowAsync<IpcException>(async () =>
-            await _client.SendAsync(new PingCommand("unmapped"), TestContext.Current.CancellationToken).WaitAsync(Timeout));
+            await _client.SendAsync(new PingCommand("unmapped"), TestContext.Current.CancellationToken).WaitAsync(Timeout, TestContext.Current.CancellationToken));
     }
 
     [Fact]
+    [System.Runtime.Versioning.SupportedOSPlatform("linux")]
     public async Task restrict_the_socket_to_its_owner()
     {
         await _server.StartAsync(TestContext.Current.CancellationToken);
