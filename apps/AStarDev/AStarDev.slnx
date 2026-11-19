@@ -1,0 +1,6 @@
+<Solution>
+  <Project Path="AStarDev.ApiService/AStarDev.ApiService.csproj" />
+  <Project Path="AStarDev.AppHost/AStarDev.AppHost.csproj" />
+  <Project Path="AStarDev.ServiceDefaults/AStarDev.ServiceDefaults.csproj" />
+  <Project Path="AStarDev.Web/AStarDev.Web.csproj" />
+</Solution>
