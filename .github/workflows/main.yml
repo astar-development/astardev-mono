@@ -1,4 +1,4 @@
-name: Build the File App
+name: Build the Aspire App
 
 on:
   workflow_dispatch:
