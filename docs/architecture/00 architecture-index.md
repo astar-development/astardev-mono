@@ -224,6 +224,7 @@ Defines code ownership and dependencies.
 Key Decisions:
 
 - Domain depends on nothing.
+- Boundary contracts (provider and store ports) live in Ports, not Domain.
 - Dependency direction is enforced.
 - Architectural erosion should be difficult.
 
