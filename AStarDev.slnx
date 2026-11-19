@@ -28,5 +28,6 @@
   </Folder>
   <Folder Name="/nuget-packages/">
     <Project Path="nuget-packages/AStarDev.FunctionalParadigm/AStarDev.FunctionalParadigm.csproj" />
+    <Project Path="nuget-packages/AStarDev.FunctionalParadigm.TestsUnit/AStarDev.FunctionalParadigm.TestsUnit.csproj" />
   </Folder>
 </Solution>
