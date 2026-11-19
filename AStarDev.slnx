@@ -26,4 +26,7 @@
     <Project Path="apps/desktop/AStarDev.CloudSync/AStarDev.CloudSync.UI/AStarDev.CloudSync.UI.csproj" />
     <Project Path="apps/desktop/AStarDev.CloudSync/AStarDev.CloudSync.UI.TestsUnit/AStarDev.CloudSync.UI.TestsUnit.csproj" />
   </Folder>
+  <Folder Name="/nuget-packages/">
+    <Project Path="nuget-packages/AStarDev.FunctionalParadigm/AStarDev.FunctionalParadigm.csproj" />
+  </Folder>
 </Solution>
