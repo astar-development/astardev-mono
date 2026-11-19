@@ -239,7 +239,7 @@ Example:
 
 ```text
 Report.xlsx
-Report (Conflict - 2026-11-19).xlsx
+Report (Conflict - 2026-11-19 081417).xlsx
 ```
 
 ---
