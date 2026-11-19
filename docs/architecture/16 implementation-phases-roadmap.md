@@ -38,6 +38,7 @@ Create the physical solution structure exactly as defined in Document 11.
 AStarDev.CloudSync.AppHost
 
 AStarDev.CloudSync.Domain
+AStarDev.CloudSync.Ports
 AStarDev.CloudSync.SyncEngine
 AStarDev.CloudSync.Persistence
 AStarDev.CloudSync.OneDrive
@@ -93,6 +94,10 @@ UI must not reference Persistence
 OneDrive must not reference Persistence
 
 Persistence must not reference SyncEngine
+
+Domain must not reference Ports
+
+Ports must reference only Domain and FunctionalParadigm
 ```
 
 ### Success Criteria

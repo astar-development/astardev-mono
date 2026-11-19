@@ -68,12 +68,19 @@ is an intentional design decision.
 AStarDev.CloudSync.Domain
         ↑
         │
- ICloudProvider
+AStarDev.CloudSync.Ports
+  (ICloudProvider)
+        ↑
         │
 AStarDev.CloudSync.OneDrive
         │
  Microsoft Graph
 ```
+
+`ICloudProvider`, `ProviderError` and the provider models are declared in
+`AStarDev.CloudSync.Ports`, not in the Domain. The Domain holds identities,
+value objects and rules; the port is an I/O boundary, and I/O can fail. The
+Sync Engine and OneDrive both reference Ports. Neither references the other.
 
 The Sync Engine communicates exclusively through:
 
@@ -159,7 +166,9 @@ public interface ICloudProvider
 
 ## Provider Models
 
-Provider implementations return domain-friendly models.
+Provider implementations return domain-friendly models, declared in
+`AStarDev.CloudSync.Ports`. Identities such as `RemoteItemId` and
+`RelativePath` stay in the Domain.
 
 Forbidden across the boundary:
 
@@ -268,8 +277,7 @@ AuthenticationFailed
 Permanent
 ```
 
-These are a closed set of error values, `ProviderError`, declared in the
-Domain. A provider returns them inside a `Result`; it does not throw them.
+These are a closed set of error values, `ProviderError`, declared in Ports. A provider returns them inside a `Result`; it does not throw them.
 
 Cancellation is not a failure. If the caller cancels, the provider honours the
 `CancellationToken` and lets `OperationCanceledException` propagate. It is

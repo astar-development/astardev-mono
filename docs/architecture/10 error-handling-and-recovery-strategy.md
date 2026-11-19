@@ -202,8 +202,8 @@ AuthenticationFailed
 Permanent
 ```
 
-These are a closed set of error values, `ProviderError`, declared in the
-Domain. A provider returns them inside a `Result`; it does not throw them.
+These are a closed set of error values, `ProviderError`, declared in
+`AStarDev.CloudSync.Ports`. A provider returns them inside a `Result`; it does not throw them.
 
 Cancellation is not a failure. If the caller cancels, the provider honours the
 `CancellationToken` and lets `OperationCanceledException` propagate. It is

@@ -7,7 +7,7 @@ PRD: [cloudsync-mvp.md](<cloudsync-mvp.md>). Status: Draft plan. Date:
 
 Title: CloudSync MVP.
 
-Deliver the CloudSync MVP in 22 small vertical slices: a Linux desktop OneDrive
+Deliver the CloudSync MVP in 23 small vertical slices: a Linux desktop OneDrive
 client with a headless daemon and an Avalonia UI. Slices follow the roadmap
 phases in [doc 16](<../architecture/16 implementation-phases-roadmap.md>).
 
@@ -78,10 +78,11 @@ Definition of done, copied into every slice issue:
 
 | Wave | Slice | Blocked by | Parallel with | Files |
 |------|-------|------------|---------------|-------|
-| 1 | S0 | none | none | 10 |
+| 1 | S0 | none | S0b | 10 |
+| 1 | S0b | none | S0 | 12 |
 | 2 | S1 | S0 | S2, S7 | 12 |
 | 2 | S2 | S0 | S1, S7 | 16 |
-| 2 | S7 | S0 | S1, S2 | 10 |
+| 2 | S7 | S0, S0b | S1, S2 | 10 |
 | 3 | S3 | S1, S2 | S4, S8, S11 | 20 |
 | 3 | S4 | S1 | S3, S8, S11 | 6 |
 | 3 | S8 | S7 | S3, S4, S11 | 12 |
@@ -107,7 +108,7 @@ Critical path: S0, S7, S8, S9, S10, S13, S15, S16, S18, S20, S21.
 
 ### S0: FunctionalParadigm Result, Unit and Try
 
-- Wave 1. Blocked by: none. Parallel with: none. Est. files: 10.
+- Wave 1. Blocked by: none. Parallel with: S0b. Est. files: 10.
 - Why first: enabling slice. `nuget-packages/AStarDev.FunctionalParadigm` is an
   empty stub, and S1, S2 and S7 all return `Result` from methods that can fail.
 - Covers: the coding rules above.
@@ -134,6 +135,31 @@ Verification:
 - Architecture: add rule
   `the_functional_paradigm_library_references_no_cloudsync_project` in a new
   test file.
+- Gates: build, architecture, unit.
+
+### S0b: Ports project and dependency rules
+
+- Wave 1. Blocked by: none. Parallel with: S0. Est. files: 12.
+- Why first: enabling slice. Domain must stay free of anything that can fail, so
+  provider and store contracts need their own project (doc 11).
+- Covers: doc 11 module boundaries, doc 15 enforcement.
+- In: `AStarDev.CloudSync.Ports` (references Domain and
+  `AStarDev.FunctionalParadigm` only) and `AStarDev.CloudSync.Ports.TestsUnit`,
+  both in `AStarDev.slnx`; architecture rules: Ports depends only on Domain and
+  FunctionalParadigm (types and project file), Domain depends on nothing and not
+  on Ports, only SyncEngine, Persistence, OneDrive and Daemon may reference
+  Ports.
+- Out: any contract types (S7 and S12 add them).
+- Hotspots: `AStarDev.slnx`, `ArchitectureTestsShouldEnsure.cs`.
+
+Verification:
+
+- Architecture (`TestsArchitecture`, new `PortsArchitectureTestsShouldEnsure`):
+  `ports_depend_only_on_domain_and_the_functional_paradigm_library`,
+  `domain_does_not_depend_on_ports_or_the_functional_paradigm_library`,
+  `only_the_implementing_projects_depend_on_ports`,
+  `the_ports_project_file_references_only_domain_and_the_functional_paradigm_library`,
+  `the_domain_project_file_references_nothing`.
 - Gates: build, architecture, unit.
 
 ### S1: Daemon host and composition root
@@ -275,30 +301,31 @@ Verification:
   metric.
 - Gates: build, architecture, unit.
 
-### S7: Provider contract and domain types
+### S7: Provider contract and domain identities
 
-- Wave 2. Blocked by: S0. Parallel with: S1, S2. Est. files: 10.
+- Wave 2. Blocked by: S0, S0b. Parallel with: S1, S2. Est. files: 10.
 - Why first: enabling slice. Provider, UI, engine and fake all need these types.
 - Covers: P5-4 (types and error values).
-- In: Domain gets `RemoteItemId`, `RelativePath`, `AccountId`,
-  `ProviderAccount`, `ProviderItem`, `ItemType`, `SyncScope`,
-  `ProviderSnapshotPage`; `ProviderError`, a closed set of error values
-  (`RateLimited` with `RetryAfter`, `Transient`, `AuthenticationFailed`,
-  `Permanent`) in place of the exceptions in doc 09; `ICloudProvider` with
-  `ConnectAsync` and `GetSnapshotAsync` only, each returning `Task<Result<T,
-  ProviderError>>` and taking a `CancellationToken`. Other members are added by
-  the slice that needs them.
+- In: Domain gets the identities and values `RemoteItemId`, `RelativePath`,
+  `AccountId`, `ItemType` and `SyncScope`, none of which can fail. Ports gets
+  `ProviderAccount`, `ProviderItem`, `ProviderSnapshotPage`; `ProviderError`, a
+  closed set of error values (`RateLimited` with `RetryAfter`, `Transient`,
+  `AuthenticationFailed`, `Permanent`) in place of the exceptions in doc 09; and
+  `ICloudProvider` with `ConnectAsync` and `GetSnapshotAsync` only, each
+  returning `Task<Result<T, ProviderError>>` and taking a `CancellationToken`.
+  Other members are added by the slice that needs them.
 - Out: any implementation.
-- Hotspots: Domain files (S12, S15 add types).
+- Hotspots: Domain files (S12, S15 add types); Ports files.
 
 Verification:
 
-- Test (`Domain.TestsUnit`): `RemoteItemIdShould.compare_by_value`,
+- Test (`Domain.TestsUnit`): `RemoteItemIdShould.compare_by_value`.
+- Test (`Ports.TestsUnit`):
   `ProviderErrorsShould.be_a_closed_set_of_four_cases`,
   `ProviderErrorsShould.carry_retry_after_on_rate_limited`.
-- Architecture: add rules `the_syncengine_does_not_depend_on_microsoft_graph`
-  and `the_onedrive_provider_does_not_depend_on_the_syncengine` (doc 15, doc
-  09).
+- Architecture: the rules added by S0b stay green as real types arrive; extend
+  `the_sync_engine_does_not_depend_on_microsoft_graph` and
+  `onedrive_does_not_depend_on_the_sync_engine` anchors to the real types.
 - Gates: build, architecture, unit.
 
 ### S8: OneDrive sign-in with Secret Service token cache
@@ -403,7 +430,7 @@ Verification:
   P4-1 (Persistence).
 - In: EF Core and SQLite `DbContext`; entities and first migration for Accounts,
   SyncJobs, Items, ItemSnapshots and ProviderState per doc 01; `DatabaseOptions`
-  (path under `$XDG_DATA_HOME`); Domain-side store interfaces for accounts only;
+  (path under `$XDG_DATA_HOME`); store interfaces for accounts only, in Ports;
   startup applies migrations and runs an integrity check, failure enters
   recovery mode; database health check; persistence telemetry.
 - Out: Operations, Conflicts, EventJournal tables (added by their slices).
@@ -664,8 +691,9 @@ Defaults taken:
   unit test project needs it.
 - Modules use `System.Diagnostics` for sources and meters; only the daemon
   references Observability.
-- Store interfaces live in Domain so SyncEngine and Persistence stay
-  independent.
+- Store interfaces and provider contracts live in Ports, not Domain, so
+  SyncEngine, OneDrive and Persistence stay independent and Domain stays free of
+  anything that can fail.
 - Bootstrap mode is stored in S15 and acted on in S20.
 - The Azure client id comes from configuration (`OneDrive:ClientId`) and is not
   committed.
@@ -678,6 +706,7 @@ Defaults taken:
 Epic: #23.
 
 - S0: #50
+- S0b: #55
 - S1: #24
 - S2: #25
 - S3: #27
