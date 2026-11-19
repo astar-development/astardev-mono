@@ -1,4 +1,5 @@
 using AStarDev.CloudSync.Daemon.Startup;
+using AStarDev.FunctionalParadigm;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging.Abstractions;
 
@@ -14,8 +15,9 @@ public sealed class StartupSequenceShould
         var stages = provider.GetServices<IStartupStage>().Select(stage => new FakeStage(stage.Name, ran)).ToList();
         var sequence = new StartupSequence(stages, NullLogger<StartupSequence>.Instance);
 
-        await sequence.RunAsync(TestContext.Current.CancellationToken);
+        var result = await sequence.RunAsync(TestContext.Current.CancellationToken);
 
+        result.Value.ShouldBeOfType<Ok<Unit>>();
         ran.ShouldBe(
         [
             "Process start",
@@ -35,21 +37,53 @@ public sealed class StartupSequenceShould
             [new FakeStage("one", ran), new FakeStage("two", ran, fails: true), new FakeStage("three", ran)],
             NullLogger<StartupSequence>.Instance);
 
-        var error = await Should.ThrowAsync<StartupFailedException>(() => sequence.RunAsync(TestContext.Current.CancellationToken));
+        var result = await sequence.RunAsync(TestContext.Current.CancellationToken);
 
+        var error = result.Value.ShouldBeOfType<Fail<StartupError>>().Error;
         error.StageName.ShouldBe("two");
-        error.InnerException.ShouldBeOfType<InvalidOperationException>();
+        error.Cause.ShouldBe("boom");
         ran.ShouldBe(["one", "two"]);
     }
 
-    private sealed class FakeStage(string name, List<string> ran, bool fails = false) : IStartupStage
+    [Fact]
+    public async Task stop_when_cancelled()
     {
-        public string Name { get; } = name;
+        using var source = new CancellationTokenSource();
+        var ran = new List<string>();
+        var sequence = new StartupSequence(
+            [new FakeStage("one", ran, onExecute: source.Cancel), new FakeStage("two", ran)],
+            NullLogger<StartupSequence>.Instance);
 
-        public Task RunAsync(CancellationToken cancellationToken)
-        {
-            ran.Add(Name);
-            return fails ? throw new InvalidOperationException("boom") : Task.CompletedTask;
-        }
+        await Should.ThrowAsync<OperationCanceledException>(() => sequence.RunAsync(source.Token));
+
+        ran.ShouldBe(["one"]);
+    }
+
+    [Fact]
+    public async Task not_start_any_stage_when_already_cancelled()
+    {
+        using var source = new CancellationTokenSource();
+        await source.CancelAsync();
+        var ran = new List<string>();
+        var sequence = new StartupSequence([new FakeStage("one", ran)], NullLogger<StartupSequence>.Instance);
+
+        await Should.ThrowAsync<OperationCanceledException>(() => sequence.RunAsync(source.Token));
+
+        ran.ShouldBeEmpty();
+    }
+
+    [Fact]
+    public async Task pass_the_token_to_every_stage()
+    {
+        using var source = new CancellationTokenSource();
+        var ran = new List<string>();
+        var first = new FakeStage("one", ran);
+        var second = new FakeStage("two", ran);
+        var sequence = new StartupSequence([first, second], NullLogger<StartupSequence>.Instance);
+
+        await sequence.RunAsync(source.Token);
+
+        first.ReceivedToken.ShouldBe(source.Token);
+        second.ReceivedToken.ShouldBe(source.Token);
     }
 }
