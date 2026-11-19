@@ -6,6 +6,7 @@
     <OutputType>Exe</OutputType>
     <TargetFramework>net11.0</TargetFramework>
     <TestingPlatformDotnetTestSupport>true</TestingPlatformDotnetTestSupport>
+    <NoWarn>$(NoWarn);IDE1006;</NoWarn>
   </PropertyGroup>
 
   <ItemGroup>
@@ -25,6 +26,11 @@
 
   <ItemGroup>
     <ProjectReference Include="..\AStarDev.CloudSync.Domain\AStarDev.CloudSync.Domain.csproj" />
+    <ProjectReference Include="..\AStarDev.CloudSync.SyncEngine\AStarDev.CloudSync.SyncEngine.csproj" />
+    <ProjectReference Include="..\AStarDev.CloudSync.Persistence\AStarDev.CloudSync.Persistence.csproj" />
+    <ProjectReference Include="..\AStarDev.CloudSync.OneDrive\AStarDev.CloudSync.OneDrive.csproj" />
+    <ProjectReference Include="..\AStarDev.CloudSync.IPC\AStarDev.CloudSync.IPC.csproj" />
+    <ProjectReference Include="..\AStarDev.CloudSync.Observability\AStarDev.CloudSync.Observability.csproj" />
   </ItemGroup>
 
 </Project>

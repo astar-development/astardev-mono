@@ -6,6 +6,9 @@ public class IntegrationTest1
 {
     private static readonly TimeSpan DefaultTimeout = TimeSpan.FromSeconds(30);
 
+    [Fact]
+    public void placeholder_test_just_so_there_is_one() => true.ShouldBeTrue();
+
     // Instructions:
     // 1. Add a project reference to the target AppHost project, e.g.:
     //
