@@ -14,10 +14,8 @@ concurrency:
 
 env:
   SONAR_PROJECT: ${{ github.event.repository.name }}
-  PASCAL_REPO_NAME: Will.Be.Set.By.Step
-  SOLUTION_FILE: Will.Be.Set.slnx
   CONFIGURATION: Release
-  DOTNET_CORE_VERSION: 10.0.100
+  DOTNET_CORE_VERSION: 11.0.x
   WORKING_DIRECTORY: src/
 permissions:
   contents: read
@@ -47,47 +45,18 @@ jobs:
           key: ${{ runner.os }}-nuget-${{ hashFiles('**/*.csproj', '**/*.slnx') }}
           restore-keys: |
             ${{ runner.os }}-nuget-
-              
-      - name: PascalCase repo name with rules
-        run: |
-          raw="${{ github.event.repository.name }}"
 
-          # Split on '-' and PascalCase each segment, rejoin with '.'
-          pascal=$(echo "$raw" | awk -F'-' '{
-            OFS="."
-            for (i=1; i<=NF; i++) {
-              $i = toupper(substr($i,1,1)) substr($i,2)
-            }
-            print
-          }')
-
-          # Adjust leading Astar → AStar
-          pascal=$(echo "$pascal" | sed 's/^Astar/AStar/')
-
-          # Add suffix
-          pascal="${pascal}.slnx"
-
-          echo "PASCAL_REPO_NAME=$pascal" >> $GITHUB_ENV
-
-          echo "SOLUTION_FILE=$pascal" >> $GITHUB_ENV
-
-      - name: PASCAL_REPO_NAME
-        run: echo ${{ env.PASCAL_REPO_NAME }}
-
-      - name: SOLUTION_FILE
-        run: echo ${{ env.SOLUTION_FILE }}
-
-      - name: Restore ${{ env.PASCAL_REPO_NAME }}
-        run: dotnet restore ${{ env.PASCAL_REPO_NAME }}
+      - name: Restore NuGet Packagee
+        run: dotnet restore
 
       - name: Build solution
-        run: dotnet build ${{ env.SOLUTION_FILE }} --configuration Release
+        run: dotnet build AStarDev.slnx --configuration Release
 
       - run: echo "REPO_NAME=${{ github.event.repository.name }}" >> $GITHUB_ENV
 
       - name: Run unit tests and collect coverage (XPlat)
         run: |
-          dotnet test --no-build --verbosity normal --collect:"XPlat Code Coverage" --results-directory TestResults --filter "FullyQualifiedName!~Integration&FullyQualifiedName!~EndToEnd" ${{ env.SOLUTION_FILE }}.slnx
+          dotnet test --no-build --verbosity normal --collect:"XPlat Code Coverage" --results-directory TestResults --filter "FullyQualifiedName!~Integration&FullyQualifiedName!~EndToEnd" AStarDev.slnx.slnx
 
       - name: Upload TestResults artifact (contains coverage)
         if: success() || failure()
