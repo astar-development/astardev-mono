@@ -6,6 +6,8 @@ on:
   push:
     branches:
       - main
+permissions:
+  contents: read
 
 env:
   DOTNET_VERSION: '11.0.x'
