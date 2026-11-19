@@ -16,12 +16,25 @@
   <ItemGroup>
     <Using Include="Xunit" />
     <Using Include="Shouldly" />
+    <Using Include="NetArchTest.Rules" />
   </ItemGroup>
 
   <ItemGroup>
     <PackageReference Include="xunit.v3.mtp-v2" Version="4.0.3" />
     <PackageReference Include="Microsoft.Testing.Extensions.CodeCoverage" Version="18.12.0" />
     <PackageReference Include="Shouldly" Version="4.3.0" />
+    <PackageReference Include="NetArchTest.Rules" Version="1.3.2" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="..\AStarDev.CloudSync.Domain\AStarDev.CloudSync.Domain.csproj" />
+    <ProjectReference Include="..\AStarDev.CloudSync.Daemon\AStarDev.CloudSync.Daemon.csproj" />
+    <ProjectReference Include="..\AStarDev.CloudSync.IPC\AStarDev.CloudSync.IPC.csproj" />
+    <ProjectReference Include="..\AStarDev.CloudSync.Observability\AStarDev.CloudSync.Observability.csproj" />
+    <ProjectReference Include="..\AStarDev.CloudSync.OneDrive\AStarDev.CloudSync.OneDrive.csproj" />
+    <ProjectReference Include="..\AStarDev.CloudSync.Persistence\AStarDev.CloudSync.Persistence.csproj" />
+    <ProjectReference Include="..\AStarDev.CloudSync.SyncEngine\AStarDev.CloudSync.SyncEngine.csproj" />
+    <ProjectReference Include="..\AStarDev.CloudSync.UI\AStarDev.CloudSync.UI.csproj" />
   </ItemGroup>
 
 </Project>
