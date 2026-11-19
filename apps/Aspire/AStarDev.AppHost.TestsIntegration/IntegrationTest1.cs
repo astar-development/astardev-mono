@@ -1,6 +1,6 @@
 using Microsoft.Extensions.Logging;
 
-namespace AStarDev.AppHost.TestsIntegration.Tests;
+namespace AStarDev.AppHost.TestsIntegration;
 
 public class IntegrationTest1
 {
