@@ -1,4 +1,6 @@
-namespace AStarDev.CloudSync.Domain;
+using AStarDev.CloudSync.Domain;
+
+namespace AStarDev.CloudSync.Ports;
 
 public sealed record ProviderItem(
     RemoteItemId RemoteItemId,
