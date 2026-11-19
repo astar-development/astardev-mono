@@ -47,7 +47,7 @@ jobs:
             ${{ runner.os }}-nuget-
 
       - name: Restore NuGet Packagee
-        run: dotnet restore
+        run: dotnet restore AStarDev.slnx
 
       - name: Build solution
         run: dotnet build AStarDev.slnx --configuration Release
