@@ -88,7 +88,7 @@ AStarDev.CloudSync.UI
 
 AStarDev.CloudSync.Observability
 
-AStarDev.CloudSync.Testing
+AStarDev.CloudSync.TestsIntegration
 ```
 
 ---
@@ -366,7 +366,7 @@ Utilities
 
 ---
 
-## AStarDev.CloudSync.Testing
+## AStarDev.CloudSync.TestsIntegration
 
 Purpose:
 
