@@ -21,7 +21,7 @@ it is important enough to test.
 
 ---
 
-### Build-Time Enforcement Is Preferred
+### Build-Time Enforcement Is A Requirement
 
 Architectural violations should be detected:
 
