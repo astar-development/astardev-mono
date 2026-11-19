@@ -52,6 +52,10 @@ Everything depends on Domain.
 
 Domain depends on nothing.
 
+The Domain holds identities, value objects, entities and rules. Nothing in it
+performs I/O, so nothing in it returns `Result`. Contracts that cross an I/O
+boundary live in `AStarDev.CloudSync.Ports`.
+
 ---
 
 ### Infrastructure Is Replaceable
@@ -73,6 +77,8 @@ The following must remain replaceable without Domain changes:
 AStarDev.CloudSync.AppHost
 
 AStarDev.CloudSync.Domain
+
+AStarDev.CloudSync.Ports
 
 AStarDev.CloudSync.SyncEngine
 
@@ -157,6 +163,42 @@ None
 
 ---
 
+## AStarDev.CloudSync.Ports
+
+Purpose:
+
+```text
+Boundary Contracts
+```
+
+Contains:
+
+- Provider port (`ICloudProvider`) and provider models
+- `ProviderError`
+- State store interfaces implemented by Persistence
+
+Dependencies:
+
+```text
+Domain
+AStarDev.FunctionalParadigm
+```
+
+Must Not Contain:
+
+```text
+Implementations
+EF Core
+Graph SDK
+Avalonia
+Sync Decisions
+```
+
+Every method on a port can fail, so it returns a `Result` from
+`AStarDev.FunctionalParadigm` and takes a `CancellationToken`.
+
+---
+
 ## AStarDev.CloudSync.SyncEngine
 
 Purpose:
@@ -177,6 +219,7 @@ Dependencies:
 
 ```text
 Domain
+Ports
 ```
 
 Must Not Contain:
@@ -209,6 +252,7 @@ Dependencies:
 
 ```text
 Domain
+Ports
 ```
 
 Must Not Contain:
@@ -241,6 +285,7 @@ Dependencies:
 
 ```text
 Domain
+Ports
 ```
 
 Must Not Contain:
@@ -304,6 +349,7 @@ Dependencies:
 
 ```text
 Domain
+Ports
 SyncEngine
 Persistence
 OneDrive
@@ -401,17 +447,23 @@ Daemon
     ↓
 SyncEngine
     ↓
+Ports
+    ↓
 Domain
 ```
 
 ```text
 Persistence
     ↓
+Ports
+    ↓
 Domain
 ```
 
 ```text
 OneDrive
+    ↓
+Ports
     ↓
 Domain
 ```
@@ -432,6 +484,18 @@ Domain
 Domain
     ↓
 Anything
+```
+
+```text
+Ports
+    ↓
+SyncEngine, Persistence, OneDrive, IPC, Daemon, UI, Observability
+```
+
+```text
+Domain, IPC, UI, Observability
+    ↓
+Ports
 ```
 
 ```text
@@ -536,6 +600,8 @@ Before merging significant changes, verify:
 
 ```text
 □ Domain has no dependencies
+
+□ Ports contains contracts only, no implementations
 
 □ SyncEngine depends only on Domain abstractions
 
