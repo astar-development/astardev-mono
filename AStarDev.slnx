@@ -1,7 +1,26 @@
 <Solution>
-  <Folder Name="/apps/desktop/AStarDev.CloudSync/">
-    <Project Path="apps/desktop/AStarDev.CloudSync/AStarDev.CloudSync/AStarDev.CloudSync.csproj" />
+  <Folder Name="/apps/" />
+  <Folder Name="/apps/Aspire/">
+    <Project Path="apps/Aspire/AStarDev.AppHost/AStarDev.AppHost.csproj" />
+    <Project Path="apps/Aspire/AStarDev.ServiceDefaults/AStarDev.ServiceDefaults.csproj" />
+    <Project Path="apps/Aspire/AStarDev.AppHost.TestsIntegration/AStarDev.AppHost.TestsIntegration.csproj" />
+    <Project Path="apps/Aspire/AStarDev.AppHost.TestsUnit/AStarDev.AppHost.TestsUnit.csproj" />
   </Folder>
-  <Project Path="apps/Aspire/AStarDev.AppHost/AStarDev.AppHost.csproj" />
-  <Project Path="apps/Aspire/AStarDev.ServiceDefaults/AStarDev.ServiceDefaults.csproj" />
+  <Folder Name="/apps/desktop/" />
+  <Folder Name="/apps/desktop/AStarDev.CloudSync/">
+    <Project Path="apps/desktop/AStarDev.CloudSync/AStarDev.CloudSync.Daemon/AStarDev.CloudSync.Daemon.csproj" />
+    <Project Path="apps/desktop/AStarDev.CloudSync/AStarDev.CloudSync.Daemon.TestsUnit/AStarDev.CloudSync.Daemon.TestsUnit.csproj" />
+    <Project Path="apps/desktop/AStarDev.CloudSync/AStarDev.CloudSync.Domain/AStarDev.CloudSync.Domain.csproj" />
+    <Project Path="apps/desktop/AStarDev.CloudSync/AStarDev.CloudSync.Domain.TestsUnit/AStarDev.CloudSync.Domain.TestsUnit.csproj" />
+    <Project Path="apps/desktop/AStarDev.CloudSync/AStarDev.CloudSync.Observability/AStarDev.CloudSync.Observability.csproj" />
+    <Project Path="apps/desktop/AStarDev.CloudSync/AStarDev.CloudSync.Observability.TestsUnit/AStarDev.CloudSync.Observability.TestsUnit.csproj" />
+    <Project Path="apps/desktop/AStarDev.CloudSync/AStarDev.CloudSync.OneDrive/AStarDev.CloudSync.OneDrive.csproj" />
+    <Project Path="apps/desktop/AStarDev.CloudSync/AStarDev.CloudSync.OneDrive.TestsUnit/AStarDev.CloudSync.OneDrive.TestsUnit.csproj" />
+    <Project Path="apps/desktop/AStarDev.CloudSync/AStarDev.CloudSync.Persistence/AStarDev.CloudSync.Persistence.csproj" />
+    <Project Path="apps/desktop/AStarDev.CloudSync/AStarDev.CloudSync.Persistence.TestsUnit/AStarDev.CloudSync.Persistence.TestsUnit.csproj" />
+    <Project Path="apps/desktop/AStarDev.CloudSync/AStarDev.CloudSync.SyncEngine/AStarDev.CloudSync.SyncEngine.csproj" />
+    <Project Path="apps/desktop/AStarDev.CloudSync/AStarDev.CloudSync.SyncEngine.TestsUnit/AStarDev.CloudSync.SyncEngine.TestsUnit.csproj" />
+    <Project Path="apps/desktop/AStarDev.CloudSync/AStarDev.CloudSync.UI/AStarDev.CloudSync.UI.csproj" />
+    <Project Path="apps/desktop/AStarDev.CloudSync/AStarDev.CloudSync.UI.TestsUnit/AStarDev.CloudSync.UI.TestsUnit.csproj" />
+  </Folder>
 </Solution>
