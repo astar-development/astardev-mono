@@ -1,0 +1,7 @@
+<Solution>
+  <Folder Name="/apps/desktop/AStarDev.CloudSync/">
+    <Project Path="apps/desktop/AStarDev.CloudSync/AStarDev.CloudSync/AStarDev.CloudSync.csproj" />
+  </Folder>
+  <Project Path="apps/Aspire/AStarDev.AppHost/AStarDev.AppHost.csproj" />
+  <Project Path="apps/Aspire/AStarDev.ServiceDefaults/AStarDev.ServiceDefaults.csproj" />
+</Solution>
