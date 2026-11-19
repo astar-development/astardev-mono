@@ -174,7 +174,7 @@ Used primarily for diagnostics and supportability.
 ### Accounts
 
 | Column | Notes |
-|----------|----------|
+| -------- | -------- |
 | Id | PK |
 | ProviderType | OneDrive, etc |
 | DisplayName | User-facing account name |
@@ -184,7 +184,7 @@ Used primarily for diagnostics and supportability.
 ### SyncJobs
 
 | Column | Notes |
-|----------|----------|
+| -------- | -------- |
 | Id | PK |
 | AccountId | FK |
 | Name | Friendly name |
@@ -197,7 +197,7 @@ Used primarily for diagnostics and supportability.
 ### Items
 
 | Column | Notes |
-|----------|----------|
+| -------- | -------- |
 | Id | PK |
 | SyncJobId | FK |
 | ItemType | File/Folder |
@@ -220,7 +220,7 @@ OneDrive
 ### ItemSnapshots
 
 | Column | Notes |
-|----------|----------|
+| -------- | -------- |
 | Id | PK |
 | ItemId | FK |
 | Size | Observed size |
@@ -234,7 +234,7 @@ OneDrive
 ### ProviderState
 
 | Column | Notes |
-|----------|----------|
+| -------- | -------- |
 | SyncJobId | FK |
 | DeltaToken | Graph delta token |
 | LastSyncUtc | Last successful sync |
@@ -243,7 +243,7 @@ OneDrive
 ### Operations
 
 | Column | Notes |
-|----------|----------|
+| -------- | -------- |
 | Id | PK |
 | ItemId | FK |
 | OperationType | Upload, Download, etc |
@@ -257,7 +257,7 @@ OneDrive
 ### Conflicts
 
 | Column | Notes |
-|----------|----------|
+| -------- | -------- |
 | Id | PK |
 | ItemId | FK |
 | ConflictType | Conflict category |
@@ -270,7 +270,7 @@ OneDrive
 ### EventJournal
 
 | Column | Notes |
-|----------|----------|
+| -------- | -------- |
 | Id | PK |
 | OccurredUtc | Event time |
 | EventType | Domain event |

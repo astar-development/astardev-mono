@@ -85,7 +85,7 @@ Reviews verify:
 Recommended project:
 
 ```text
-AStarDev.CloudSync.ArchitectureTests
+AStarDev.CloudSync.TestsArchitecture
 ```
 
 Purpose:
@@ -179,7 +179,7 @@ owns:
 using NetArchTest.Rules;
 using Xunit;
 
-public sealed class DomainArchitectureTests
+public sealed class DomainTestsArchitecture
 {
     [Fact]
     public void Domain_Should_Not_Depend_On_Infrastructure()

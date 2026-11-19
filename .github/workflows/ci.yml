@@ -10,10 +10,9 @@ permissions:
   contents: read
 
 env:
-  DOTNET_VERSION: '11.0.x'
+  DOTNET_VERSION: "11.0.x"
 
 jobs:
-
   architecture:
     name: Architecture Tests
     runs-on: ubuntu-latest
@@ -32,7 +31,7 @@ jobs:
       - name: Run Architecture Tests
         run: >
           dotnet test
-          tests/AStarDev.AStarDev.CloudSync.ArchitectureTests
+          tests/AStarDev.AStarDev.CloudSync.TestsArchitecture
           --configuration Release
           --verbosity normal
 

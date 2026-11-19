@@ -149,8 +149,7 @@ ETag
 ```csharp
 public interface IReconciler
 {
-    SyncDecision Reconcile(
-        CanonicalItemState state);
+    SyncDecision Reconcile(CanonicalItemState state);
 }
 ```
 

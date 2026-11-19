@@ -8,7 +8,7 @@ The objective is to avoid premature feature development and instead establish a 
 
 ---
 
-# Guiding Principle
+### Guiding Principle
 
 AStarDev.CloudSync has now reached a stage where additional architecture documents should primarily be driven by implementation experience.
 
@@ -26,13 +26,13 @@ Refine Architecture
 
 ---
 
-# Phase 1 - Solution Skeleton
+## Phase 1 - Solution Skeleton
 
-## Goal
+### Goal
 
 Create the physical solution structure exactly as defined in Document 11.
 
-## Deliverables
+### Deliverables
 
 ```text
 AStarDev.CloudSync.AppHost
@@ -46,10 +46,10 @@ AStarDev.CloudSync.Daemon
 AStarDev.CloudSync.UI
 AStarDev.CloudSync.Observability
 
-AStarDev.CloudSync.ArchitectureTests
+AStarDev.CloudSync.TestsArchitecture
 ```
 
-## Success Criteria
+### Success Criteria
 
 ```text
 Projects exist
@@ -61,16 +61,16 @@ No business logic required.
 
 ---
 
-# Phase 2 - Architecture Enforcement
+## Phase 2 - Architecture Enforcement
 
-## Goal
+### Goal
 
 Protect the architecture before writing significant code.
 
-## Deliverables
+### Deliverables
 
 ```text
-AStarDev.CloudSync.ArchitectureTests
+AStarDev.CloudSync.TestsArchitecture
 ```
 
 Using:
@@ -95,7 +95,7 @@ OneDrive must not reference Persistence
 Persistence must not reference SyncEngine
 ```
 
-## Success Criteria
+### Success Criteria
 
 ```text
 Architecture violations fail the build
@@ -103,13 +103,13 @@ Architecture violations fail the build
 
 ---
 
-# Phase 3 - Startup and Composition
+## Phase 3 - Startup and Composition
 
-## Goal
+### Goal
 
 Create the runtime host structure.
 
-## Deliverables
+### Deliverables
 
 ```text
 AppHost
@@ -121,7 +121,7 @@ Daemon
 UI
 ```
 
-## Success Criteria
+### Success Criteria
 
 ```text
 AppHost launches
@@ -133,13 +133,13 @@ No OneDrive functionality required.
 
 ---
 
-# Phase 4 - Observability First
+## Phase 4 - Observability First
 
-## Goal
+### Goal
 
 Introduce observability before business behaviour.
 
-## Deliverables
+### Deliverables
 
 ```text
 ILogger
@@ -157,7 +157,7 @@ Persistence
 OneDrive
 ```
 
-## Success Criteria
+### Success Criteria
 
 ```text
 Logs visible
@@ -167,9 +167,9 @@ Traces visible
 
 ---
 
-# Phase 5 - First Vertical Slice
+## Phase 5 - First Vertical Slice
 
-## Goal
+### Goal
 
 Exercise all major architectural boundaries.
 
@@ -195,7 +195,7 @@ UI
 Telemetry
 ```
 
-## Success Criteria
+### Success Criteria
 
 ```text
 User can connect an account
@@ -204,9 +204,9 @@ User can see remote item count
 
 ---
 
-# Phase 6 - Incremental Expansion
+## Phase 6 - Incremental Expansion
 
-## Suggested Order
+### Suggested Order
 
 ```text
 Remote Enumeration
@@ -230,7 +230,7 @@ Avoid developing entire subsystems in isolation.
 
 ---
 
-# CI/CD Principle
+## CI/CD Principle
 
 Architectural compliance is a prerequisite for compilation and testing.
 
@@ -260,7 +260,7 @@ Immediately.
 
 ---
 
-# What Not To Do Yet
+## What Not To Do Yet
 
 Avoid spending significant effort on:
 
@@ -280,7 +280,7 @@ until the core architecture has been proven.
 
 ---
 
-# Future Architecture Documents
+## Future Architecture Documents
 
 These should ideally be informed by implementation experience.
 
@@ -300,7 +300,7 @@ Release and Upgrade Strategy
 
 ---
 
-# Final Recommendation
+## Final Recommendation
 
 The architecture is now sufficiently mature.
 
