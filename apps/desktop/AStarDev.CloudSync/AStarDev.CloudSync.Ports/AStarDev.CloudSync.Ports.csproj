@@ -1,0 +1,14 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <TargetFramework>net11.0</TargetFramework>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <Nullable>enable</Nullable>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="..\AStarDev.CloudSync.Domain\AStarDev.CloudSync.Domain.csproj" />
+    <ProjectReference Include="..\..\..\..\nuget-packages\AStarDev.FunctionalParadigm\AStarDev.FunctionalParadigm.csproj" />
+  </ItemGroup>
+
+</Project>

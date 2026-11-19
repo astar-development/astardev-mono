@@ -33,6 +33,7 @@
     <ProjectReference Include="..\AStarDev.CloudSync.Observability\AStarDev.CloudSync.Observability.csproj" />
     <ProjectReference Include="..\AStarDev.CloudSync.OneDrive\AStarDev.CloudSync.OneDrive.csproj" />
     <ProjectReference Include="..\AStarDev.CloudSync.Persistence\AStarDev.CloudSync.Persistence.csproj" />
+    <ProjectReference Include="..\AStarDev.CloudSync.Ports\AStarDev.CloudSync.Ports.csproj" />
     <ProjectReference Include="..\AStarDev.CloudSync.SyncEngine\AStarDev.CloudSync.SyncEngine.csproj" />
     <ProjectReference Include="..\AStarDev.CloudSync.UI\AStarDev.CloudSync.UI.csproj" />
     <ProjectReference Include="..\..\..\..\nuget-packages\AStarDev.FunctionalParadigm\AStarDev.FunctionalParadigm.csproj" />
