@@ -128,6 +128,19 @@ public sealed class UnixSocketTransportShould : IAsyncLifetime
     }
 
     [Fact]
+    public async Task answer_with_a_failure_when_the_response_is_too_large()
+    {
+        _server.MapQuery((GetDaemonStatus _, CancellationToken _) =>
+            Succeed(Status with { Version = new string('x', FrameCodec.MaxFrameSize) }));
+        await StartAndConnectAsync();
+
+        var result = await _client.QueryAsync(new GetDaemonStatus(), Token).WaitAsync(Timeout, Token);
+
+        result.ShouldFail().Value.ShouldBeOfType<HandlerFailed>().Message.ShouldContain("exceeds the maximum");
+        (await _firstServerError.Task.WaitAsync(Timeout, Token)).Value.ShouldBeOfType<FrameTooLarge>();
+    }
+
+    [Fact]
     public async Task fail_a_request_made_before_connecting()
     {
         (await _client.QueryAsync(new GetDaemonStatus(), Token)).ShouldFail().Value.ShouldBeOfType<NotConnected>();
