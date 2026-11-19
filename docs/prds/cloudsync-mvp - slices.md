@@ -600,3 +600,29 @@ Defaults taken:
 - A local uncommitted change to `AStarDev.slnx` (adds
   `packages/AStarDev.FunctionalParadigm`) exists and is unrelated; this plan
   does not touch it.
+
+## Issues
+
+Epic: #23.
+
+- S1: #24
+- S2: #25
+- S3: #27
+- S4: #28
+- S5: #31
+- S6: #34
+- S7: #26
+- S8: #29
+- S9: #32
+- S10: #35
+- S11: #30
+- S12: #33
+- S13: #36
+- S14: #37
+- S15: #38
+- S16: #39
+- S17: #40
+- S18: #41
+- S19: #42
+- S20: #43
+- S21: #44
