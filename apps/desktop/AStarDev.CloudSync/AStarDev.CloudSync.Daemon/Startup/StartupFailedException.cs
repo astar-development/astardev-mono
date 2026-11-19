@@ -1,7 +1,8 @@
 namespace AStarDev.CloudSync.Daemon.Startup;
 
-public sealed class StartupFailedException(string stageName, Exception inner)
-    : Exception($"Startup stage '{stageName}' failed.", inner)
+/// <summary>Framework boundary only: thrown by <see cref="StartupHostedService"/> so the host fails to start.</summary>
+public sealed class StartupFailedException(StartupError error)
+    : Exception($"Startup stage '{error.StageName}' failed: {error.Cause}", error.Exception)
 {
-    public string StageName { get; } = stageName;
+    public StartupError Error { get; } = error;
 }
