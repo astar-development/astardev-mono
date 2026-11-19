@@ -56,6 +56,29 @@ from continuing.
 
 ---
 
+### Failure Is A Value
+
+Any method that can fail returns a `Result<TResult, TError>` (or `Option<T>`
+when a value may be absent) from `AStarDev.FunctionalParadigm`.
+
+Expected failures are not signalled with exceptions or `null`. Code that calls
+throwing APIs wraps the call (`Try.Run` / `Try.RunAsync`) and maps the failure
+to an error value; there are no `try`/`catch` blocks in application code.
+
+Exceptions remain only for programmer errors and framework contracts, for
+example a hosted service that must stop the host from starting.
+
+---
+
+### Cancellation Is Not A Failure
+
+Every async method takes a `CancellationToken` as its last parameter, passes
+it on, and honours it. Cancellation propagates as
+`OperationCanceledException`; it is never converted into an error value or
+retried.
+
+---
+
 ### User Trust Is More Important Than Hiding Errors
 
 AStarDev.CloudSync should:
@@ -159,7 +182,7 @@ Recovery Workflow
 
 ---
 
-## Exception Translation
+## Error Translation
 
 Provider-specific exceptions must not cross architectural boundaries.
 
@@ -170,14 +193,21 @@ GraphException
 HttpException
 ```
 
-becomes:
+becomes the following `ProviderError` values:
 
 ```csharp
-RateLimitException
-TransientProviderException
-AuthenticationFailureException
-PermanentProviderException
+RateLimited      // carries RetryAfter
+Transient
+AuthenticationFailed
+Permanent
 ```
+
+These are a closed set of error values, `ProviderError`, declared in the
+Domain. A provider returns them inside a `Result`; it does not throw them.
+
+Cancellation is not a failure. If the caller cancels, the provider honours the
+`CancellationToken` and lets `OperationCanceledException` propagate. It is
+never converted into a `ProviderError`.
 
 ---
 

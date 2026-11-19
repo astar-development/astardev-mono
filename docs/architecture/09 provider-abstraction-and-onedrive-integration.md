@@ -83,6 +83,20 @@ ICloudProvider
 
 ---
 
+## Failure Is A Value, Cancellation Is Honoured
+
+Every provider method that can fail returns a
+`Result<TResult, ProviderError>` from `AStarDev.FunctionalParadigm`. Expected
+failures are never signalled with exceptions or `null`.
+
+Every async method takes a `CancellationToken` as its last parameter, passes it
+to every call that accepts one, and honours cancellation.
+
+Provider code that calls throwing APIs (Graph SDK, HTTP) wraps the call so the
+failure becomes a `ProviderError`; it does not use `try`/`catch` blocks.
+
+---
+
 ## Provider Responsibilities
 
 Providers own:
@@ -111,30 +125,31 @@ Providers do not own:
 ```csharp
 public interface ICloudProvider
 {
-    Task<ProviderAccount> ConnectAsync();
+    Task<Result<ProviderAccount, ProviderError>> ConnectAsync(
+        CancellationToken cancellationToken);
 
-    Task<ProviderSnapshotPage> GetSnapshotAsync(
+    Task<Result<ProviderSnapshotPage, ProviderError>> GetSnapshotAsync(
         SyncScope scope,
         CancellationToken cancellationToken);
 
-    Task<ProviderDeltaPage> GetDeltasAsync(
+    Task<Result<ProviderDeltaPage, ProviderError>> GetDeltasAsync(
         DeltaToken token,
         CancellationToken cancellationToken);
 
-    Task<Stream> DownloadAsync(
+    Task<Result<Stream, ProviderError>> DownloadAsync(
         RemoteItemId itemId,
         CancellationToken cancellationToken);
 
-    Task UploadAsync(
+    Task<Result<Unit, ProviderError>> UploadAsync(
         UploadRequest request,
         CancellationToken cancellationToken);
 
-    Task RenameAsync(
+    Task<Result<Unit, ProviderError>> RenameAsync(
         RemoteItemId itemId,
         RelativePath path,
         CancellationToken cancellationToken);
 
-    Task DeleteAsync(
+    Task<Result<Unit, ProviderError>> DeleteAsync(
         RemoteItemId itemId,
         CancellationToken cancellationToken);
 }
@@ -233,7 +248,7 @@ The provider owns:
 
 ---
 
-## Exception Translation
+## Error Translation
 
 Provider-specific exceptions must never cross the provider boundary.
 
@@ -244,14 +259,21 @@ GraphException
 HttpException
 ```
 
-Into:
+Into the following `ProviderError` values:
 
 ```csharp
-RateLimitException
-TransientProviderException
-AuthenticationFailureException
-PermanentProviderException
+RateLimited      // carries RetryAfter
+Transient
+AuthenticationFailed
+Permanent
 ```
+
+These are a closed set of error values, `ProviderError`, declared in the
+Domain. A provider returns them inside a `Result`; it does not throw them.
+
+Cancellation is not a failure. If the caller cancels, the provider honours the
+`CancellationToken` and lets `OperationCanceledException` propagate. It is
+never converted into a `ProviderError`.
 
 ---
 

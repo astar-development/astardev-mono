@@ -7,7 +7,7 @@ PRD: [cloudsync-mvp.md](<cloudsync-mvp.md>). Status: Draft plan. Date:
 
 Title: CloudSync MVP.
 
-Deliver the CloudSync MVP in 21 small vertical slices: a Linux desktop OneDrive
+Deliver the CloudSync MVP in 22 small vertical slices: a Linux desktop OneDrive
 client with a headless daemon and an Avalonia UI. Slices follow the roadmap
 phases in [doc 16](<../architecture/16 implementation-phases-roadmap.md>).
 
@@ -42,11 +42,33 @@ project, which exists for every module.
 
 Tests first: write the listed tests, watch them fail, then implement.
 
+Coding rules, apply to every slice:
+
+- Any method that can fail returns a monad from `AStarDev.FunctionalParadigm`,
+  normally `Result<TResult, TError>`; use `Option<T>` for "may be absent".
+  Expected failures are never signalled with exceptions or `null`. Error values
+  are domain types, so where a slice below says "exception", read it as the
+  matching error value.
+- Wrap code that throws (BCL, Graph, sockets, files) in `Try.Run` or
+  `Try.RunAsync` and map the failure to an error value. No `try`/`catch` blocks.
+  Exceptions remain only for programmer errors and framework contracts such as
+  an `IHostedService` that must fail the host.
+- Every async method takes a `CancellationToken` as its last parameter, passes
+  it to every call that accepts one, and honours cancellation. Tests cover
+  cancellation.
+- `AStarDev.FunctionalParadigm` is written fresh. Never copy code from an
+  existing library. A type or combinator is added only by the slice that first
+  needs it, test first, one type or combinator per file so parallel slices do
+  not conflict.
+
 Definition of done, copied into every slice issue:
 
 - [ ] Build, architecture and unit gates pass (integration gate where listed)
 - [ ] Every listed test exists and passes; manual checks done by a person
 - [ ] Build has no new warnings
+- [ ] No method that can fail returns a bare value, null or throws for expected
+  failures
+- [ ] Every async method takes and honours a `CancellationToken`, with a test
 - [ ] No unrelated files changed
 - [ ] Covered PRD requirement ids named in the PR
 - [ ] PR description reports evidence (command output, test counts), not only a
@@ -56,35 +78,67 @@ Definition of done, copied into every slice issue:
 
 | Wave | Slice | Blocked by | Parallel with | Files |
 |------|-------|------------|---------------|-------|
-| 1 | S1 | none | S2, S7 | 12 |
-| 1 | S2 | none | S1, S7 | 16 |
-| 1 | S7 | none | S1, S2 | 10 |
-| 2 | S3 | S1, S2 | S4, S8, S11 | 20 |
-| 2 | S4 | S1 | S3, S8, S11 | 6 |
-| 2 | S8 | S7 | S3, S4, S11 | 12 |
-| 2 | S11 | S7 | S3, S4, S8 | 10 |
-| 3 | S5 | S4 | S9, S12 | 12 |
-| 3 | S9 | S8 | S5, S12 | 14 |
-| 3 | S12 | S7, S11 | S5, S9 | 22 |
-| 4 | S6 | S3, S5 | S10 | 10 |
-| 4 | S10 | S3, S9 | S6 | 18 |
-| 5 | S13 | S10, S12 | S14 | 18 |
-| 5 | S14 | S10 | S13 | 18 |
-| 6 | S15 | S13, S14 | none | 22 |
-| 7 | S16 | S15 | none | 24 |
-| 8 | S17 | S16 | S18, S19 | 16 |
-| 8 | S18 | S16 | S17, S19 | 30+ |
-| 8 | S19 | S16 | S17, S18 | 30+ |
-| 9 | S20 | S18, S19 | none | 30+ |
-| 10 | S21 | S20 | none | 30+ |
+| 1 | S0 | none | none | 10 |
+| 2 | S1 | S0 | S2, S7 | 12 |
+| 2 | S2 | S0 | S1, S7 | 16 |
+| 2 | S7 | S0 | S1, S2 | 10 |
+| 3 | S3 | S1, S2 | S4, S8, S11 | 20 |
+| 3 | S4 | S1 | S3, S8, S11 | 6 |
+| 3 | S8 | S7 | S3, S4, S11 | 12 |
+| 3 | S11 | S7 | S3, S4, S8 | 10 |
+| 4 | S5 | S4 | S9, S12 | 12 |
+| 4 | S9 | S8 | S5, S12 | 14 |
+| 4 | S12 | S7, S11 | S5, S9 | 22 |
+| 5 | S6 | S3, S5 | S10 | 10 |
+| 5 | S10 | S3, S9 | S6 | 18 |
+| 6 | S13 | S10, S12 | S14 | 18 |
+| 6 | S14 | S10 | S13 | 18 |
+| 7 | S15 | S13, S14 | none | 22 |
+| 8 | S16 | S15 | none | 24 |
+| 9 | S17 | S16 | S18, S19 | 16 |
+| 9 | S18 | S16 | S17, S19 | 30+ |
+| 9 | S19 | S16 | S17, S18 | 30+ |
+| 10 | S20 | S18, S19 | none | 30+ |
+| 11 | S21 | S20 | none | 30+ |
 
-Critical path: S7, S8, S9, S10, S13, S15, S16, S18, S20, S21.
+Critical path: S0, S7, S8, S9, S10, S13, S15, S16, S18, S20, S21.
 
 ## Slices
 
+### S0: FunctionalParadigm Result, Unit and Try
+
+- Wave 1. Blocked by: none. Parallel with: none. Est. files: 10.
+- Why first: enabling slice. `nuget-packages/AStarDev.FunctionalParadigm` is an
+  empty stub, and S1, S2 and S7 all return `Result` from methods that can fail.
+- Covers: the coding rules above.
+- In: fresh code, test first, nothing copied from an existing library.
+  `Result<TResult, TError>` as a C# union of `Ok<TResult>` and `Fail<TError>`
+  cases (the SDK compiles `union` without preview flags); `Unit`; `Try.Run` and
+  `Try.RunAsync(operation, cancellationToken)` returning `Result<T, Exception>`,
+  which capture thrown exceptions but rethrow `OperationCanceledException`; only
+  the combinators (`Match`, `Map`, `Bind`, `MapError`) that S1, S2 or S7
+  actually call, one per file. New `AStarDev.FunctionalParadigm.TestsUnit`
+  project added to `AStarDev.slnx`.
+- Out: `Option`, `Validation` and everything else, until a slice needs it.
+- Hotspots: `AStarDev.slnx`.
+
+Verification:
+
+- Test (`AStarDev.FunctionalParadigm.TestsUnit`):
+  `ResultShould.hold_a_success_value`, `ResultShould.hold_a_failure_error`,
+  `ResultShould.match_exhaustively_on_both_cases`,
+  `TryShould.return_the_value_when_the_operation_succeeds`,
+  `TryShould.capture_a_thrown_exception_as_a_failure`,
+  `TryShould.rethrow_operation_cancelled`,
+  `TryShould.not_start_when_already_cancelled`.
+- Architecture: add rule
+  `the_functional_paradigm_library_references_no_cloudsync_project` in a new
+  test file.
+- Gates: build, architecture, unit.
+
 ### S1: Daemon host and composition root
 
-- Wave 1. Blocked by: none. Parallel with: S2, S7. Est. files: 12.
+- Wave 2. Blocked by: S0. Parallel with: S2, S7. Est. files: 12.
 - Why first: enabling slice. Daemon is a class library today
   (`Microsoft.NET.Sdk`, no host), so nothing else can run in it.
 - Covers: P3-1 (stages, filled in by later slices), P3-4, P3-6 (options and
@@ -101,6 +155,7 @@ Verification:
 - Test (`Daemon.TestsUnit`):
   `StartupSequenceShould.run_stages_in_the_documented_order`,
   `StartupSequenceShould.stop_and_report_when_an_early_stage_fails`,
+  `StartupSequenceShould.stop_when_cancelled`,
   `IpcOptionsShould.default_the_socket_path_to_the_xdg_runtime_dir`.
 - Architecture: add rule `the_ui_does_not_reference_the_daemon`.
 - Manual (person): `dotnet run --project
@@ -110,7 +165,7 @@ Verification:
 
 ### S2: IPC contract and Unix socket transport
 
-- Wave 1. Blocked by: none. Parallel with: S1, S7. Est. files: 16.
+- Wave 2. Blocked by: S0. Parallel with: S1, S7. Est. files: 16.
 - Covers: P3-2.
 - In: `IIpcServer`, `IIpcClient`; length-prefixed JSON framing; Unix domain
   socket transport; command, query and event envelopes kept separate; first
@@ -125,14 +180,15 @@ Verification:
   `FrameCodecShould.reject_a_frame_over_the_maximum_size`,
   `UnixSocketTransportShould.serve_a_query_over_a_real_socket`,
   `UnixSocketTransportShould.push_events_to_a_subscriber`,
-  `UnixSocketTransportShould.tell_the_client_when_the_server_goes_away`.
+  `UnixSocketTransportShould.tell_the_client_when_the_server_goes_away`,
+  `UnixSocketTransportShould.honour_cancellation_of_a_pending_request`.
 - Architecture: add rule `ipc_does_not_depend_on_the_ui_daemon_or_persistence`
   (doc 11).
 - Gates: build, architecture, unit.
 
 ### S3: Daemon serves IPC; UI connects and shows status
 
-- Wave 2. Blocked by: S1, S2. Parallel with: S4, S8, S11. Est. files: 20.
+- Wave 3. Blocked by: S1, S2. Parallel with: S4, S8, S11. Est. files: 20.
 - Covers: P3-1 (stage 6, IPC only after recovery), P3-3, P3-6 (IPC health).
 - In: Daemon hosted service starting the IPC server in stage 6, answering
   `GetDaemonStatus`; UI references IPC, connection service with retry and
@@ -156,7 +212,7 @@ Verification:
 
 ### S4: AppHost launches Daemon and UI; systemd user unit
 
-- Wave 2. Blocked by: S1. Parallel with: S3, S8, S11. Est. files: 6.
+- Wave 3. Blocked by: S1. Parallel with: S3, S8, S11. Est. files: 6.
 - Covers: P3-4, P3-5.
 - In: AppHost starts the Daemon project and the UI (today it starts only the
   UI), UI waits for the daemon; shared socket path; a systemd user unit
@@ -177,7 +233,7 @@ Verification:
 
 ### S5: Observability module and daemon telemetry wiring
 
-- Wave 3. Blocked by: S4. Parallel with: S9, S12. Est. files: 12.
+- Wave 4. Blocked by: S4. Parallel with: S9, S12. Est. files: 12.
 - Covers: P4-1 (Daemon), P4-2, P4-4.
 - In: Observability exposes `AddCloudSyncTelemetry` (OpenTelemetry logs,
   metrics, traces, OTLP exporter from `TelemetryOptions`); sources and meters
@@ -200,7 +256,7 @@ Verification:
 
 ### S6: IPC and daemon instrumentation with an end-to-end trace
 
-- Wave 4. Blocked by: S3, S5. Parallel with: S10. Est. files: 10.
+- Wave 5. Blocked by: S3, S5. Parallel with: S10. Est. files: 10.
 - Covers: P4-1 (IPC), P4-3 (daemon and IPC metrics), phase 4 acceptance.
 - In: span per command, query and event; meter for requests, connections and
   duration; trace context carried in the IPC envelope so UI and daemon spans
@@ -221,21 +277,25 @@ Verification:
 
 ### S7: Provider contract and domain types
 
-- Wave 1. Blocked by: none. Parallel with: S1, S2. Est. files: 10.
+- Wave 2. Blocked by: S0. Parallel with: S1, S2. Est. files: 10.
 - Why first: enabling slice. Provider, UI, engine and fake all need these types.
-- Covers: P5-4 (types and exceptions).
+- Covers: P5-4 (types and error values).
 - In: Domain gets `RemoteItemId`, `RelativePath`, `AccountId`,
   `ProviderAccount`, `ProviderItem`, `ItemType`, `SyncScope`,
-  `ProviderSnapshotPage`; the four exception types of doc 09 under one base;
-  `ICloudProvider` with `ConnectAsync` and `GetSnapshotAsync` only. Other
-  members are added by the slice that needs them.
+  `ProviderSnapshotPage`; `ProviderError`, a closed set of error values
+  (`RateLimited` with `RetryAfter`, `Transient`, `AuthenticationFailed`,
+  `Permanent`) in place of the exceptions in doc 09; `ICloudProvider` with
+  `ConnectAsync` and `GetSnapshotAsync` only, each returning `Task<Result<T,
+  ProviderError>>` and taking a `CancellationToken`. Other members are added by
+  the slice that needs them.
 - Out: any implementation.
 - Hotspots: Domain files (S12, S15 add types).
 
 Verification:
 
 - Test (`Domain.TestsUnit`): `RemoteItemIdShould.compare_by_value`,
-  `ProviderExceptionsShould.share_a_common_base_type`.
+  `ProviderErrorsShould.be_a_closed_set_of_four_cases`,
+  `ProviderErrorsShould.carry_retry_after_on_rate_limited`.
 - Architecture: add rules `the_syncengine_does_not_depend_on_microsoft_graph`
   and `the_onedrive_provider_does_not_depend_on_the_syncengine` (doc 15, doc
   09).
@@ -243,13 +303,15 @@ Verification:
 
 ### S8: OneDrive sign-in with Secret Service token cache
 
-- Wave 2. Blocked by: S7. Parallel with: S3, S4, S11. Est. files: 12.
+- Wave 3. Blocked by: S7. Parallel with: S3, S4, S11. Est. files: 12.
 - Covers: P5-1, P5-2, P5-4 (auth errors).
 - In: `OneDriveOptions` (client id from configuration, `consumers` authority);
   MSAL public client with system browser and loopback redirect; token cache
   persisted in Secret Service behind an `ITokenCacheStore` seam; keyring
-  unavailable gives an `AuthenticationFailureException` with a clear message and
-  never a file fallback; `ConnectAsync` returns a `ProviderAccount`.
+  unavailable gives an `AuthenticationFailed` error value with a clear message
+  and never a file fallback; `ConnectAsync` returns
+  `Task<Result<ProviderAccount, ProviderError>>` and honours its
+  `CancellationToken`.
 - Out: enumeration (S9), IPC and UI (S10).
 - Hotspots: `OneDrive.csproj` package references.
 
@@ -267,7 +329,7 @@ Verification:
 
 ### S9: OneDrive root enumeration
 
-- Wave 3. Blocked by: S8. Parallel with: S5, S12. Est. files: 14.
+- Wave 4. Blocked by: S8. Parallel with: S5, S12. Est. files: 14.
 - Covers: P5-3 (provider half), P5-4, P4-1 (OneDrive), P4-3 (provider metrics).
 - In: `GetSnapshotAsync` for the drive root with paging; DriveItem to
   `ProviderItem` mapping so no Graph type crosses the boundary; HTTP errors
@@ -281,15 +343,16 @@ Verification:
 - Test (`OneDrive.TestsUnit`, fake `HttpMessageHandler`):
   `DriveItemMappingShould.map_files_and_folders_to_provider_items`,
   `RootEnumerationShould.follow_next_links_until_the_last_page`,
-  `GraphErrorsShould.map_429_to_a_rate_limit_exception_with_retry_after`,
-  `GraphErrorsShould.map_503_to_a_transient_provider_exception`,
-  `GraphErrorsShould.map_401_to_an_authentication_failure`,
+  `GraphErrorsShould.map_429_to_a_rate_limited_error_with_retry_after`,
+  `GraphErrorsShould.map_503_to_a_transient_error`,
+  `GraphErrorsShould.map_401_to_an_authentication_failed_error`,
+  `RootEnumerationShould.honour_cancellation`,
   `OneDriveTelemetryShould.record_a_span_and_a_request_count_per_page`.
 - Gates: build, architecture, unit.
 
 ### S10: Connect an account and show the remote item count
 
-- Wave 4. Blocked by: S3, S9. Parallel with: S6. Est. files: 18.
+- Wave 5. Blocked by: S3, S9. Parallel with: S6. Est. files: 18.
 - Covers: P5-1, P5-3, phase 5 acceptance.
 - In: `ConnectAccount` command, `GetRemoteRootSummary` query returning the item
   count, `AccountConnected` event; Daemon handler calls `ICloudProvider`; UI
@@ -303,6 +366,7 @@ Verification:
 - Test (`Daemon.TestsUnit`, stub provider):
   `ConnectAccountHandlerShould.publish_account_connected_after_connecting`,
   `ConnectAccountHandlerShould.reject_when_authentication_fails`,
+  `ConnectAccountHandlerShould.honour_cancellation`,
   `RootSummaryQueryShould.return_the_item_count_from_the_provider`.
 - Test (`UI.TestsUnit`):
   `ConnectViewModelShould.show_the_item_count_after_connecting`,
@@ -313,7 +377,7 @@ Verification:
 
 ### S11: TestsIntegration project and FakeCloudProvider
 
-- Wave 2. Blocked by: S7. Parallel with: S3, S4, S8. Est. files: 10.
+- Wave 3. Blocked by: S7. Parallel with: S3, S4, S8. Est. files: 10.
 - Why: enabling slice. Doc 11's `.Testing` project, named to match the `Tests*`
   convention; CI already runs namespaces matching `*Integration*`.
 - Covers: P6-10.
@@ -333,7 +397,7 @@ Verification:
 
 ### S12: Persistence foundation
 
-- Wave 3. Blocked by: S7, S11. Parallel with: S5, S9. Est. files: 22.
+- Wave 4. Blocked by: S7, S11. Parallel with: S5, S9. Est. files: 22.
 - Why: enabling slice. Persistence is a stub; the first real need is S13.
 - Covers: P3-1 (stage 2 migrate and integrity check), P3-6 (database health),
   P4-1 (Persistence).
@@ -360,7 +424,7 @@ Verification:
 
 ### S13: Persist the account, reconnect on start, disconnect
 
-- Wave 5. Blocked by: S10, S12. Parallel with: S14. Est. files: 18.
+- Wave 6. Blocked by: S10, S12. Parallel with: S14. Est. files: 18.
 - Covers: P3-1 (stage 3 loads provider state), P3-6 (provider health), doc 10
   authentication expiry.
 - In: connecting stores the account; stage 3 loads accounts and reconnects
@@ -387,7 +451,7 @@ Verification:
 
 ### S14: Remote folder tree
 
-- Wave 5. Blocked by: S10. Parallel with: S13. Est. files: 18.
+- Wave 6. Blocked by: S10. Parallel with: S13. Est. files: 18.
 - Covers: P6-1.
 - In: `ICloudProvider.ListChildrenAsync(parent)` (and the `FakeCloudProvider`
   implementation); OneDrive listing with paging; `GetRemoteFolders(parent)`
@@ -410,7 +474,7 @@ Verification:
 
 ### S15: Selective sync: jobs and scopes
 
-- Wave 6. Blocked by: S13, S14. Parallel with: none. Est. files: 22.
+- Wave 7. Blocked by: S13, S14. Parallel with: none. Est. files: 22.
 - Covers: P6-2; stores the bootstrap mode chosen (acted on in S20).
 - In: `SyncJob`, `SyncScope`, bootstrap mode (Download, Upload, Merge) in
   Domain; tables and migration; `CreateSyncJob` (validates the local root),
@@ -433,7 +497,7 @@ Verification:
 
 ### S16: Initial crawl, checkpointed and resumable
 
-- Wave 7. Blocked by: S15. Parallel with: none. Est. files: 24.
+- Wave 8. Blocked by: S15. Parallel with: none. Est. files: 24.
 - Covers: P6-3 (crawl, checkpoint, delta token), P4-1 (SyncEngine), P4-3 (sync
   metrics), phase 6 acceptance (mid-crawl restart).
 - In: SyncEngine crawler enumerates each scope through `GetSnapshotAsync`,
@@ -462,7 +526,7 @@ Verification:
 
 ### S17: Crawl progress and activity in the UI
 
-- Wave 8. Blocked by: S16. Parallel with: S18, S19. Est. files: 16.
+- Wave 9. Blocked by: S16. Parallel with: S18, S19. Est. files: 16.
 - Covers: P6-3 (visible progress), X-3, doc 13 activity model.
 - In: daemon `ActivityView` (name, state, progress, start, last update, action
   required) with ETA computed in the daemon; `GetActivities` query and event; UI
@@ -484,7 +548,7 @@ Verification:
 
 ### S18: Delta processing (coarse, re-slice after S16)
 
-- Wave 8. Blocked by: S16. Parallel with: S17, S19. Est. files: 30+.
+- Wave 9. Blocked by: S16. Parallel with: S17, S19. Est. files: 30+.
 - Covers: P6-4.
 - Scope: delta mode as the normal mode; `GetDeltasAsync`; token lifecycle;
   invalid token triggers scoped reindex; `DeltaProcessingService`; updates
@@ -497,7 +561,7 @@ Verification:
 
 ### S19: Operation queue (coarse, re-slice after S16)
 
-- Wave 8. Blocked by: S16. Parallel with: S17, S18. Est. files: 30+.
+- Wave 9. Blocked by: S16. Parallel with: S17, S18. Est. files: 30+.
 - Covers: P6-6, P3-1 (stage 4), P3-6 (queue health), phase 6 acceptance (mid
   operation restart, dead letter).
 - Scope: durable operations table, scheduler, per-item locking, retry with
@@ -511,7 +575,7 @@ Verification:
 
 ### S20: Reconciliation and local changes (coarse, re-slice after S18, S19)
 
-- Wave 9. Blocked by: S18, S19. Parallel with: none. Est. files: 30+.
+- Wave 10. Blocked by: S18, S19. Parallel with: none. Est. files: 30+.
 - Covers: P6-5, P6-7, bootstrap modes (P6-3), phase 6 acceptance (conflict is
   detected, never an overwrite).
 - Scope: filesystem watcher plus startup and overflow scans; quickXorHash;
@@ -527,7 +591,7 @@ Verification:
 
 ### S21: Conflict handling, tray and notifications (coarse, re-slice after S20)
 
-- Wave 10. Blocked by: S20. Parallel with: none. Est. files: 30+.
+- Wave 11. Blocked by: S20. Parallel with: none. Est. files: 30+.
 - Covers: P6-8, P6-9, phase 6 acceptance (keep both copy name).
 - Scope: Conflicts and EventJournal tables; Conflict Centre UI with keep local,
   keep remote, keep both, defer and bulk actions; every resolution journaled;
@@ -563,6 +627,8 @@ Closing checklist, each item points at the slice and check that proves it:
   Keep Both gives the original plus a date-time named copy (S21).
 - [ ] Progress is shown for long work and comes from the daemon (S17).
 - [ ] Architecture tests pass first in CI throughout (every slice).
+- [ ] Every method that can fail returns a `Result` or `Option`, and every async
+  method takes and honours a `CancellationToken` (every slice).
 
 Independent verifier prompt:
 
@@ -585,6 +651,12 @@ Interview 2026-11-19:
 - Fingerprint: quickXorHash from OneDrive, computed locally only when size or
   modified time differs. Lands in S20.
 
+- `AStarDev.FunctionalParadigm` is written fresh, only when required, no code
+  copied from any existing library. `Result` is a C# union (SDK 11.0.100
+  compiles it without preview flags). S0 is the first slice.
+- Existing PRs #47, #48 and #49 are reworked in place by their agents after S0
+  merges.
+
 Defaults taken:
 
 - File counts are estimates, not read from code that does not exist yet.
@@ -605,6 +677,7 @@ Defaults taken:
 
 Epic: #23.
 
+- S0: #50
 - S1: #24
 - S2: #25
 - S3: #27

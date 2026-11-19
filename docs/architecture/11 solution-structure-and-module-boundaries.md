@@ -50,7 +50,9 @@ The Domain is the core of the application.
 
 Everything depends on Domain.
 
-Domain depends on nothing.
+Domain depends on nothing, with one exception: `AStarDev.FunctionalParadigm`,
+a dependency-free library of `Result`, `Unit` and similar types, because Domain
+contracts such as `ICloudProvider` return them.
 
 ---
 
@@ -153,6 +155,7 @@ Dependencies:
 
 ```text
 None
+(AStarDev.FunctionalParadigm only)
 ```
 
 ---
