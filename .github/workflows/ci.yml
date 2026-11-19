@@ -73,7 +73,7 @@ jobs:
 
       - name: Run unit tests and collect coverage (XPlat)
         run: |
-          dotnet test --solution ${{ env.SOLUTION_FILE }} --no-build --configuration Release --results-directory TestResults --coverage --coverage-output-format cobertura --filter-not-namespace "*Integration*" --filter-not-namespace "*Architecture*"
+          dotnet test --solution ${{ env.SOLUTION_FILE }} --configuration Release --results-directory TestResults --coverage --coverage-output-format cobertura --filter-not-namespace "*Integration*" --filter-not-namespace "*Architecture*"
 
   integration-tests:
     name: Integration Tests
@@ -89,4 +89,4 @@ jobs:
           dotnet-version: ${{ env.DOTNET_VERSION }}
 
       - name: Run Integration Tests
-        run: dotnet test --solution ${{ env.SOLUTION_FILE }} --no-build --configuration Release --results-directory TestResults --coverage --coverage-output-format cobertura --filter-namespace "*Integration*"
+        run: dotnet test --solution ${{ env.SOLUTION_FILE }} --configuration Release --results-directory TestResults --coverage --coverage-output-format cobertura --filter-namespace "*Integration*"
