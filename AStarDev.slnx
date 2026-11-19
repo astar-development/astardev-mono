@@ -19,6 +19,8 @@
     <Project Path="apps/desktop/AStarDev.CloudSync/AStarDev.CloudSync.Observability.TestsUnit/AStarDev.CloudSync.Observability.TestsUnit.csproj" />
     <Project Path="apps/desktop/AStarDev.CloudSync/AStarDev.CloudSync.OneDrive/AStarDev.CloudSync.OneDrive.csproj" />
     <Project Path="apps/desktop/AStarDev.CloudSync/AStarDev.CloudSync.OneDrive.TestsUnit/AStarDev.CloudSync.OneDrive.TestsUnit.csproj" />
+    <Project Path="apps/desktop/AStarDev.CloudSync/AStarDev.CloudSync.Ports/AStarDev.CloudSync.Ports.csproj" />
+    <Project Path="apps/desktop/AStarDev.CloudSync/AStarDev.CloudSync.Ports.TestsUnit/AStarDev.CloudSync.Ports.TestsUnit.csproj" />
     <Project Path="apps/desktop/AStarDev.CloudSync/AStarDev.CloudSync.Persistence/AStarDev.CloudSync.Persistence.csproj" />
     <Project Path="apps/desktop/AStarDev.CloudSync/AStarDev.CloudSync.Persistence.TestsUnit/AStarDev.CloudSync.Persistence.TestsUnit.csproj" />
     <Project Path="apps/desktop/AStarDev.CloudSync/AStarDev.CloudSync.SyncEngine/AStarDev.CloudSync.SyncEngine.csproj" />
