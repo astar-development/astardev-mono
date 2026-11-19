@@ -176,8 +176,9 @@ owns:
 ### Domain Must Not Reference Infrastructure
 
 ```csharp
-using NetArchTest.Rules;
-using Xunit;
+using AStarDev.CloudSync.Domain;
+
+namespace AStarDev.CloudSync.TestsArchitecture;
 
 public sealed class DomainTestsArchitecture
 {
@@ -195,7 +196,7 @@ public sealed class DomainTestsArchitecture
                 "OpenTelemetry")
             .GetResult();
 
-        Assert.True(result.IsSuccessful);
+        result.IsSuccessful.ShouldBeTrue();
     }
 }
 ```
