@@ -1,5 +1,6 @@
 using System.Text.Json;
 using System.Text.Json.Serialization;
+using AStarDev.FunctionalParadigm;
 
 namespace AStarDev.CloudSync.IPC;
 
@@ -12,10 +13,11 @@ namespace AStarDev.CloudSync.IPC;
 [JsonDerivedType(typeof(QueryEnvelope), "query")]
 [JsonDerivedType(typeof(SubscribeEnvelope), "subscribe")]
 [JsonDerivedType(typeof(ResponseEnvelope), "response")]
+[JsonDerivedType(typeof(ErrorEnvelope), "error")]
 [JsonDerivedType(typeof(EventEnvelope), "event")]
 internal abstract record Envelope;
 
-/// <summary>Client request, answered by a <see cref="ResponseEnvelope"/> with the same id.</summary>
+/// <summary>Client request, answered by a <see cref="ResponseEnvelope"/> or an <see cref="ErrorEnvelope"/> with the same id.</summary>
 internal abstract record RequestEnvelope(long Id) : Envelope;
 
 internal sealed record CommandEnvelope(long Id, string Type, JsonElement Payload) : RequestEnvelope(Id);
@@ -24,10 +26,13 @@ internal sealed record QueryEnvelope(long Id, string Type, JsonElement Payload) 
 
 internal sealed record SubscribeEnvelope(long Id) : RequestEnvelope(Id);
 
-internal sealed record ResponseEnvelope(long Id, JsonElement? Payload, string? Error) : Envelope;
+internal sealed record ResponseEnvelope(long Id, JsonElement Payload) : Envelope;
+
+internal sealed record ErrorEnvelope(long Id, string Message) : Envelope;
 
 internal sealed record EventEnvelope(string Type, JsonElement Payload) : Envelope;
 
+/// <summary>Every call here can throw on bad input, so each is wrapped and returned as a <see cref="Result{TResult, TError}"/>.</summary>
 internal static class IpcJson
 {
     public static readonly JsonSerializerOptions Options = new(JsonSerializerDefaults.Web)
@@ -35,8 +40,19 @@ internal static class IpcJson
         Converters = { new JsonStringEnumConverter() }
     };
 
-    public static JsonElement ToElement(object value) => JsonSerializer.SerializeToElement(value, value.GetType(), Options);
+    public static Result<JsonElement, IpcError> ToElement(object? value)
+        => Try.Run(() => JsonSerializer.SerializeToElement(value, value?.GetType() ?? typeof(object), Options))
+            .MapError(IpcErrors.AsMalformed);
 
-    public static T FromElement<T>(JsonElement element)
-        => element.Deserialize<T>(Options) ?? throw new JsonException($"Expected a {typeof(T).Name} but the payload was null.");
+    public static Result<T, IpcError> FromElement<T>(JsonElement element)
+        => Try.Run(() => element.Deserialize<T>(Options) ?? throw new JsonException($"Expected a {typeof(T).Name} but the payload was null."))
+            .MapError(IpcErrors.AsMalformed);
+
+    public static Result<byte[], IpcError> Encode(Envelope envelope)
+        => Try.Run(() => JsonSerializer.SerializeToUtf8Bytes(envelope, Options))
+            .MapError(IpcErrors.AsMalformed);
+
+    public static Result<Envelope, IpcError> Decode(byte[] bytes)
+        => Try.Run(() => JsonSerializer.Deserialize<Envelope>(bytes, Options) ?? throw new JsonException("The frame holds JSON null instead of an envelope."))
+            .MapError(IpcErrors.AsMalformed);
 }
