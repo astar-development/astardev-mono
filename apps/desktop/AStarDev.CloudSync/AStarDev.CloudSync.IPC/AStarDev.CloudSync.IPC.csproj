@@ -2,6 +2,7 @@
 
   <ItemGroup>
     <ProjectReference Include="..\AStarDev.CloudSync.Domain\AStarDev.CloudSync.Domain.csproj" />
+    <ProjectReference Include="..\..\..\..\nuget-packages\AStarDev.FunctionalParadigm\AStarDev.FunctionalParadigm.csproj" />
   </ItemGroup>
 
   <ItemGroup>
