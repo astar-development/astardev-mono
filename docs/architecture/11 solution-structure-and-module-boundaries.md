@@ -440,6 +440,15 @@ Rename Tests
 
 ## Dependency Rules
 
+### AStarDev.FunctionalParadigm
+
+`AStarDev.FunctionalParadigm` is a dependency-free utility library
+(`Result`, `Unit`, `Try`). Any module except Domain may reference it, because
+any method that can fail returns a `Result`. It references no CloudSync project
+and no package.
+
+---
+
 ### Allowed
 
 ```text
