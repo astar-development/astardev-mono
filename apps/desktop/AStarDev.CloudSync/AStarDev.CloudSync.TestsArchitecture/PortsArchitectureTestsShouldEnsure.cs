@@ -1,5 +1,6 @@
 using System.Xml.Linq;
 using AStarDev.CloudSync.Domain;
+using AStarDev.CloudSync.Ports;
 
 namespace AStarDev.CloudSync.TestsArchitecture;
 
@@ -30,7 +31,7 @@ public sealed class PortsArchitectureTestsShouldEnsure
 
     [Fact]
     public void ports_depend_only_on_domain_and_the_functional_paradigm_library()
-        => ShouldNotDependOn(typeof(Ports.Class1).Assembly, [.. ImplementationProjects, .. InfrastructurePackages]);
+        => ShouldNotDependOn(typeof(ICloudProvider).Assembly,[.. ImplementationProjects, .. InfrastructurePackages]);
 
     [Fact]
     public void domain_does_not_depend_on_ports_or_the_functional_paradigm_library()
