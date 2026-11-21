@@ -7,7 +7,7 @@ public sealed class TryShould
     {
         var result = Try.Run(() => 42);
 
-        result.Value.ShouldBeOfType<Ok<int>>().Value.ShouldBe(42);
+        result.Value.ShouldBeOfType<Success<int>>().Value.ShouldBe(42);
     }
 
     [Fact]
@@ -17,21 +17,19 @@ public sealed class TryShould
 
         var result = Try.Run<int>(() => throw boom);
 
-        result.Value.ShouldBeOfType<Fail<Exception>>().Error.ShouldBeSameAs(boom);
+        result.Value.ShouldBeOfType<Failure<int>>().Exception.ShouldBeSameAs(boom);
     }
 
     [Fact]
-    public void rethrow_operation_cancelled()
-    {
+    public void rethrow_operation_cancelled() =>
         Should.Throw<OperationCanceledException>(() => Try.Run<int>(() => throw new OperationCanceledException()));
-    }
 
     [Fact]
     public async Task return_the_value_when_the_async_operation_succeeds()
     {
         var result = await Try.RunAsync(_ => Task.FromResult(42), TestContext.Current.CancellationToken);
 
-        result.Value.ShouldBeOfType<Ok<int>>().Value.ShouldBe(42);
+        result.Value.ShouldBeOfType<Success<int>>().Value.ShouldBe(42);
     }
 
     [Fact]
@@ -41,7 +39,7 @@ public sealed class TryShould
 
         var result = await Try.RunAsync<int>(_ => Task.FromException<int>(boom), TestContext.Current.CancellationToken);
 
-        result.Value.ShouldBeOfType<Fail<Exception>>().Error.ShouldBeSameAs(boom);
+        result.Value.ShouldBeOfType<Failure<int>>().Exception.ShouldBeSameAs(boom);
     }
 
     [Fact]
@@ -51,7 +49,7 @@ public sealed class TryShould
 
         var result = await Try.RunAsync(token => Task.FromResult(token), source.Token);
 
-        result.Value.ShouldBeOfType<Ok<CancellationToken>>().Value.ShouldBe(source.Token);
+        result.Value.ShouldBeOfType<Success<CancellationToken>>().Value.ShouldBe(source.Token);
     }
 
     [Fact]
@@ -63,6 +61,7 @@ public sealed class TryShould
         {
             await source.CancelAsync();
             await Task.Delay(Timeout.Infinite, token);
+
             return 0;
         }, source.Token));
     }
@@ -77,6 +76,7 @@ public sealed class TryShould
         await Should.ThrowAsync<OperationCanceledException>(Try.RunAsync(_ =>
         {
             started = true;
+            
             return Task.FromResult(0);
         }, source.Token));
 

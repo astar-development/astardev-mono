@@ -1,13 +1,14 @@
+using AStarDev.CloudSync.Daemon;
 using AStarDev.CloudSync.Domain;
+using AStarDev.CloudSync.UI.ViewModels;
 
 namespace AStarDev.CloudSync.TestsArchitecture;
 
 public sealed class ArchitectureTestsShouldEnsure
 {
     [Fact]
-    public void the_domain_does_not_depend_on_infrastructure_related_packages()
-    {
-        var result = Types
+    public void the_domain_does_not_depend_on_infrastructure_related_packages() =>
+        Types
             .InAssembly(typeof(ItemId).Assembly)
             .ShouldNot()
             .HaveDependencyOnAny(
@@ -16,14 +17,10 @@ public sealed class ArchitectureTestsShouldEnsure
                 "Avalonia",
                 "Microsoft.Extensions.Hosting",
                 "OpenTelemetry")
-            .GetResult();
-
-        result.IsSuccessful.ShouldBeTrue();
-    }
+            .GetResult().IsSuccessful.ShouldBeTrue();
     [Fact]
-    public void the_domain_does_not_depend_on_any_of_the_cloudsync_projects()
-    {
-        var result = Types
+    public void the_domain_does_not_depend_on_any_of_the_cloudsync_projects() =>
+        Types
             .InAssembly(typeof(ItemId).Assembly)
             .ShouldNot()
             .HaveDependencyOnAny(
@@ -34,93 +31,47 @@ public sealed class ArchitectureTestsShouldEnsure
                 "AStarDev.CloudSync.Persistence",
                 "AStarDev.CloudSync.SyncEngine",
                 "AStarDev.CloudSync.UI")
-            .GetResult();
-
-        result.IsSuccessful.ShouldBeTrue();
-    }
+            .GetResult().IsSuccessful.ShouldBeTrue();
 
     [Fact]
-    public void the_ui_does_not_depend_on_persistence()
-    {
-        var result = Types
-            .InAssembly(typeof(UI.Class1).Assembly)
+    public void the_ui_does_not_depend_on_persistence() =>
+        Types
+            .InAssembly(typeof(MainViewModel).Assembly)
             .ShouldNot()
             .HaveDependencyOn("AStarDev.CloudSync.Persistence")
-            .GetResult();
-
-        result.IsSuccessful.ShouldBeTrue();
-    }
+            .GetResult().IsSuccessful.ShouldBeTrue();
 
     [Fact]
-    public void onedrive_does_not_depend_on_persistence()
-    {
-        var result = Types
+    public void onedrive_does_not_depend_on_persistence() =>
+        Types
             .InAssembly(typeof(OneDrive.Class1).Assembly)
             .ShouldNot()
             .HaveDependencyOn("AStarDev.CloudSync.Persistence")
-            .GetResult();
-
-        result.IsSuccessful.ShouldBeTrue();
-    }
+            .GetResult().IsSuccessful.ShouldBeTrue();
 
     [Fact]
-    public void persistence_does_not_depend_on_the_sync_engine()
-    {
-        var result = Types
+    public void persistence_does_not_depend_on_the_sync_engine() =>
+        Types
             .InAssembly(typeof(Persistence.Class1).Assembly)
             .ShouldNot()
             .HaveDependencyOn("AStarDev.CloudSync.SyncEngine")
-            .GetResult();
-
-        result.IsSuccessful.ShouldBeTrue();
-    }
+            .GetResult().IsSuccessful.ShouldBeTrue();
 
     [Fact]
-    public void the_sync_engine_does_not_depend_on_microsoft_graph()
-    {
-        var result = Types
+    public void the_sync_engine_does_not_depend_on_microsoft_graph() =>
+        Types
             .InAssembly(typeof(SyncEngine.Class1).Assembly)
             .ShouldNot()
             .HaveDependencyOn("Microsoft.Graph")
-            .GetResult();
-
-        result.IsSuccessful.ShouldBeTrue();
-    }
+            .GetResult().IsSuccessful.ShouldBeTrue();
 
     [Fact]
-    public void onedrive_does_not_depend_on_the_sync_engine()
-    {
-        var result = Types
+    public void onedrive_does_not_depend_on_the_sync_engine() =>
+        Types
             .InAssembly(typeof(OneDrive.Class1).Assembly)
             .ShouldNot()
             .HaveDependencyOn("AStarDev.CloudSync.SyncEngine")
-            .GetResult();
-
-        result.IsSuccessful.ShouldBeTrue();
-    }
-
-    private static readonly System.Reflection.Assembly[] AllCloudSyncAssemblies =
-    [
-        typeof(ItemId).Assembly,
-        typeof(Daemon.Class1).Assembly,
-        typeof(IPC.Class1).Assembly,
-        typeof(Observability.Class1).Assembly,
-        typeof(OneDrive.Class1).Assembly,
-        typeof(Persistence.Class1).Assembly,
-        typeof(SyncEngine.Class1).Assembly,
-        typeof(UI.Class1).Assembly
-    ];
-
-    private static void ShouldNotDependOn(System.Reflection.Assembly assembly, params string[] forbidden)
-    {
-        var result = Types
-            .InAssembly(assembly)
-            .ShouldNot()
-            .HaveDependencyOnAny(forbidden)
-            .GetResult();
-
-        result.IsSuccessful.ShouldBeTrue($"{assembly.GetName().Name} must not depend on: {string.Join(", ", forbidden)}");
-    }
+            .GetResult().IsSuccessful.ShouldBeTrue();
 
     [Fact]
     public void observability_does_not_depend_on_any_other_cloudsync_project()
@@ -131,13 +82,13 @@ public sealed class ArchitectureTestsShouldEnsure
 
     [Fact]
     public void ipc_depends_on_domain_only()
-        => ShouldNotDependOn(typeof(IPC.Class1).Assembly,
+        => ShouldNotDependOn(typeof(IPC.IIpcClient).Assembly,
             "AStarDev.CloudSync.Daemon", "AStarDev.CloudSync.Observability", "AStarDev.CloudSync.OneDrive",
             "AStarDev.CloudSync.Persistence", "AStarDev.CloudSync.SyncEngine", "AStarDev.CloudSync.UI");
 
     [Fact]
     public void the_ui_reaches_state_through_ipc_only()
-        => ShouldNotDependOn(typeof(UI.Class1).Assembly,
+        => ShouldNotDependOn(typeof(MainViewModel).Assembly,
             "AStarDev.CloudSync.SyncEngine", "AStarDev.CloudSync.OneDrive", "AStarDev.CloudSync.Domain",
             "AStarDev.CloudSync.Persistence", "AStarDev.CloudSync.Daemon");
 
@@ -158,7 +109,7 @@ public sealed class ArchitectureTestsShouldEnsure
     [Fact]
     public void nothing_depends_on_the_daemon()
     {
-        foreach (var assembly in AllCloudSyncAssemblies.Where(a => a != typeof(Daemon.Class1).Assembly))
+        foreach (var assembly in AllCloudSyncAssemblies.Where(a => a != typeof(IpcOptions).Assembly))
         {
             ShouldNotDependOn(assembly, "AStarDev.CloudSync.Daemon");
         }
@@ -167,7 +118,7 @@ public sealed class ArchitectureTestsShouldEnsure
     [Fact]
     public void only_the_ui_depends_on_avalonia()
     {
-        foreach (var assembly in AllCloudSyncAssemblies.Where(a => a != typeof(UI.Class1).Assembly))
+        foreach (var assembly in AllCloudSyncAssemblies.Where(a => a != typeof(MainViewModel).Assembly))
         {
             ShouldNotDependOn(assembly, "Avalonia");
         }
@@ -177,7 +128,9 @@ public sealed class ArchitectureTestsShouldEnsure
     public void there_are_no_circular_project_references()
     {
         var byName = AllCloudSyncAssemblies.ToDictionary(a => a.GetName().Name!);
-        var state = new Dictionary<string, bool>(); // false = in progress, true = done
+        const bool InProgress = false;
+        const bool Done = true;
+        var state = new Dictionary<string, bool>();
 
         foreach (var name in byName.Keys)
         {
@@ -186,13 +139,13 @@ public sealed class ArchitectureTestsShouldEnsure
 
         void Visit(string name, List<string> path)
         {
-            if (state.TryGetValue(name, out var done))
+            if (state.TryGetValue(name, out var visitState))
             {
-                done.ShouldBeTrue($"Circular reference: {string.Join(" -> ", path.Append(name))}");
+                (visitState == Done).ShouldBeTrue($"Circular reference: {string.Join(" -> ", path.Append(name))}");
                 return;
             }
 
-            state[name] = false;
+            state[name] = InProgress;
             path.Add(name);
             foreach (var reference in byName[name].GetReferencedAssemblies().Select(r => r.Name!).Where(byName.ContainsKey))
             {
@@ -200,7 +153,23 @@ public sealed class ArchitectureTestsShouldEnsure
             }
 
             path.RemoveAt(path.Count - 1);
-            state[name] = true;
+            state[name] = Done;
         }
     }
+
+    private static readonly System.Reflection.Assembly[] AllCloudSyncAssemblies =
+    [
+        typeof(ItemId).Assembly,
+        typeof(IPC.IIpcClient).Assembly,
+        typeof(Observability.Class1).Assembly,
+        typeof(OneDrive.Class1).Assembly,
+        typeof(Persistence.Class1).Assembly,
+        typeof(SyncEngine.Class1).Assembly
+    ];
+
+    private static void ShouldNotDependOn(System.Reflection.Assembly assembly, params string[] forbidden) => Types
+            .InAssembly(assembly)
+            .ShouldNot()
+            .HaveDependencyOnAny(forbidden)
+            .GetResult().IsSuccessful.ShouldBeTrue($"{assembly.GetName().Name} must not depend on: {string.Join(", ", forbidden)}");
 }

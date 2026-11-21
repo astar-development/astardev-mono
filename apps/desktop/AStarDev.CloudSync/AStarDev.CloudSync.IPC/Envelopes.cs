@@ -8,13 +8,13 @@ namespace AStarDev.CloudSync.IPC;
 /// Wire shape of one frame. Commands, queries and events travel in separate envelope types,
 /// told apart by the "kind" discriminator. Payloads stay raw JSON until a handler knows the type.
 /// </summary>
-[JsonPolymorphic(TypeDiscriminatorPropertyName = "kind")]
-[JsonDerivedType(typeof(CommandEnvelope), "command")]
-[JsonDerivedType(typeof(QueryEnvelope), "query")]
-[JsonDerivedType(typeof(SubscribeEnvelope), "subscribe")]
-[JsonDerivedType(typeof(ResponseEnvelope), "response")]
-[JsonDerivedType(typeof(ErrorEnvelope), "error")]
-[JsonDerivedType(typeof(EventEnvelope), "event")]
+[JsonPolymorphic(TypeDiscriminatorPropertyName = ApplicationConstants.EnvelopeKindDiscriminator)]
+[JsonDerivedType(typeof(CommandEnvelope), ApplicationConstants.CommandKind)]
+[JsonDerivedType(typeof(QueryEnvelope), ApplicationConstants.QueryKind)]
+[JsonDerivedType(typeof(SubscribeEnvelope), ApplicationConstants.SubscribeKind)]
+[JsonDerivedType(typeof(ResponseEnvelope), ApplicationConstants.ResponseKind)]
+[JsonDerivedType(typeof(ErrorEnvelope), ApplicationConstants.ErrorKind)]
+[JsonDerivedType(typeof(EventEnvelope), ApplicationConstants.EventKind)]
 internal abstract record Envelope;
 
 /// <summary>Client request, answered by a <see cref="ResponseEnvelope"/> or an <see cref="ErrorEnvelope"/> with the same id.</summary>
@@ -42,17 +42,17 @@ internal static class IpcJson
 
     public static Result<JsonElement, IpcError> ToElement(object? value)
         => Try.Run(() => JsonSerializer.SerializeToElement(value, value?.GetType() ?? typeof(object), Options))
-            .MapError(IpcErrors.AsMalformed);
+            .ToResult(IpcErrors.AsMalformed);
 
     public static Result<T, IpcError> FromElement<T>(JsonElement element)
         => Try.Run(() => element.Deserialize<T>(Options) ?? throw new JsonException($"Expected a {typeof(T).Name} but the payload was null."))
-            .MapError(IpcErrors.AsMalformed);
+            .ToResult(IpcErrors.AsMalformed);
 
     public static Result<byte[], IpcError> Encode(Envelope envelope)
         => Try.Run(() => JsonSerializer.SerializeToUtf8Bytes(envelope, Options))
-            .MapError(IpcErrors.AsMalformed);
+            .ToResult(IpcErrors.AsMalformed);
 
     public static Result<Envelope, IpcError> Decode(byte[] bytes)
         => Try.Run(() => JsonSerializer.Deserialize<Envelope>(bytes, Options) ?? throw new JsonException("The frame holds JSON null instead of an envelope."))
-            .MapError(IpcErrors.AsMalformed);
+            .ToResult(IpcErrors.AsMalformed);
 }

@@ -1,6 +1,6 @@
 using CommunityToolkit.Mvvm.ComponentModel;
 
-namespace AStarDev.CloudSync.ViewModels;
+namespace AStarDev.CloudSync.UI.ViewModels;
 
 public partial class MainViewModel : ViewModelBase
 {

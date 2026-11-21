@@ -1,10 +1,10 @@
 using System;
 using System.Diagnostics.CodeAnalysis;
+using AStarDev.CloudSync.UI.ViewModels;
 using Avalonia.Controls;
 using Avalonia.Controls.Templates;
-using AStarDev.CloudSync.ViewModels;
 
-namespace AStarDev.CloudSync;
+namespace AStarDev.CloudSync.UI;
 
 /// <summary>
 /// Given a view model, returns the corresponding view if possible.
@@ -30,8 +30,5 @@ public class ViewLocator : IDataTemplate
         return new TextBlock { Text = "Not Found: " + name };
     }
 
-    public bool Match(object? data)
-    {
-        return data is ViewModelBase;
-    }
+    public bool Match(object? data) => data is ViewModelBase;
 }

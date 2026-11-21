@@ -2,7 +2,7 @@ using Microsoft.Extensions.DependencyInjection;
 
 namespace AStarDev.CloudSync.Daemon.Startup;
 
-public static class StartupServiceCollectionExtensions
+internal static class StartupServiceCollectionExtensions
 {
     /// <summary>Registers the six doc 14 stages. Registration order is execution order.</summary>
     public static IServiceCollection AddStartupStages(this IServiceCollection services)
@@ -14,6 +14,7 @@ public static class StartupServiceCollectionExtensions
         services.AddSingleton<IStartupStage, BackgroundServicesStage>();
         services.AddSingleton<IStartupStage, AcceptConnectionsStage>();
         services.AddSingleton<StartupSequence>();
+
         return services;
     }
 }

@@ -10,7 +10,23 @@ namespace AStarDev.CloudSync.Ports;
 /// </summary>
 public interface ICloudProvider
 {
+    /// <summary>Signs in and reports which account was connected. Call before any other member.</summary>
+    /// <returns>The connected account, or <see cref="AuthenticationFailed"/> when the credentials are refused.</returns>
     Task<Result<ProviderAccount, ProviderError>> ConnectAsync(CancellationToken cancellationToken);
 
+    /// <summary>Lists the remote items under the scope's root as they are now, one page at a time.</summary>
+    /// <param name="scope">The remote folder to list.</param>
+    /// <param name="cancellationToken">Cancelling abandons the listing and surfaces as <see cref="OperationCanceledException"/>, never as a <see cref="ProviderError"/>.</param>
+    /// <returns>One page of items, or the reason the listing failed. Match <see cref="ProviderError"/> to decide whether to retry.</returns>
+    /// <example>
+    /// <code>
+    /// var page = await provider.GetSnapshotAsync(new SyncScope(rootId), cancellationToken);
+    /// var delay = page switch
+    /// {
+    ///     Fail&lt;ProviderError&gt; { Error: RateLimited limited } => limited.RetryAfter,
+    ///     _ => TimeSpan.Zero
+    /// };
+    /// </code>
+    /// </example>
     Task<Result<ProviderSnapshotPage, ProviderError>> GetSnapshotAsync(SyncScope scope, CancellationToken cancellationToken);
 }

@@ -1,7 +1,7 @@
 <Application xmlns="https://github.com/avaloniaui"
              xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
-             x:Class="AStarDev.CloudSync.App"
-             xmlns:local="using:AStarDev.CloudSync"
+             x:Class="AStarDev.CloudSync.UI.App"
+             xmlns:local="using:AStarDev.CloudSync.UI"
              RequestedThemeVariant="Default">
              <!-- "Default" ThemeVariant follows system theme variant. "Dark" or "Light" are other available options. -->
 

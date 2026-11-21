@@ -9,9 +9,23 @@ namespace AStarDev.CloudSync.IPC;
 public interface IIpcServer : IAsyncDisposable
 {
     /// <summary>Handlers must be mapped before <see cref="StartAsync"/>. A handler that throws is reported as <see cref="HandlerFailed"/>.</summary>
+    /// <summary>Registers the one handler that answers <typeparamref name="TCommand"/>. Mapping the same type again replaces the earlier handler.</summary>
+    /// <example>
+    /// <code>
+    /// server.MapCommand((StartSyncCommand command, CancellationToken token) =>
+    ///     Task.FromResult&lt;Result&lt;CommandResult, IpcError&gt;&gt;(new Ok&lt;CommandResult&gt;(new CommandResult(CommandOutcome.Accepted))));
+    /// </code>
+    /// </example>
     void MapCommand<TCommand>(Func<TCommand, CancellationToken, Task<Result<CommandResult, IpcError>>> handler)
         where TCommand : ICommand;
 
+    /// <summary>Registers the one handler that answers <typeparamref name="TQuery"/>. Return a projection view, never a domain model.</summary>
+    /// <example>
+    /// <code>
+    /// server.MapQuery((GetDaemonStatus _, CancellationToken token) =>
+    ///     Task.FromResult&lt;Result&lt;DaemonStatusView, IpcError&gt;&gt;(new Ok&lt;DaemonStatusView&gt;(status)));
+    /// </code>
+    /// </example>
     void MapQuery<TQuery, TResult>(Func<TQuery, CancellationToken, Task<Result<TResult, IpcError>>> handler)
         where TQuery : IQuery<TResult>;
 

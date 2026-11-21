@@ -5,7 +5,7 @@ namespace AStarDev.CloudSync.IPC;
 /// <summary>Sends and receives envelopes over one connection. Safe for concurrent senders.</summary>
 internal sealed class EnvelopeChannel(Stream stream) : IAsyncDisposable
 {
-    private readonly SemaphoreSlim _sendLock = new(1, 1);
+    private readonly SemaphoreSlim sendLock = new(1, 1);
 
     public async Task<Result<Unit, IpcError>> SendAsync(Envelope envelope, CancellationToken cancellationToken)
     {
@@ -31,14 +31,14 @@ internal sealed class EnvelopeChannel(Stream stream) : IAsyncDisposable
 
     private async Task<Result<Unit, IpcError>> WriteExclusivelyAsync(byte[] bytes, CancellationToken cancellationToken)
     {
-        await _sendLock.WaitAsync(cancellationToken);
+        await sendLock.WaitAsync(cancellationToken);
         try
         {
             return await FrameCodec.WriteAsync(stream, bytes, cancellationToken);
         }
         finally
         {
-            _sendLock.Release();
+            sendLock.Release();
         }
     }
 }

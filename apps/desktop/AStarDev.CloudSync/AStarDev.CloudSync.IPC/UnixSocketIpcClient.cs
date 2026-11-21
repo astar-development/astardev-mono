@@ -9,24 +9,24 @@ namespace AStarDev.CloudSync.IPC;
 /// <summary>Talks to a <see cref="UnixSocketIpcServer"/>. One instance is one connection; create a new one to reconnect.</summary>
 /// <param name="socketPath">The server's socket file.</param>
 /// <param name="onError">Told about failures nobody else can receive: a failing event handler, a broken frame.</param>
-public sealed class UnixSocketIpcClient(string socketPath, Action<IpcError>? onError = null) : IIpcClient
+internal sealed class UnixSocketIpcClient(string socketPath, Action<IpcError>? onError = null) : IIpcClient
 {
-    private readonly ConcurrentDictionary<long, TaskCompletionSource<Result<JsonElement, IpcError>>> _pending = new();
-    private readonly ConcurrentDictionary<string, ImmutableList<Func<JsonElement, Result<Unit, IpcError>>>> _eventHandlers = new();
-    private readonly TaskCompletionSource _disconnected = new(TaskCreationOptions.RunContinuationsAsynchronously);
-    private readonly CancellationTokenSource _closing = new();
-    private readonly Action<IpcError> _report = onError ?? (_ => { });
-    private EnvelopeChannel? _channel;
-    private Task _readLoop = Task.CompletedTask;
-    private long _lastId;
-    private int _disposed;
+    private readonly ConcurrentDictionary<long, TaskCompletionSource<Result<JsonElement, IpcError>>> pending = new();
+    private readonly ConcurrentDictionary<string, ImmutableList<Func<JsonElement, Result<Unit, IpcError>>>> eventHandlers = new();
+    private readonly TaskCompletionSource disconnected = new(TaskCreationOptions.RunContinuationsAsynchronously);
+    private readonly CancellationTokenSource closing = new();
+    private readonly Action<IpcError> report = onError ?? (_ => { });
+    private EnvelopeChannel? channel;
+    private Task readLoop = Task.CompletedTask;
+    private long lastId;
+    private int disposed;
 
-    public Task Disconnected => _disconnected.Task;
+    public Task Disconnected => disconnected.Task;
 
     public async Task<Result<Unit, IpcError>> ConnectAsync(CancellationToken cancellationToken)
     {
         cancellationToken.ThrowIfCancellationRequested();
-        if (_channel is not null || _disposed == 1)
+        if (channel is not null || disposed == 1)
         {
             return new Fail<IpcError>(new ConnectionFailed("The IPC client is already connected or was disposed."));
         }
@@ -55,30 +55,25 @@ public sealed class UnixSocketIpcClient(string socketPath, Action<IpcError>? onE
             {
                 handler(@event.Value);
                 return default(Unit);
-            }).MapError(IpcErrors.AsHandlerFailed),
+            }).ToResult(IpcErrors.AsHandlerFailed),
             Fail<IpcError> fail => fail
         };
 
-        _eventHandlers.AddOrUpdate(typeof(TEvent).Name, _ => ImmutableList.Create(handle), (_, existing) => existing.Add(handle));
+        eventHandlers.AddOrUpdate(typeof(TEvent).Name, _ => ImmutableList.Create(handle), (_, existing) => existing.Add(handle));
     }
 
     public async ValueTask DisposeAsync()
     {
-        if (Interlocked.Exchange(ref _disposed, 1) == 1)
-        {
+        if (Interlocked.Exchange(ref disposed, 1) == 1)
             return;
-        }
 
-        await _closing.CancelAsync();
-        if (_channel is not null)
-        {
-            await _channel.DisposeAsync();
-        }
+        await closing.CancelAsync();
+        if (channel is not null)
+            await channel.DisposeAsync();
 
-        // WhenAny: the read loop ends canceled on dispose, and awaiting it directly would throw
-        await Task.WhenAny(_readLoop);
-        _disconnected.TrySetResult();
-        _closing.Dispose();
+        await Task.WhenAny(readLoop);
+        disconnected.TrySetResult();
+        closing.Dispose();
     }
 
     private async Task<Result<Socket, IpcError>> OpenAsync(CancellationToken cancellationToken)
@@ -92,13 +87,12 @@ public sealed class UnixSocketIpcClient(string socketPath, Action<IpcError>? onE
                 await socket.ConnectAsync(new UnixDomainSocketEndPoint(socketPath), token);
                 return socket;
             }, cancellationToken);
-            connected = opened is Ok<Socket>;
+            connected = opened is Success<Socket>;
 
-            return opened.MapError(IpcErrors.AsConnectionFailed);
+            return opened.ToResult(IpcErrors.AsConnectionFailed);
         }
         finally
         {
-            // a failed or cancelled attempt must not leave a socket behind
             if (!connected)
             {
                 socket.Dispose();
@@ -108,15 +102,13 @@ public sealed class UnixSocketIpcClient(string socketPath, Action<IpcError>? onE
 
     private Result<Unit, IpcError> Attach(Socket socket)
     {
-        _channel = new EnvelopeChannel(new NetworkStream(socket, ownsSocket: true));
-        _readLoop = ReadLoopAsync(_channel, _closing.Token);
+        channel = new EnvelopeChannel(new NetworkStream(socket, ownsSocket: true));
+        readLoop = ReadLoopAsync(channel, closing.Token);
+
         return new Ok<Unit>(default);
     }
 
-    private async Task<Result<TResponse, IpcError>> RequestAsync<TResponse>(
-        object message,
-        Func<long, JsonElement, RequestEnvelope> create,
-        CancellationToken cancellationToken)
+    private async Task<Result<TResponse, IpcError>> RequestAsync<TResponse>(object message, Func<long, JsonElement, RequestEnvelope> create, CancellationToken cancellationToken)
     {
         cancellationToken.ThrowIfCancellationRequested();
 
@@ -131,26 +123,20 @@ public sealed class UnixSocketIpcClient(string socketPath, Action<IpcError>? onE
         };
     }
 
-    /// <summary>Sends one request and waits for the answer with the same id.</summary>
     private async Task<Result<JsonElement, IpcError>> ExchangeAsync(Func<long, RequestEnvelope> create, CancellationToken cancellationToken)
     {
-        if (_channel is not { } channel)
-        {
+        if (channel is not { } openChannel)
             return new Fail<IpcError>(new NotConnected());
-        }
 
-        var id = Interlocked.Increment(ref _lastId);
+        var id = Interlocked.Increment(ref lastId);
         var waiting = new TaskCompletionSource<Result<JsonElement, IpcError>>(TaskCreationOptions.RunContinuationsAsynchronously);
-        _pending[id] = waiting;
+        pending[id] = waiting;
         try
         {
-            // checked after registering, so a request can never wait on a connection that already ended
-            if (_disconnected.Task.IsCompleted)
-            {
+            if (disconnected.Task.IsCompleted)
                 return new Fail<IpcError>(new ConnectionLost("The connection has ended."));
-            }
 
-            return await channel.SendAsync(create(id), cancellationToken) switch
+            return await openChannel.SendAsync(create(id), cancellationToken) switch
             {
                 Ok<Unit> => await waiting.Task.WaitAsync(cancellationToken),
                 Fail<IpcError> sendFailure => sendFailure
@@ -158,7 +144,7 @@ public sealed class UnixSocketIpcClient(string socketPath, Action<IpcError>? onE
         }
         finally
         {
-            _pending.TryRemove(id, out _);
+            pending.TryRemove(id, out _);
         }
     }
 
@@ -174,11 +160,8 @@ public sealed class UnixSocketIpcClient(string socketPath, Action<IpcError>? onE
                         Dispatch(envelope);
                         break;
                     case Fail<IpcError> failure:
-                        // the server hanging up is the normal way a connection ends; anything else is worth knowing
                         if (failure.Error is not ConnectionLost)
-                        {
-                            _report(failure.Error);
-                        }
+                            report(failure.Error);
 
                         return;
                 }
@@ -186,14 +169,11 @@ public sealed class UnixSocketIpcClient(string socketPath, Action<IpcError>? onE
         }
         finally
         {
-            // completed before the pending requests are failed: see ExchangeAsync
-            _disconnected.TrySetResult();
-            foreach (var id in _pending.Keys)
+            disconnected.TrySetResult();
+            foreach (var id in pending.Keys)
             {
-                if (_pending.TryRemove(id, out var waiting))
-                {
+                if (pending.TryRemove(id, out var waiting))
                     waiting.TrySetResult(new Fail<IpcError>(new ConnectionLost("The connection ended before the server answered.")));
-                }
             }
         }
     }
@@ -202,20 +182,17 @@ public sealed class UnixSocketIpcClient(string socketPath, Action<IpcError>? onE
     {
         switch (envelope)
         {
-            case ResponseEnvelope response when _pending.TryRemove(response.Id, out var answered):
+            case ResponseEnvelope response when pending.TryRemove(response.Id, out var answered):
                 answered.TrySetResult(new Ok<JsonElement>(response.Payload));
                 break;
-            case ErrorEnvelope error when _pending.TryRemove(error.Id, out var refused):
+            case ErrorEnvelope error when pending.TryRemove(error.Id, out var refused):
                 refused.TrySetResult(new Fail<IpcError>(new HandlerFailed(error.Message)));
                 break;
-            case EventEnvelope @event when _eventHandlers.TryGetValue(@event.Type, out var handlers):
+            case EventEnvelope @event when eventHandlers.TryGetValue(@event.Type, out var handlers):
                 foreach (var handle in handlers)
                 {
-                    // a failing handler is reported, never fatal: the other handlers and the connection carry on
                     if (handle(@event.Payload) is Fail<IpcError> failure)
-                    {
-                        _report(failure.Error);
-                    }
+                        report(failure.Error);
                 }
 
                 break;

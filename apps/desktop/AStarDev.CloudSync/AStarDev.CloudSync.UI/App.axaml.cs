@@ -1,17 +1,14 @@
 using Avalonia;
 using Avalonia.Controls.ApplicationLifetimes;
 using Avalonia.Markup.Xaml;
-using AStarDev.CloudSync.ViewModels;
-using AStarDev.CloudSync.Views;
+using AStarDev.CloudSync.UI.ViewModels;
+using AStarDev.CloudSync.UI.Views;
 
-namespace AStarDev.CloudSync;
+namespace AStarDev.CloudSync.UI;
 
 public partial class App : Application
 {
-    public override void Initialize()
-    {
-        AvaloniaXamlLoader.Load(this);
-    }
+    public override void Initialize() => AvaloniaXamlLoader.Load(this);
 
     public override void OnFrameworkInitializationCompleted()
     {

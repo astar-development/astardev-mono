@@ -24,7 +24,7 @@ public sealed record ListenFailed(string Reason);
 /// <summary>Everything that can go wrong in IPC, as values. Match it exhaustively.</summary>
 public union IpcError(ConnectionFailed, NotConnected, ConnectionLost, FrameTooLarge, MalformedFrame, HandlerFailed, ListenFailed);
 
-public static class IpcErrorExtensions
+internal static class IpcErrorExtensions
 {
     public static string Describe(this IpcError error) => error switch
     {
