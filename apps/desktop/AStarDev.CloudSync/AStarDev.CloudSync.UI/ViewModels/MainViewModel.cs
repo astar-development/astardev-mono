@@ -1,13 +1,13 @@
 namespace AStarDev.CloudSync.UI.ViewModels;
 
 /// <summary>State behind <see cref="Views.MainWindow"/>.</summary>
-/// <param name="connection">The app-wide daemon connection, shared rather than created here so its retry loop outlives any one view.</param>
-/// <param name="connect">The account connection, kept here so its result survives the view being rebuilt.</param>
-/// <param name="accounts">The account cards. Refreshed whenever the daemon link comes up and whenever a connect attempt finishes.</param>
-/// <param name="folders">The remote folder tree. Listed afresh whenever the daemon link comes up and whenever a connect attempt succeeds.</param>
 public sealed class MainViewModel : ViewModelBase
 {
-    /// <summary>Creates the view model and starts listening for the moments the account list may have changed.</summary>
+    /// <summary>Creates the view model and starts listening for the moments the account list and folder tree may have changed.</summary>
+    /// <param name="connection">The app-wide daemon connection, shared rather than created here so its retry loop outlives any one view.</param>
+    /// <param name="connect">The account connection, kept here so its result survives the view being rebuilt.</param>
+    /// <param name="accounts">The account cards. Refreshed whenever the daemon link comes up and whenever a connect attempt finishes.</param>
+    /// <param name="folders">The remote folder tree. Listed afresh whenever the daemon link comes up and whenever a connect attempt succeeds.</param>
     public MainViewModel(ConnectionViewModel connection, ConnectViewModel connect, AccountsViewModel accounts, FolderTreeViewModel folders)
     {
         Connection = connection;
