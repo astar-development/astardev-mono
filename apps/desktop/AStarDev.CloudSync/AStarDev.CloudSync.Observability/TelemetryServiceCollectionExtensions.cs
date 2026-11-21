@@ -31,7 +31,11 @@ public static class TelemetryServiceCollectionExtensions
     {
         services.AddOptions<TelemetryOptions>().BindConfiguration(TelemetryOptions.ConfigurationSection).ValidateOnStart();
         services.TryAddEnumerable(ServiceDescriptor.Singleton<IValidateOptions<TelemetryOptions>, TelemetryOptionsValidator>());
-        services.AddOptions<OpenTelemetryLoggerOptions>().Configure(options => options.IncludeScopes = true);
+        services.AddOptions<OpenTelemetryLoggerOptions>().Configure(options =>
+        {
+            options.IncludeScopes = true;
+            options.IncludeFormattedMessage = true;
+        });
 
         services.AddOpenTelemetry()
             .ConfigureResource(resource => resource.AddService(serviceName, serviceVersion: Version(), serviceInstanceId: Guid.NewGuid().ToString()))
