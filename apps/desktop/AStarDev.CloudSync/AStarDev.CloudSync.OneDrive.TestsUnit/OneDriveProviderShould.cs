@@ -32,7 +32,7 @@ public sealed class OneDriveProviderShould
         using var client = new HttpClient(handler) { BaseAddress = new Uri("https://graph.test/v1.0/") };
         var provider = new OneDriveProvider(Options.Create(new OneDriveSettings()), new UnusedStore(), new AccessTokenHolder(), new RootEnumerator(client, telemetry));
 
-        var result = await provider.GetSnapshotAsync(new SyncScope(new RemoteItemId("root")), Token);
+        var result = await provider.GetSnapshotAsync(new RemoteItemId("root"), Token);
 
         result.Value.ShouldBeOfType<Ok<ProviderSnapshotPage>>().Value.Items.Count.ShouldBe(1);
     }

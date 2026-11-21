@@ -34,7 +34,7 @@ public sealed class OneDriveTelemetryShould
             : FakeGraphHandler.Json("""{ "value": [], "@odata.nextLink": "https://graph.test/next?page=2" }"""));
         var client = new HttpClient(handler) { BaseAddress = new Uri("https://graph.test/v1.0/") };
 
-        await new RootEnumerator(client, telemetry).GetSnapshotAsync(new SyncScope(new RemoteItemId("root")), TestContext.Current.CancellationToken);
+        await new RootEnumerator(client, telemetry).GetSnapshotAsync(new RemoteItemId("root"), TestContext.Current.CancellationToken);
 
         spans.Count.ShouldBe(2);
         requests.ShouldBe(2);

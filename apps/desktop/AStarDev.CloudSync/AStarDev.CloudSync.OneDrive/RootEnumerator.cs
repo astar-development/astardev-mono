@@ -10,10 +10,10 @@ namespace AStarDev.CloudSync.OneDrive;
 /// <param name="telemetry">Receives a span and a request count per page.</param>
 internal sealed class RootEnumerator(HttpClient client, OneDriveTelemetry telemetry)
 {
-    /// <summary>Fetches every page under the scope's root and returns the items as a single <see cref="ProviderSnapshotPage"/>.</summary>
+    /// <summary>Fetches every page under one remote root and returns the items as a single <see cref="ProviderSnapshotPage"/>.</summary>
     /// <returns>All items, or the first <see cref="ProviderError"/> met; items from earlier pages are dropped on failure. Cancellation propagates as <see cref="OperationCanceledException"/>.</returns>
-    public async Task<Result<ProviderSnapshotPage, ProviderError>> GetSnapshotAsync(SyncScope scope, CancellationToken cancellationToken)
-        => await ListChildrenAsync(scope.RemoteRootId, cancellationToken).ConfigureAwait(false) switch
+    public async Task<Result<ProviderSnapshotPage, ProviderError>> GetSnapshotAsync(RemoteItemId root, CancellationToken cancellationToken)
+        => await ListChildrenAsync(root, cancellationToken).ConfigureAwait(false) switch
         {
             Ok<IReadOnlyList<ProviderItem>> ok => new Ok<ProviderSnapshotPage>(new ProviderSnapshotPage(ok.Value)),
             Fail<ProviderError> fail => fail

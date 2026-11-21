@@ -6,7 +6,7 @@ namespace AStarDev.CloudSync.OneDrive.TestsUnit;
 
 public sealed class RootEnumerationShould
 {
-    private static readonly SyncScope Root = new(new RemoteItemId("root"));
+    private static readonly RemoteItemId Root = new("root");
 
     [Fact]
     public async Task follow_next_links_until_the_last_page()

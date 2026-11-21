@@ -32,13 +32,13 @@ public interface ICloudProvider
     /// <returns>The children in the order the provider reports them, empty for an empty folder; or the first <see cref="ProviderError"/> met, in which case nothing is returned from earlier pages. Items inside subfolders are not included.</returns>
     Task<Result<IReadOnlyList<ProviderItem>, ProviderError>> ListChildrenAsync(RemoteItemId parent, CancellationToken cancellationToken);
 
-    /// <summary>Lists the remote items under the scope's root as they are now, one page at a time.</summary>
-    /// <param name="scope">The remote folder to list.</param>
+    /// <summary>Lists the remote items under one remote root as they are now, one page at a time.</summary>
+    /// <param name="root">The remote folder to list.</param>
     /// <param name="cancellationToken">Cancelling abandons the listing and surfaces as <see cref="OperationCanceledException"/>, never as a <see cref="ProviderError"/>.</param>
     /// <returns>One page of items, or the reason the listing failed. Match <see cref="ProviderError"/> to decide whether to retry.</returns>
     /// <example>
     /// <code>
-    /// var page = await provider.GetSnapshotAsync(new SyncScope(rootId), cancellationToken);
+    /// var page = await provider.GetSnapshotAsync(rootId, cancellationToken);
     /// var delay = page switch
     /// {
     ///     Fail&lt;ProviderError&gt; { Error: RateLimited limited } => limited.RetryAfter,
@@ -46,5 +46,5 @@ public interface ICloudProvider
     /// };
     /// </code>
     /// </example>
-    Task<Result<ProviderSnapshotPage, ProviderError>> GetSnapshotAsync(SyncScope scope, CancellationToken cancellationToken);
+    Task<Result<ProviderSnapshotPage, ProviderError>> GetSnapshotAsync(RemoteItemId root, CancellationToken cancellationToken);
 }

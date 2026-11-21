@@ -6,7 +6,7 @@ namespace AStarDev.CloudSync.TestsIntegration;
 
 public sealed class FakeCloudProviderShould
 {
-    private static readonly SyncScope Scope = new(new RemoteItemId("root"));
+    private static readonly RemoteItemId Scope = new("root");
 
     [Fact]
     public async Task page_through_a_generated_tree_of_the_requested_size()

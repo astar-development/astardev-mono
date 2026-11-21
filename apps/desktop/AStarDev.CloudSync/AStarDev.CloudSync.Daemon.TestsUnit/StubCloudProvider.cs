@@ -16,7 +16,7 @@ internal sealed class StubCloudProvider : ICloudProvider
 
     public Result<IReadOnlyList<ProviderItem>, ProviderError> ChildrenResult { get; init; } = new Ok<IReadOnlyList<ProviderItem>>([]);
 
-    public List<SyncScope> Scopes { get; } = [];
+    public List<RemoteItemId> Roots { get; } = [];
 
     public List<RemoteItemId> Parents { get; } = [];
 
@@ -47,10 +47,10 @@ internal sealed class StubCloudProvider : ICloudProvider
         return Task.FromResult(DisconnectResult);
     }
 
-    public Task<Result<ProviderSnapshotPage, ProviderError>> GetSnapshotAsync(SyncScope scope, CancellationToken cancellationToken)
+    public Task<Result<ProviderSnapshotPage, ProviderError>> GetSnapshotAsync(RemoteItemId root, CancellationToken cancellationToken)
     {
         cancellationToken.ThrowIfCancellationRequested();
-        Scopes.Add(scope);
+        Roots.Add(root);
 
         return Task.FromResult(SnapshotResult);
     }
