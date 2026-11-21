@@ -1,0 +1,10 @@
+<UserControl xmlns="https://github.com/avaloniaui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:vm="using:AStarDev.CloudSync.UI.ViewModels"
+             x:Class="AStarDev.CloudSync.UI.Views.StubScreenView"
+             x:DataType="vm:StubScreenViewModel">
+    <StackPanel Margin="16" Spacing="8">
+        <TextBlock Text="{Binding Title}" FontSize="24" FontWeight="SemiBold" Foreground="{DynamicResource Text.Primary.Brush}" />
+        <TextBlock Text="{Binding NotAvailableText}" Foreground="{DynamicResource Text.Secondary.Brush}" />
+    </StackPanel>
+</UserControl>
