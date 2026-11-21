@@ -18,21 +18,14 @@ internal sealed class FakeCloudProvider(int pageSize) : ICloudProvider
         {
             var isFolder = index % 10 == 0;
             var name = isFolder ? $"folder-{index}" : $"file-{index}.txt";
-            items.Add(new ProviderItem(
-                new RemoteItemId($"item-{index}"),
-                new RelativePath(name),
-                isFolder ? ItemType.Folder : ItemType.File,
-                isFolder ? 0 : index,
-                DateTimeOffset.UnixEpoch.AddSeconds(index)));
+            items.Add(new ProviderItem(new RemoteItemId($"item-{index}"), new RelativePath(name), isFolder ? ItemType.Folder : ItemType.File, isFolder ? 0 : index, DateTimeOffset.UnixEpoch.AddSeconds(index)));
         }
     }
 
     public void ScriptFailures(params ProviderError[] failures)
     {
         foreach (var failure in failures)
-        {
             scriptedFailures.Enqueue(failure);
-        }
     }
 
     public Task<Result<ProviderAccount, ProviderError>> ConnectAsync(CancellationToken cancellationToken)

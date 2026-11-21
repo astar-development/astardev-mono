@@ -20,10 +20,7 @@ public sealed class FakeCloudProviderShould
         {
             var page = await provider.GetSnapshotAsync(Scope, TestContext.Current.CancellationToken);
             var items = page.Value.ShouldBeOfType<Ok<ProviderSnapshotPage>>().Value.Items;
-            if (items.Count == 0)
-            {
-                break;
-            }
+            if (items.Count == 0) break;
 
             pageSizes.Add(items.Count);
             seen.AddRange(items);
