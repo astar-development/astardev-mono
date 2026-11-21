@@ -14,6 +14,8 @@ namespace AStarDev.CloudSync.UI;
     Url = "https://docs.avaloniaui.net/docs/concepts/view-locator")]
 public class ViewLocator : IDataTemplate
 {
+    /// <summary>Creates the view for <paramref name="param"/> by convention: its full type name with <c>ViewModel</c> replaced by <c>View</c>.</summary>
+    /// <returns>A new view; a <see cref="TextBlock"/> naming the missing type when no view matches; <see langword="null"/> for a <see langword="null"/> data context.</returns>
     public Control? Build(object? param)
     {
         if (param is null)
@@ -30,5 +32,6 @@ public class ViewLocator : IDataTemplate
         return new TextBlock { Text = "Not Found: " + name };
     }
 
+    /// <summary>Claims only <see cref="ViewModelBase"/> instances, so any other data context falls through to other templates.</summary>
     public bool Match(object? data) => data is ViewModelBase;
 }

@@ -24,8 +24,10 @@ public sealed record ListenFailed(string Reason);
 /// <summary>Everything that can go wrong in IPC, as values. Match it exhaustively.</summary>
 public union IpcError(ConnectionFailed, NotConnected, ConnectionLost, FrameTooLarge, MalformedFrame, HandlerFailed, ListenFailed);
 
+/// <summary>Readable text for <see cref="IpcError"/> values.</summary>
 internal static class IpcErrorExtensions
 {
+    /// <summary>One sentence per error case. The server sends it as the <see cref="ErrorEnvelope"/> message, so it must make sense to the client.</summary>
     public static string Describe(this IpcError error) => error switch
     {
         ConnectionFailed e => $"Could not connect: {e.Reason}",

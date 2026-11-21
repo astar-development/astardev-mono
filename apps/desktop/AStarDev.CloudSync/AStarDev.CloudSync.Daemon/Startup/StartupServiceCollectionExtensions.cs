@@ -2,6 +2,7 @@ using Microsoft.Extensions.DependencyInjection;
 
 namespace AStarDev.CloudSync.Daemon.Startup;
 
+/// <summary>Dependency injection registration for the startup sequence and its stages.</summary>
 internal static class StartupServiceCollectionExtensions
 {
     /// <summary>Registers the six doc 14 stages. Registration order is execution order.</summary>
