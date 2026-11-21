@@ -262,6 +262,115 @@ Key Decisions:
 
 ---
 
+### User Experience Layer
+
+#### 17. Dashboard and User Trust Overview
+
+Purpose:
+
+```text
+Defines the trust dashboard.
+```
+
+Key Decisions:
+
+- The dashboard answers: safe, healthy, progressing, action needed.
+- Never show only "Synchronising".
+- Attention Required is always visible.
+
+---
+
+#### 18. UI Architecture, Theming and Localisation Strategy
+
+Purpose:
+
+```text
+Defines theme, language and culture architecture.
+```
+
+Key Decisions:
+
+- Theme is a first-class concept; no hard-coded colours.
+- No hard-coded user-visible strings.
+- Health never relies on colour alone.
+
+---
+
+#### 19. Navigation and Screen Architecture
+
+Purpose:
+
+```text
+Defines the navigation rail, screens, status bar and tray lifecycle.
+```
+
+Key Decisions:
+
+- Seven destinations: Dashboard, Queue, Conflicts, Activity, History, Providers, Settings.
+- Closing the window minimises to the tray.
+
+---
+
+#### 20. Configuration and Onboarding UX
+
+Purpose:
+
+```text
+Defines first run and configuration.
+```
+
+Key Decisions:
+
+- Nothing synchronises until the user has explicitly chosen scopes.
+- Every configuration action explains its consequences.
+
+---
+
+#### 21. Conflict Resolution UX (screens)
+
+Purpose:
+
+```text
+Defines conflict presentation. Document 08 owns behaviour and options.
+```
+
+---
+
+#### 22. Activity, History and Audit UX
+
+Purpose:
+
+```text
+Defines live activity, history and audit visibility.
+```
+
+---
+
+#### 23. Notifications and Background Operation UX
+
+Purpose:
+
+```text
+Defines tray states and notifications.
+```
+
+---
+
+#### 24. Provider Management UX
+
+Purpose:
+
+```text
+Defines the provider-agnostic Providers screen and journeys.
+```
+
+Key Decisions:
+
+- The UI talks to provider abstractions only.
+- Capability metadata drives UI behaviour.
+
+---
+
 ## Architectural Invariants
 
 The following statements should always remain true.

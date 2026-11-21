@@ -1,0 +1,18 @@
+{
+  "Common.AppTitle": "AStarDev.CloudSync",
+  "Common.Connect": "Connect OneDrive",
+  "Common.WaitingForSignIn": "Waiting for sign-in in your browser...",
+  "Common.Reconnect": "Reconnect",
+  "Common.Disconnect": "Disconnect",
+  "Common.RemoteFolders": "Remote folders",
+  "Common.LocalFolder": "Local folder",
+  "Common.LocalFolderPlaceholder": "/home/you/OneDrive",
+  "Common.Browse": "Browse...",
+  "Common.FirstSync": "First sync",
+  "Common.CreateSyncJob": "Create sync job",
+  "Common.Trust.Healthy": "Healthy",
+  "Common.Trust.Active": "Syncing",
+  "Common.Trust.Degraded": "Degraded",
+  "Common.Trust.Attention": "Needs attention",
+  "Common.Trust.Critical": "Critical"
+}

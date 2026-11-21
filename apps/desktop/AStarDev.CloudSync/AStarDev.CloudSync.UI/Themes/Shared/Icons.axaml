@@ -1,0 +1,8 @@
+<ResourceDictionary xmlns="https://github.com/avaloniaui"
+                    xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml">
+  <StreamGeometry x:Key="Icon.Trust.Healthy">M8,1 A7,7 0 1 1 8,15 A7,7 0 1 1 8,1 Z</StreamGeometry>
+  <StreamGeometry x:Key="Icon.Trust.Active">M3,2 L14,8 L3,14 Z</StreamGeometry>
+  <StreamGeometry x:Key="Icon.Trust.Degraded">M8,1 L15,8 L8,15 L1,8 Z</StreamGeometry>
+  <StreamGeometry x:Key="Icon.Trust.Attention">M8,1 L15,14 L1,14 Z</StreamGeometry>
+  <StreamGeometry x:Key="Icon.Trust.Critical">M5,1 L11,1 L15,5 L15,11 L11,15 L5,15 L1,11 L1,5 Z</StreamGeometry>
+</ResourceDictionary>
