@@ -40,6 +40,7 @@ Architecture docs in `docs/architecture/` = source of truth; start at `00 archit
 
 ## Error handling
 
+- All failable code uses `AStarDev.FunctionalParadigm` (`Result`/`Option`/`Try`). Never throw unless a framework contract forces it (`IHostedService.StartAsync` failing the host). Anything expressible as a returned `Result` or `Option` must not throw. Unavoidable throw: one-line boundary method, logic in a `Result`-returning method behind it.
 - Failable methods return `Result<T, TError>` (or `Option`/`Try`) from `AStarDev.FunctionalParadigm`. No exceptions for expected failures, no `try/catch` in application code. Wrap throwing code in `Try.Run` / `Try.RunAsync`, convert with `ToResult`.
 - Error types = closed unions of records (`IpcError`, `ProviderError`, `StartupError`). Match exhaustively with `switch`, no `_` default.
 - `Domain` must not reference `FunctionalParadigm`; any other module may.
