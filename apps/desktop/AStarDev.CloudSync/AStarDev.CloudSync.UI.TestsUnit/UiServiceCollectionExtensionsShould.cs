@@ -1,4 +1,6 @@
 using System.Diagnostics;
+using AStarDev.CloudSync.UI.Localisation;
+using AStarDev.CloudSync.UI.Theming;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting;
 using Microsoft.Extensions.Logging;
@@ -34,6 +36,37 @@ public sealed class UiServiceCollectionExtensionsShould
 
         serviceName.ShouldBe("astardev-cloudsync-ui");
         loggerProviders.ShouldContain(typeof(OpenTelemetryLoggerProvider));
+    }
+
+    [Fact]
+    public void compose_localisation_from_the_embedded_feature_files_in_en_gb()
+    {
+        using var host = CreateHost();
+
+        var localisation = host.Services.GetRequiredService<ILocalisationService>();
+
+        localisation.Language.ShouldBe("en-GB");
+        localisation.Get("Common.AppTitle").ShouldBe("AStarDev.CloudSync");
+        localisation.Get("Common.Missing").ShouldBe("!Common.Missing!");
+    }
+
+    [Fact]
+    public void compose_one_culture_service_for_en_gb_formatting()
+    {
+        using var host = CreateHost();
+
+        var culture = host.Services.GetRequiredService<ICultureService>();
+
+        culture.ShouldBeSameAs(host.Services.GetRequiredService<ICultureService>());
+        culture.Culture.Name.ShouldBe("en-GB");
+    }
+
+    [Fact]
+    public void compose_a_theme_service_with_no_theme_applied_yet()
+    {
+        using var host = CreateHost();
+
+        host.Services.GetRequiredService<IThemeService>().Current.ShouldBeNull();
     }
 
     [Fact]

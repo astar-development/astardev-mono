@@ -3,6 +3,8 @@ using Avalonia.Controls.ApplicationLifetimes;
 using Avalonia.Markup.Xaml;
 using Avalonia.Threading;
 using AStarDev.CloudSync.IPC;
+using AStarDev.CloudSync.UI.Localisation;
+using AStarDev.CloudSync.UI.Theming;
 using AStarDev.CloudSync.UI.ViewModels;
 using AStarDev.CloudSync.UI.Views;
 using AStarDev.FunctionalParadigm;
@@ -14,6 +16,8 @@ namespace AStarDev.CloudSync.UI;
 /// <summary>Avalonia application root: loads <c>App.axaml</c>, starts the daemon connection and opens the main window when run as a desktop app.</summary>
 public partial class App : Application
 {
+    private const string DefaultTheme = "Dark";
+
     private static readonly TimeSpan InitialRetryDelay = TimeSpan.FromSeconds(1);
     private static readonly TimeSpan MaxRetryDelay = TimeSpan.FromSeconds(30);
 
@@ -34,6 +38,8 @@ public partial class App : Application
             var builder = Host.CreateApplicationBuilder();
             builder.Services.AddCloudSyncUi();
             var host = builder.Build();
+            LocalisationHost.Service = host.Services.GetRequiredService<ILocalisationService>();
+            _ = host.Services.GetRequiredService<IThemeService>().Apply(DefaultTheme);
             var shutdown = new CancellationTokenSource();
             desktop.Exit += (_, _) =>
             {
