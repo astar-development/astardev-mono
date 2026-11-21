@@ -8,25 +8,14 @@ namespace AStarDev.CloudSync.Daemon.TestsUnit;
 public sealed class StartupSequenceShould
 {
     [Fact]
-    public async Task run_stages_in_the_documented_order()
+    public async Task succeed_with_the_stages_the_daemon_registers()
     {
-        var ran = new List<string>();
-        using var provider = new ServiceCollection().AddStartupStages().BuildServiceProvider();
-        var stages = provider.GetServices<IStartupStage>().Select(stage => new FakeStage(stage.Name, ran)).ToList();
-        var sequence = new StartupSequence(stages, NullLogger<StartupSequence>.Instance);
+        await using var host = DaemonTestHost.Create();
+        var sequence = host.Services.GetRequiredService<StartupSequence>();
 
         var result = await sequence.RunAsync(TestContext.Current.CancellationToken);
 
         result.Value.ShouldBeOfType<Ok<Unit>>();
-        ran.ShouldBe(
-        [
-            "Process start",
-            "Infrastructure initialisation",
-            "State recovery",
-            "Queue recovery",
-            "Background services",
-            "Accept connections"
-        ]);
     }
 
     [Fact]

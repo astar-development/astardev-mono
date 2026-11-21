@@ -13,13 +13,19 @@ public sealed partial class ConnectionViewModel(Func<IIpcClient> createClient, T
 {
     private readonly Action<Action> postToUi = post ?? (action => action());
 
+    /// <summary>Where the link is in the retry loop. Changes are posted to the UI thread, and every change also raises <see cref="StatusText"/>.</summary>
     [ObservableProperty]
     [NotifyPropertyChangedFor(nameof(StatusText))]
     public partial ConnectionState State { get; set; } = ConnectionState.Disconnected;
 
+    /// <summary>
+    /// The daemon's latest reported status: queried on each connect, then updated by <see cref="DaemonStatusChanged"/> events.
+    /// <see langword="null"/> until the first connect succeeds. Not cleared when the link drops, so read it with <see cref="State"/>.
+    /// </summary>
     [ObservableProperty]
     public partial DaemonStatusView? DaemonStatus { get; set; }
 
+    /// <summary>Banner text for <see cref="State"/>, so the view binds a ready-made label instead of converting the enum.</summary>
     public string StatusText => State switch
     {
         ConnectionState.Connected => ApplicationConstants.ConnectedText,
