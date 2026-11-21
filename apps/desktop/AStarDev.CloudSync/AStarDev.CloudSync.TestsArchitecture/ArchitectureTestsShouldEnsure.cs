@@ -75,7 +75,7 @@ public sealed class ArchitectureTestsShouldEnsure
 
     [Fact]
     public void observability_does_not_depend_on_any_other_cloudsync_project()
-        => ShouldNotDependOn(typeof(Observability.Class1).Assembly,
+        => ShouldNotDependOn(typeof(Observability.TelemetryServiceCollectionExtensions).Assembly,
             "AStarDev.CloudSync.Domain", "AStarDev.CloudSync.Daemon", "AStarDev.CloudSync.IPC",
             "AStarDev.CloudSync.OneDrive", "AStarDev.CloudSync.Persistence",
             "AStarDev.CloudSync.SyncEngine", "AStarDev.CloudSync.UI");
@@ -161,7 +161,7 @@ public sealed class ArchitectureTestsShouldEnsure
     [
         typeof(ItemId).Assembly,
         typeof(IPC.IIpcClient).Assembly,
-        typeof(Observability.Class1).Assembly,
+        typeof(Observability.TelemetryServiceCollectionExtensions).Assembly,
         typeof(OneDrive.Class1).Assembly,
         typeof(Persistence.Class1).Assembly,
         typeof(SyncEngine.Class1).Assembly

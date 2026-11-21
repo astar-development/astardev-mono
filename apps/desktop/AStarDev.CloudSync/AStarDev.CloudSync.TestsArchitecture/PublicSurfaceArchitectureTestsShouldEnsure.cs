@@ -34,9 +34,12 @@ public sealed class PublicSurfaceArchitectureTestsShouldEnsure
         => ShouldExposeExactly(typeof(Daemon.IpcOptions).Assembly);
 
     [Fact]
+    public void observability_exposes_only_its_approved_public_types()
+        => ShouldExposeExactly(typeof(Observability.TelemetryServiceCollectionExtensions).Assembly, "CorrelationScope", "TelemetryServiceCollectionExtensions");
+
+    [Fact]
     public void modules_without_real_members_expose_only_their_placeholder()
     {
-        ShouldExposeExactly(typeof(Observability.Class1).Assembly, PlaceholderAnchor);
         ShouldExposeExactly(typeof(OneDrive.Class1).Assembly, PlaceholderAnchor);
         ShouldExposeExactly(typeof(Persistence.Class1).Assembly, PlaceholderAnchor);
         ShouldExposeExactly(typeof(SyncEngine.Class1).Assembly, PlaceholderAnchor);
