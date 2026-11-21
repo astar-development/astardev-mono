@@ -136,7 +136,7 @@ public interface ICloudProvider
         CancellationToken cancellationToken);
 
     Task<Result<ProviderSnapshotPage, ProviderError>> GetSnapshotAsync(
-        SyncScope scope,
+        RemoteItemId root,
         CancellationToken cancellationToken);
 
     Task<Result<ProviderDeltaPage, ProviderError>> GetDeltasAsync(

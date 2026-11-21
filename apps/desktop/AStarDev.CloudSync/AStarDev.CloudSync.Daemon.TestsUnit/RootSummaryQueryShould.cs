@@ -22,7 +22,7 @@ public sealed class RootSummaryQueryShould
         await host.StopAsync(Token);
 
         result.Value.ShouldBeOfType<Ok<RemoteRootSummaryView>>().Value.ItemCount.ShouldBe(3);
-        provider.Scopes.Single().RemoteRootId.Value.ShouldBe("root");
+        provider.Roots.Single().Value.ShouldBe("root");
     }
 
     [Fact]

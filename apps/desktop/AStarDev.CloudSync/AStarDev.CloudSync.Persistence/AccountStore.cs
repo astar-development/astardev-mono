@@ -1,7 +1,6 @@
 using AStarDev.CloudSync.Domain;
 using AStarDev.CloudSync.Ports;
 using AStarDev.FunctionalParadigm;
-using Microsoft.Data.Sqlite;
 using Microsoft.EntityFrameworkCore;
 
 namespace AStarDev.CloudSync.Persistence;
@@ -9,8 +8,6 @@ namespace AStarDev.CloudSync.Persistence;
 /// <summary>SQLite implementation of <see cref="IAccountStore"/>. Each call uses its own short-lived context, so calls may overlap.</summary>
 internal sealed class AccountStore(IDbContextFactory<CloudSyncDbContext> contextFactory) : IAccountStore
 {
-    private const int SqliteConstraint = 19;
-
     /// <inheritdoc/>
     public async Task<Result<Unit, StoreError>> AddAsync(Account account, CancellationToken cancellationToken)
     {
@@ -102,11 +99,8 @@ internal sealed class AccountStore(IDbContextFactory<CloudSyncDbContext> context
             Fail<StoreError> fail => fail
         };
 
-    private static bool IsConstraintViolation(Exception exception)
-        => exception is DbUpdateException { InnerException: SqliteException { SqliteErrorCode: SqliteConstraint } };
-
     private static StoreError ToStorageFailure(Exception exception) => new StorageFailed(exception.Message);
 
     private static StoreError ToStoreError(Exception exception, AccountId id)
-        => IsConstraintViolation(exception) ? new AccountAlreadyExists(id) : new StorageFailed(exception.Message);
+        => SqliteErrors.IsConstraintViolation(exception) ? new AccountAlreadyExists(id) : new StorageFailed(exception.Message);
 }

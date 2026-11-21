@@ -49,7 +49,7 @@ public sealed class GraphErrorsShould
         var client = new HttpClient(new FakeGraphHandler(_ => response)) { BaseAddress = new Uri("https://graph.test/v1.0/") };
         var enumerator = new RootEnumerator(client, telemetry);
 
-        var result = await enumerator.GetSnapshotAsync(new SyncScope(new RemoteItemId("root")), TestContext.Current.CancellationToken);
+        var result = await enumerator.GetSnapshotAsync(new RemoteItemId("root"), TestContext.Current.CancellationToken);
 
         return result.Value.ShouldBeOfType<Fail<ProviderError>>().Error.Value;
     }

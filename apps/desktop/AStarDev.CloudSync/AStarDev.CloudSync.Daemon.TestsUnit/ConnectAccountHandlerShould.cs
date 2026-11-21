@@ -50,6 +50,22 @@ public sealed class ConnectAccountHandlerShould
     }
 
     [Fact]
+    public async Task create_no_sync_job()
+    {
+        await using var host = DaemonTestHost.CreateWith(new StubCloudProvider());
+        await using var client = UnixSocketIpc.CreateClient(host.SocketPath);
+        await host.StartAsync(Token);
+        (await client.ConnectAsync(Token)).Value.ShouldBeOfType<Ok<Unit>>();
+
+        var result = await client.SendAsync(new ConnectAccount(), Token);
+        var jobs = await host.Services.GetRequiredService<ISyncJobStore>().ListAsync(Token);
+        await host.StopAsync(Token);
+
+        result.Value.ShouldBeOfType<Ok<CommandResult>>().Value.Outcome.ShouldBe(CommandOutcome.Accepted);
+        jobs.Value.ShouldBeOfType<Ok<IReadOnlyList<SyncJob>>>().Value.ShouldBeEmpty();
+    }
+
+    [Fact]
     public async Task mark_a_known_account_connected_again_instead_of_adding_a_second()
     {
         await using var host = DaemonTestHost.CreateWith(new StubCloudProvider());

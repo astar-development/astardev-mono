@@ -15,6 +15,10 @@ internal sealed class FakeIpcClient(List<string> calls, bool available) : IIpcCl
 
     public Func<GetRemoteFolders, Result<RemoteFoldersView, IpcError>> FoldersReply { get; init; } = _ => new Ok<RemoteFoldersView>(new RemoteFoldersView([]));
 
+    public Result<SyncJobsView, IpcError> JobsReply { get; init; } = new Ok<SyncJobsView>(new SyncJobsView([]));
+
+    public Func<GetSyncScopes, Result<SyncScopesView, IpcError>> ScopesReply { get; init; } = _ => new Ok<SyncScopesView>(new SyncScopesView([]));
+
     public List<GetRemoteFolders> FolderQueries { get; } = [];
 
     public List<ICommand> Sent { get; } = [];
@@ -56,6 +60,8 @@ internal sealed class FakeIpcClient(List<string> calls, bool available) : IIpcCl
         {
             GetRemoteRootSummary => (Result<TResult, IpcError>)(object)SummaryReply,
             GetAccounts => (Result<TResult, IpcError>)(object)AccountsReply,
+            GetSyncJobs => (Result<TResult, IpcError>)(object)JobsReply,
+            GetSyncScopes scopes => (Result<TResult, IpcError>)(object)ScopesReply(scopes),
             GetRemoteFolders folders => (Result<TResult, IpcError>)(object)Record(folders),
             _ => new Ok<TResult>((TResult)(object)Status)
         });

@@ -28,6 +28,8 @@ public static class PersistenceServiceCollectionExtensions
         services.AddSingleton<IDatabaseState>(provider => provider.GetRequiredService<DatabaseState>());
         services.AddSingleton<IDatabaseInitialiser, DatabaseInitialiser>();
         services.AddSingleton<IAccountStore, AccountStore>();
+        services.AddSingleton<ISyncJobStore, SyncJobStore>();
+        services.AddSingleton<ISyncScopeStore, SyncScopeStore>();
         services.AddHealthChecks().AddCheck<DatabaseHealthCheck>(ApplicationConstants.DatabaseHealthCheckName);
 
         return services;

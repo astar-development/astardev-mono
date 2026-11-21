@@ -113,6 +113,33 @@ public sealed class FolderTreeViewModelShould
         await Should.ThrowAsync<OperationCanceledException>(() => tree.RefreshAsync(cancelled.Token));
     }
 
+    [Fact]
+    public async Task tick_a_folder_into_the_selection()
+    {
+        var client = new FakeIpcClient([], available: true) { FoldersReply = _ => Folders(("docs", "Documents")) };
+        var selection = new ScopeSelectionViewModel(() => client, new FakeFolderPicker(null));
+        var tree = new FolderTreeViewModel(() => client, selection);
+        await tree.RefreshAsync(Token);
+
+        tree.Roots[0].IsSelected = true;
+
+        selection.SelectedFolderIds.ShouldBe(["docs"]);
+        tree.Roots[0].IsSelected.ShouldBeTrue();
+    }
+
+    [Fact]
+    public async Task show_a_stored_selection_as_ticked()
+    {
+        var client = new FakeIpcClient([], available: true) { FoldersReply = _ => Folders(("docs", "Documents"), ("notes", "Notes")) };
+        var selection = new ScopeSelectionViewModel(() => client, new FakeFolderPicker(null));
+        selection.Select("notes", true);
+        var tree = new FolderTreeViewModel(() => client, selection);
+
+        await tree.RefreshAsync(Token);
+
+        tree.Roots.Select(row => row.IsSelected).ShouldBe([false, true]);
+    }
+
     private static Ok<RemoteFoldersView> Folders(params (string Id, string Name)[] folders)
         => new(new RemoteFoldersView(folders.Select(folder => new RemoteFolderView(folder.Id, folder.Name)).ToList()));
 }

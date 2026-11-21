@@ -71,7 +71,7 @@ internal sealed class FakeCloudProvider(int pageSize) : ICloudProvider
         return Task.FromResult(result);
     }
 
-    public Task<Result<ProviderSnapshotPage, ProviderError>> GetSnapshotAsync(SyncScope scope, CancellationToken cancellationToken)
+    public Task<Result<ProviderSnapshotPage, ProviderError>> GetSnapshotAsync(RemoteItemId root, CancellationToken cancellationToken)
     {
         cancellationToken.ThrowIfCancellationRequested();
 
