@@ -190,9 +190,23 @@ Used primarily for diagnostics and supportability.
 | Name | Friendly name |
 | LocalRootPath | Local sync root |
 | RemoteRootId | Remote root identifier |
+| BootstrapMode | Download, Upload or Merge; how the first synchronisation treats content on both sides |
 | Enabled | Sync enabled flag |
 | CreatedUtc | Created timestamp |
 | UpdatedUtc | Last updated timestamp |
+
+### SyncScopes
+
+The remote folders a sync job synchronises. Only selected scopes are indexed and synchronised (doc 06).
+
+| Column | Notes |
+| -------- | -------- |
+| SyncJobId | FK, part of the PK; deleting the job deletes its scopes |
+| RemoteRootId | Provider id of the selected folder, part of the PK |
+
+```csharp
+public sealed record SyncScope(SyncJobId SyncJobId, RemoteItemId RemoteRootId);
+```
 
 ### Items
 
