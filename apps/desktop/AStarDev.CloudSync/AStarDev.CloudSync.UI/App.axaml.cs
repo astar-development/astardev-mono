@@ -44,7 +44,7 @@ public partial class App : Application
 
             desktop.MainWindow = new MainWindow
             {
-                DataContext = new MainViewModel(connection, new ConnectViewModel(() => UnixSocketIpc.CreateClient(socketPath)), new AccountsViewModel(() => UnixSocketIpc.CreateClient(socketPath))),
+                DataContext = new MainViewModel(connection, new ConnectViewModel(() => UnixSocketIpc.CreateClient(socketPath)), new AccountsViewModel(() => UnixSocketIpc.CreateClient(socketPath)), new FolderTreeViewModel(() => UnixSocketIpc.CreateClient(socketPath))),
             };
         }
 

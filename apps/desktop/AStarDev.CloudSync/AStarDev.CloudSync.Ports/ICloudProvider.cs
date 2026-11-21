@@ -26,6 +26,12 @@ public interface ICloudProvider
     /// <returns>Success, also when there was nothing stored; or the reason the stored sign-in could not be removed. Safe to call twice.</returns>
     Task<Result<Unit, ProviderError>> DisconnectAsync(string accountIdentifier, CancellationToken cancellationToken);
 
+    /// <summary>Lists every file and folder directly under one remote folder, following the provider's paging until the last page.</summary>
+    /// <param name="parent">The folder to list. Pass the provider's root id to list the top of the drive.</param>
+    /// <param name="cancellationToken">Cancelling abandons the listing and surfaces as <see cref="OperationCanceledException"/>, never as a <see cref="ProviderError"/>.</param>
+    /// <returns>The children in the order the provider reports them, empty for an empty folder; or the first <see cref="ProviderError"/> met, in which case nothing is returned from earlier pages. Items inside subfolders are not included.</returns>
+    Task<Result<IReadOnlyList<ProviderItem>, ProviderError>> ListChildrenAsync(RemoteItemId parent, CancellationToken cancellationToken);
+
     /// <summary>Lists the remote items under the scope's root as they are now, one page at a time.</summary>
     /// <param name="scope">The remote folder to list.</param>
     /// <param name="cancellationToken">Cancelling abandons the listing and surfaces as <see cref="OperationCanceledException"/>, never as a <see cref="ProviderError"/>.</param>

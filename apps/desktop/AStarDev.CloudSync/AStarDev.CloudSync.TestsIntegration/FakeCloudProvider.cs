@@ -8,9 +8,16 @@ internal sealed class FakeCloudProvider(int pageSize) : ICloudProvider
 {
     private readonly List<ProviderItem> items = [];
     private readonly Queue<ProviderError> scriptedFailures = new();
+    private readonly Dictionary<RemoteItemId, List<ProviderItem>> children = [];
     private int cursor;
 
     public void AddItem(ProviderItem item) => items.Add(item);
+
+    public void AddChild(RemoteItemId parent, ProviderItem item)
+    {
+        if (!children.TryGetValue(parent, out var list)) children[parent] = list = [];
+        list.Add(item);
+    }
 
     public void GenerateTree(int count)
     {
@@ -51,6 +58,17 @@ internal sealed class FakeCloudProvider(int pageSize) : ICloudProvider
         cancellationToken.ThrowIfCancellationRequested();
 
         return Task.FromResult<Result<Unit, ProviderError>>(new Ok<Unit>(default));
+    }
+
+    public Task<Result<IReadOnlyList<ProviderItem>, ProviderError>> ListChildrenAsync(RemoteItemId parent, CancellationToken cancellationToken)
+    {
+        cancellationToken.ThrowIfCancellationRequested();
+
+        Result<IReadOnlyList<ProviderItem>, ProviderError> result = scriptedFailures.TryDequeue(out var failure)
+            ? new Fail<ProviderError>(failure)
+            : new Ok<IReadOnlyList<ProviderItem>>(children.TryGetValue(parent, out var list) ? list.ToList() : []);
+
+        return Task.FromResult(result);
     }
 
     public Task<Result<ProviderSnapshotPage, ProviderError>> GetSnapshotAsync(SyncScope scope, CancellationToken cancellationToken)

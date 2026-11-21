@@ -46,7 +46,7 @@ public sealed class IpcTelemetryShould : IAsyncLifetime
         (await client.ConnectAsync(Token)).ShouldSucceed();
     }
 
-    private static ActivityListener Listen(ActivitySource testSource, List<Activity> spans)
+    private static ActivityListener Listen(ActivitySource testSource, List<Activity> spans, Action<Activity>? onStopped = null)
     {
         var listener = new ActivityListener
         {
@@ -54,7 +54,10 @@ public sealed class IpcTelemetryShould : IAsyncLifetime
             Sample = (ref ActivityCreationOptions<ActivityContext> _) => ActivitySamplingResult.AllData,
             ActivityStopped = activity =>
             {
-                if (activity.Source.Name == TelemetryName) lock (spans) spans.Add(activity);
+                if (activity.Source.Name != TelemetryName) return;
+
+                lock (spans) spans.Add(activity);
+                onStopped?.Invoke(activity);
             }
         };
         ActivitySource.AddActivityListener(listener);
@@ -174,16 +177,25 @@ public sealed class IpcTelemetryShould : IAsyncLifetime
     public async Task start_a_span_per_event_on_both_sides_of_the_connection()
     {
         var spans = new List<Activity>();
+        var bothStopped = new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously);
         using var testSource = new ActivitySource(Guid.NewGuid().ToString("N"));
-        using var listener = Listen(testSource, spans);
+        ActivityTraceId? testTrace = null;
+        using var listener = Listen(testSource, spans, _ =>
+        {
+            lock (spans)
+            {
+                var events = spans.Where(span => span.TraceId == testTrace && span.DisplayName == "event DaemonStatusChanged").Select(span => span.Kind).ToList();
+                if (events.Contains(ActivityKind.Producer) && events.Contains(ActivityKind.Consumer)) bothStopped.TrySetResult();
+            }
+        });
         using var testRoot = testSource.StartActivity("test");
-        var received = new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously);
-        client.OnEvent<DaemonStatusChanged>(_ => received.TrySetResult());
+        testTrace = testRoot!.TraceId;
+        client.OnEvent<DaemonStatusChanged>(_ => { });
         await StartAndConnectAsync();
         (await client.SubscribeAsync(Token)).ShouldSucceed();
 
         (await server.PublishAsync(new DaemonStatusChanged(Status), Token)).ShouldSucceed();
-        await received.Task.WaitAsync(Timeout, Token);
+        await bothStopped.Task.WaitAsync(Timeout, Token);
 
         var observed = SpansOf(spans, testRoot!.TraceId).Where(span => span.DisplayName == "event DaemonStatusChanged").ToList();
         var producer = observed.Single(span => span.Kind == ActivityKind.Producer);
