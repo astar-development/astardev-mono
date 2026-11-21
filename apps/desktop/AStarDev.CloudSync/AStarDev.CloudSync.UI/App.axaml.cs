@@ -5,6 +5,9 @@ using Avalonia.Threading;
 using AStarDev.CloudSync.IPC;
 using AStarDev.CloudSync.UI.ViewModels;
 using AStarDev.CloudSync.UI.Views;
+using AStarDev.FunctionalParadigm;
+using Microsoft.Extensions.DependencyInjection;
+using Microsoft.Extensions.Hosting;
 
 namespace AStarDev.CloudSync.UI;
 
@@ -20,6 +23,7 @@ public partial class App : Application
     /// <summary>
     /// Starts the <see cref="ConnectionViewModel"/> retry loop against the daemon socket and opens the <see cref="MainWindow"/> bound to it.
     /// The loop is cancelled when the desktop lifetime exits. Other lifetimes get no window and no connection.
+    /// Telemetry starts before the first connection attempt and is flushed on exit; when it cannot start the UI still connects, just without exporting.
     /// </summary>
     public override void OnFrameworkInitializationCompleted()
     {
@@ -27,9 +31,16 @@ public partial class App : Application
         {
             var socketPath = DaemonSocketPath.Resolve(Environment.GetEnvironmentVariable(ApplicationConstants.XdgRuntimeDirEnvironmentVariable));
             var connection = new ConnectionViewModel(() => UnixSocketIpc.CreateClient(socketPath), InitialRetryDelay, MaxRetryDelay, action => Dispatcher.UIThread.Post(action));
+            var builder = Host.CreateApplicationBuilder();
+            builder.Services.AddCloudSyncUi();
+            var host = builder.Build();
             var shutdown = new CancellationTokenSource();
-            desktop.Exit += (_, _) => shutdown.Cancel();
-            _ = connection.RunAsync(shutdown.Token);
+            desktop.Exit += (_, _) =>
+            {
+                shutdown.Cancel();
+                host.Dispose();
+            };
+            _ = RunAsync(host, connection, shutdown.Token);
 
             desktop.MainWindow = new MainWindow
             {
@@ -38,5 +49,16 @@ public partial class App : Application
         }
 
         base.OnFrameworkInitializationCompleted();
+    }
+
+    private static async Task RunAsync(IHost host, ConnectionViewModel connection, CancellationToken cancellationToken)
+    {
+        _ = await Try.RunAsync(async token =>
+        {
+            await host.StartAsync(token);
+            return default(Unit);
+        }, cancellationToken);
+
+        await connection.RunAsync(cancellationToken);
     }
 }
