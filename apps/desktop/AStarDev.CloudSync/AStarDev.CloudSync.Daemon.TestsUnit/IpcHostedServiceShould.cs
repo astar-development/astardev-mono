@@ -1,4 +1,5 @@
 using AStarDev.CloudSync.IPC;
+using Microsoft.Extensions.Logging.Abstractions;
 
 namespace AStarDev.CloudSync.Daemon.TestsUnit;
 
@@ -10,7 +11,7 @@ public sealed class IpcHostedServiceShould
     public async Task stop_the_server_when_stopped()
     {
         var server = new FakeIpcServer([]);
-        var service = new IpcHostedService(server, TimeProvider.System);
+        var service = new IpcHostedService(server, TimeProvider.System, NullLogger<IpcHostedService>.Instance);
 
         await service.StopAsync(Token);
 
@@ -20,7 +21,7 @@ public sealed class IpcHostedServiceShould
     [Fact]
     public async Task honour_cancellation_when_starting()
     {
-        var service = new IpcHostedService(new FakeIpcServer([]), TimeProvider.System);
+        var service = new IpcHostedService(new FakeIpcServer([]), TimeProvider.System, NullLogger<IpcHostedService>.Instance);
         using var source = new CancellationTokenSource();
         await source.CancelAsync();
 
@@ -30,7 +31,7 @@ public sealed class IpcHostedServiceShould
     [Fact]
     public async Task honour_cancellation_when_stopping()
     {
-        var service = new IpcHostedService(new FakeIpcServer([]), TimeProvider.System);
+        var service = new IpcHostedService(new FakeIpcServer([]), TimeProvider.System, NullLogger<IpcHostedService>.Instance);
         using var source = new CancellationTokenSource();
         await source.CancelAsync();
 

@@ -1,4 +1,5 @@
 using AStarDev.CloudSync.Persistence;
+using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting;
 
 namespace AStarDev.CloudSync.Daemon.TestsUnit;
@@ -11,7 +12,7 @@ internal sealed class DaemonTestHost(IHost host, string socketPath, string datab
 
     public IServiceProvider Services => host.Services;
 
-    public static DaemonTestHost Create(Action<string>? seedDatabase = null)
+    public static DaemonTestHost Create(Action<string>? seedDatabase = null, Action<IServiceCollection>? configureServices = null)
     {
         var socketPath = Path.Combine(Path.GetTempPath(), $"cloudsync-daemon-{Guid.NewGuid():N}.sock");
         var databasePath = Path.Combine(Path.GetTempPath(), $"cloudsync-daemon-{Guid.NewGuid():N}", "cloudsync.db");
@@ -20,6 +21,7 @@ internal sealed class DaemonTestHost(IHost host, string socketPath, string datab
         builder.Configuration[$"{ApplicationConstants.IpcConfigurationSection}:{nameof(IpcOptions.SocketPath)}"] = socketPath;
         builder.Configuration[$"{DatabaseOptions.ConfigurationSection}:{nameof(DatabaseOptions.Path)}"] = databasePath;
         builder.Services.AddCloudSyncDaemon();
+        configureServices?.Invoke(builder.Services);
 
         return new DaemonTestHost(builder.Build(), socketPath, databasePath);
     }

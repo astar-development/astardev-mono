@@ -1,3 +1,4 @@
+using System.Diagnostics;
 using AStarDev.CloudSync.Daemon.Startup;
 using AStarDev.CloudSync.IPC;
 using AStarDev.CloudSync.Persistence;
@@ -60,6 +61,29 @@ public sealed class DaemonServiceCollectionExtensionsShould
     }
 
     [Fact]
+    public async Task log_the_status_query_inside_the_trace_that_the_client_started()
+    {
+        var logs = new TraceCapturingLoggerProvider();
+        await using var host = DaemonTestHost.Create(configureServices: services => services.AddSingleton<ILoggerProvider>(logs));
+        await using var client = UnixSocketIpc.CreateClient(host.SocketPath);
+        using var testSource = new ActivitySource(Guid.NewGuid().ToString("N"));
+        using var listener = new ActivityListener
+        {
+            ShouldListenTo = _ => true,
+            Sample = (ref ActivityCreationOptions<ActivityContext> _) => ActivitySamplingResult.AllData
+        };
+        ActivitySource.AddActivityListener(listener);
+        using var testRoot = testSource.StartActivity("test");
+        await host.StartAsync(Token);
+        (await client.ConnectAsync(Token)).Value.ShouldBeOfType<Ok<Unit>>();
+
+        (await client.QueryAsync(new GetDaemonStatus(), Token)).Value.ShouldBeOfType<Ok<DaemonStatusView>>();
+        await host.StopAsync(Token);
+
+        logs.Entries.ShouldContain(entry => entry.Category == typeof(IpcHostedService).FullName && entry.Message.Contains("GetDaemonStatus") && entry.TraceId == testRoot!.TraceId);
+    }
+
+    [Fact]
     public async Task stop_listening_when_the_host_stops()
     {
         await using var host = DaemonTestHost.Create();
@@ -79,7 +103,7 @@ public sealed class DaemonServiceCollectionExtensionsShould
     {
         await using var host = DaemonTestHost.Create();
         await host.StartAsync(Token);
-        using var source = new System.Diagnostics.ActivitySource("AStarDev.CloudSync.Daemon");
+        using var source = new ActivitySource("AStarDev.CloudSync.Daemon");
 
         var serviceName = host.Services.GetRequiredService<TracerProvider>().GetResource().Attributes.ToDictionary(pair => pair.Key, pair => pair.Value)["service.name"];
         var loggerProviders = host.Services.GetServices<ILoggerProvider>().Select(provider => provider.GetType()).ToList();
