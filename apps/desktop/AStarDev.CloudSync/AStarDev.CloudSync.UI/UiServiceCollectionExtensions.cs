@@ -1,4 +1,7 @@
 using AStarDev.CloudSync.Observability;
+using AStarDev.CloudSync.UI.Localisation;
+using AStarDev.CloudSync.UI.Theming;
+using AStarDev.FunctionalParadigm;
 using Microsoft.Extensions.DependencyInjection;
 
 namespace AStarDev.CloudSync.UI;
@@ -20,7 +23,16 @@ internal static class UiServiceCollectionExtensions
     public static IServiceCollection AddCloudSyncUi(this IServiceCollection services)
     {
         services.AddCloudSyncTelemetry(ApplicationConstants.ServiceName);
+        services.AddSingleton<ICultureService>(new CultureService(LocalisationService.DefaultLanguage));
+        services.AddSingleton<ILocalisationService>(provider => CreateLocalisation(provider.GetRequiredService<ICultureService>()));
+        services.AddSingleton<IThemeService, ThemeService>();
 
         return services;
     }
+
+    private static LocalisationService CreateLocalisation(ICultureService culture) => LocalisationCatalogue.Load(typeof(App).Assembly, LocalisationService.DefaultLanguage) switch
+    {
+        Ok<IReadOnlyDictionary<string, string>> ok => new LocalisationService(culture, new Dictionary<string, IReadOnlyDictionary<string, string>> { [LocalisationService.DefaultLanguage] = ok.Value }, LocalisationService.DefaultLanguage),
+        Fail<LocalisationError> fail => throw new InvalidOperationException($"The embedded localisation resources are invalid: {fail.Error.Value}")
+    };
 }

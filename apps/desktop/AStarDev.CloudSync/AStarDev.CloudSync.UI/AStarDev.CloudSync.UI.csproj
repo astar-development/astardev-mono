@@ -20,6 +20,7 @@
   <ItemGroup>
     <Folder Include="Models\" />
     <AvaloniaResource Include="Assets\**" />
+    <EmbeddedResource Include="Localisation\Strings\*.json" WithCulture="false" />
   </ItemGroup>
 
   <ItemGroup>
