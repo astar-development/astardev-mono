@@ -133,7 +133,19 @@ internal sealed class UnixSocketIpcServer(string socketPath, Action<IpcError>? o
 
     private void CleanupStaleState()
     {
+        EnsureSocketDirectory();
         File.Delete(socketPath);
+    }
+
+    private void EnsureSocketDirectory()
+    {
+        var directory = Path.GetDirectoryName(Path.GetFullPath(socketPath));
+        if (string.IsNullOrEmpty(directory) || Directory.Exists(directory)) return;
+
+        if (OperatingSystem.IsWindows())
+            Directory.CreateDirectory(directory);
+        else
+            Directory.CreateDirectory(directory, UnixFileMode.UserRead | UnixFileMode.UserWrite | UnixFileMode.UserExecute);
     }
 
     private Result<Unit, IpcError> Launch(Socket listener, CancellationToken cancellationToken)

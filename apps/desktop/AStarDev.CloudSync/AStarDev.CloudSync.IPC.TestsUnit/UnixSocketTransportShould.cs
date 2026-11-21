@@ -171,11 +171,29 @@ public sealed class UnixSocketTransportShould : IAsyncLifetime
     [Fact]
     public async Task fail_to_start_when_the_socket_path_is_unusable()
     {
-        await using var unusableServer = new UnixSocketIpcServer(Path.Combine(socketPath, "missing-directory", "ipc.sock"));
+        var fileInTheWay = Path.Combine(Path.GetTempPath(), $"cloudsync-ipc-{Guid.NewGuid():N}.file");
+        await File.WriteAllTextAsync(fileInTheWay, string.Empty, Token);
+        await using var unusableServer = new UnixSocketIpcServer(Path.Combine(fileInTheWay, "ipc.sock"));
 
         var result = await unusableServer.StartAsync(Token);
 
+        File.Delete(fileInTheWay);
         result.ShouldFail().Value.ShouldBeOfType<ListenFailed>();
+    }
+
+    [Fact]
+    [System.Runtime.Versioning.SupportedOSPlatform("linux")]
+    public async Task create_a_missing_socket_directory_restricted_to_its_owner()
+    {
+        var directory = Path.Combine(Path.GetTempPath(), $"cloudsync-ipc-{Guid.NewGuid():N}");
+        await using var nestedServer = new UnixSocketIpcServer(Path.Combine(directory, "ipc.sock"));
+
+        var result = await nestedServer.StartAsync(Token);
+
+        result.ShouldSucceed();
+        File.GetUnixFileMode(directory).ShouldBe(UnixFileMode.UserRead | UnixFileMode.UserWrite | UnixFileMode.UserExecute);
+        await nestedServer.StopAsync(Token);
+        Directory.Delete(directory, true);
     }
 
     [Fact]
