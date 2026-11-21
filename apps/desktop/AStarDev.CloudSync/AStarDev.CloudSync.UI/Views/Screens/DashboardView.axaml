@@ -1,0 +1,97 @@
+<UserControl xmlns="https://github.com/avaloniaui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:vm="using:AStarDev.CloudSync.UI.ViewModels"
+             xmlns:screens="using:AStarDev.CloudSync.UI.ViewModels.Screens"
+             xmlns:views="using:AStarDev.CloudSync.UI.Views"
+             x:Class="AStarDev.CloudSync.UI.Views.Screens.DashboardView"
+             x:DataType="screens:DashboardViewModel">
+    <ScrollViewer>
+        <StackPanel Margin="16" Spacing="12">
+            <TextBlock Text="{Binding Title}" FontSize="24" FontWeight="SemiBold" Foreground="{DynamicResource Text.Primary.Brush}" />
+            <TextBlock Text="{Binding SampleDataNotice}" Foreground="{DynamicResource Text.Secondary.Brush}" TextWrapping="Wrap" />
+
+            <Border Background="{DynamicResource Surface.Raised.Brush}" BorderBrush="{DynamicResource Border.Brush}" BorderThickness="1" Padding="20">
+                <StackPanel Spacing="8" DataContext="{Binding Health}" x:DataType="vm:SyncHealthPresentation">
+                    <views:StatusIndicatorView DataContext="{Binding Indicator}" />
+                    <TextBlock Text="{Binding Headline}" FontSize="28" FontWeight="Bold" Foreground="{DynamicResource Text.Primary.Brush}" TextWrapping="Wrap" />
+                    <TextBlock Text="{Binding Summary}" FontSize="16" Foreground="{DynamicResource Text.Primary.Brush}" TextWrapping="Wrap" />
+                </StackPanel>
+            </Border>
+            <StackPanel Spacing="2">
+                <TextBlock Text="{Binding LastReconciliationText}" Foreground="{DynamicResource Text.Secondary.Brush}" />
+                <TextBlock Text="{Binding LastProviderPollText}" Foreground="{DynamicResource Text.Secondary.Brush}" />
+                <TextBlock Text="{Binding LastQueueActivityText}" Foreground="{DynamicResource Text.Secondary.Brush}" />
+            </StackPanel>
+
+            <Border Background="{DynamicResource Surface.Raised.Brush}" BorderBrush="{DynamicResource Border.Brush}" BorderThickness="1" Padding="12">
+                <StackPanel Spacing="4">
+                    <TextBlock Text="{Binding ProgressHeading}" FontWeight="SemiBold" Foreground="{DynamicResource Text.Primary.Brush}" />
+                    <TextBlock Text="{Binding ItemsAnalysedText}" Foreground="{DynamicResource Text.Primary.Brush}" />
+                    <TextBlock Text="{Binding PhaseText}" Foreground="{DynamicResource Text.Primary.Brush}" />
+                    <TextBlock Text="{Binding ThroughputText}" Foreground="{DynamicResource Text.Primary.Brush}" />
+                    <TextBlock Text="{Binding EstimatedRemainingText}" Foreground="{DynamicResource Text.Primary.Brush}" />
+                    <ItemsControl ItemsSource="{Binding Stages}">
+                        <ItemsControl.ItemTemplate>
+                            <DataTemplate x:DataType="vm:PipelineStageRow">
+                                <StackPanel Orientation="Horizontal" Spacing="8">
+                                    <TextBlock Text="{Binding State}" Width="72" Foreground="{DynamicResource Text.Secondary.Brush}" />
+                                    <TextBlock Text="{Binding Name}" Foreground="{DynamicResource Text.Primary.Brush}" />
+                                </StackPanel>
+                            </DataTemplate>
+                        </ItemsControl.ItemTemplate>
+                    </ItemsControl>
+                </StackPanel>
+            </Border>
+
+            <Border Background="{DynamicResource Surface.Raised.Brush}" BorderBrush="{DynamicResource Border.Brush}" BorderThickness="1" Padding="12">
+                <StackPanel Spacing="4">
+                    <TextBlock Text="{Binding ProvidersHeading}" FontWeight="SemiBold" Foreground="{DynamicResource Text.Primary.Brush}" />
+                    <ItemsControl ItemsSource="{Binding Providers}">
+                        <ItemsControl.ItemTemplate>
+                            <DataTemplate x:DataType="vm:StatusIndicatorViewModel">
+                                <views:StatusIndicatorView DataContext="{Binding}" />
+                            </DataTemplate>
+                        </ItemsControl.ItemTemplate>
+                    </ItemsControl>
+                    <Button Content="{Binding OpenProvidersText}" Command="{Binding OpenProvidersCommand}" HorizontalAlignment="Left" />
+                </StackPanel>
+            </Border>
+
+            <Border Background="{DynamicResource Surface.Raised.Brush}" BorderBrush="{DynamicResource Border.Brush}" BorderThickness="1" Padding="12">
+                <StackPanel Spacing="4">
+                    <TextBlock Text="{Binding QueueHeading}" FontWeight="SemiBold" Foreground="{DynamicResource Text.Primary.Brush}" />
+                    <TextBlock Text="{Binding PendingText}" Foreground="{DynamicResource Text.Primary.Brush}" />
+                    <TextBlock Text="{Binding RunningText}" Foreground="{DynamicResource Text.Primary.Brush}" />
+                    <TextBlock Text="{Binding CompletedText}" Foreground="{DynamicResource Text.Primary.Brush}" />
+                    <TextBlock Text="{Binding FailedText}" Foreground="{DynamicResource Text.Primary.Brush}" />
+                    <Button Content="{Binding OpenQueueText}" Command="{Binding OpenQueueCommand}" HorizontalAlignment="Left" />
+                </StackPanel>
+            </Border>
+
+            <Border Background="{DynamicResource Surface.Raised.Brush}" BorderBrush="{DynamicResource Border.Brush}" BorderThickness="1" Padding="12">
+                <StackPanel Spacing="4">
+                    <TextBlock Text="{Binding AttentionHeading}" FontWeight="SemiBold" Foreground="{DynamicResource Text.Primary.Brush}" />
+                    <TextBlock Text="{Binding ConflictsText}" Foreground="{DynamicResource Text.Primary.Brush}" />
+                    <TextBlock Text="{Binding ErrorsText}" Foreground="{DynamicResource Text.Primary.Brush}" />
+                    <TextBlock Text="{Binding WarningsText}" Foreground="{DynamicResource Text.Primary.Brush}" />
+                    <Button Content="{Binding OpenConflictsText}" Command="{Binding OpenConflictsCommand}" HorizontalAlignment="Left" />
+                </StackPanel>
+            </Border>
+
+            <Border Background="{DynamicResource Surface.Raised.Brush}" BorderBrush="{DynamicResource Border.Brush}" BorderThickness="1" Padding="12">
+                <StackPanel Spacing="4">
+                    <TextBlock Text="{Binding ActivityHeading}" FontWeight="SemiBold" Foreground="{DynamicResource Text.Primary.Brush}" />
+                    <ItemsControl ItemsSource="{Binding Activities}" />
+                </StackPanel>
+            </Border>
+
+            <Border Background="{DynamicResource Surface.Raised.Brush}" BorderBrush="{DynamicResource Border.Brush}" BorderThickness="1" Padding="12">
+                <StackPanel Spacing="4">
+                    <TextBlock Text="{Binding EventsHeading}" FontWeight="SemiBold" Foreground="{DynamicResource Text.Primary.Brush}" />
+                    <ItemsControl ItemsSource="{Binding Events}" />
+                    <Button Content="{Binding OpenActivityText}" Command="{Binding OpenActivityCommand}" HorizontalAlignment="Left" />
+                </StackPanel>
+            </Border>
+        </StackPanel>
+    </ScrollViewer>
+</UserControl>
