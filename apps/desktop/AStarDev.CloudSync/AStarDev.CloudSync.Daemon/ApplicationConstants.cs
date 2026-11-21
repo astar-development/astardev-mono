@@ -3,6 +3,8 @@ namespace AStarDev.CloudSync.Daemon;
 /// <summary>Project-specific strings for the daemon, so none are repeated as literals.</summary>
 internal static class ApplicationConstants
 {
+    public static string ServiceName => "astardev-cloudsync-daemon";
+
     public static string IpcConfigurationSection => "Ipc";
 
     public static string XdgRuntimeDirEnvironmentVariable => "XDG_RUNTIME_DIR";

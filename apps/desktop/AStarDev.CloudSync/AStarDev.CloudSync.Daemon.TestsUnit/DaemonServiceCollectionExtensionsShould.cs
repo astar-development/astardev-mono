@@ -3,6 +3,11 @@ using AStarDev.CloudSync.IPC;
 using AStarDev.FunctionalParadigm;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting;
+using Microsoft.Extensions.Logging;
+using OpenTelemetry;
+using OpenTelemetry.Logs;
+using OpenTelemetry.Resources;
+using OpenTelemetry.Trace;
 
 namespace AStarDev.CloudSync.Daemon.TestsUnit;
 
@@ -65,5 +70,21 @@ public sealed class DaemonServiceCollectionExtensionsShould
         await using var late = UnixSocketIpc.CreateClient(host.SocketPath);
 
         (await late.ConnectAsync(Token)).Value.ShouldBeOfType<Fail<IpcError>>();
+    }
+
+    [Fact]
+    public async Task export_logs_metrics_and_traces_as_the_daemon_service()
+    {
+        await using var host = DaemonTestHost.Create();
+        await host.StartAsync(Token);
+        using var source = new System.Diagnostics.ActivitySource("AStarDev.CloudSync.Daemon");
+
+        var serviceName = host.Services.GetRequiredService<TracerProvider>().GetResource().Attributes.ToDictionary(pair => pair.Key, pair => pair.Value)["service.name"];
+        var loggerProviders = host.Services.GetServices<ILoggerProvider>().Select(provider => provider.GetType()).ToList();
+        await host.StopAsync(Token);
+
+        serviceName.ShouldBe("astardev-cloudsync-daemon");
+        source.HasListeners().ShouldBeTrue();
+        loggerProviders.ShouldContain(typeof(OpenTelemetryLoggerProvider));
     }
 }

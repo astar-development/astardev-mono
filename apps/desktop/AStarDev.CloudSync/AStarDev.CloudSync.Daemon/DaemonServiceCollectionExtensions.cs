@@ -1,5 +1,6 @@
 using AStarDev.CloudSync.Daemon.Startup;
 using AStarDev.CloudSync.IPC;
+using AStarDev.CloudSync.Observability;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Options;
 
@@ -9,7 +10,7 @@ namespace AStarDev.CloudSync.Daemon;
 internal static class DaemonServiceCollectionExtensions
 {
     /// <summary>
-    /// Registers options, health checks, the startup stages and the hosted services. <see cref="StartupHostedService"/> is registered
+    /// Registers telemetry first, so everything after it is observed, then options, health checks, the startup stages and the hosted services. <see cref="StartupHostedService"/> is registered
     /// before <see cref="IpcHostedService"/>, so the IPC server only listens once every startup stage has finished.
     /// </summary>
     /// <example>
@@ -21,6 +22,7 @@ internal static class DaemonServiceCollectionExtensions
     /// </example>
     public static IServiceCollection AddCloudSyncDaemon(this IServiceCollection services)
     {
+        services.AddCloudSyncTelemetry(ApplicationConstants.ServiceName);
         services.AddOptions<IpcOptions>().BindConfiguration(ApplicationConstants.IpcConfigurationSection);
         services.AddHealthChecks(); // checks are added by the slices that own database, provider, queue and IPC
         services.AddStartupStages();
