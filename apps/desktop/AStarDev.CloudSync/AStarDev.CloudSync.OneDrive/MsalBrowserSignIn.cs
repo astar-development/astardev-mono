@@ -8,6 +8,7 @@ internal sealed class MsalBrowserSignIn(OneDriveOptions options) : IBrowserSignI
 {
     private static readonly string[] Scopes = ["Files.ReadWrite", "offline_access"];
 
+    /// <inheritdoc/>
     public async Task<SignInOutcome> SignInAsync(byte[] cache, CancellationToken cancellationToken)
     {
         var app = PublicClientApplicationBuilder.Create(options.ClientId)

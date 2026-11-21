@@ -11,6 +11,8 @@ internal sealed class SecretToolTokenCacheStore(string executable = "secret-tool
 
     private static readonly string[] Attributes = ["service", "astardev-cloudsync", "account", "onedrive"];
 
+    /// <inheritdoc/>
+    /// <remarks>An entry that is not valid base64 is treated as nothing stored, so a corrupt cache only costs one fresh sign-in.</remarks>
     public async Task<Result<byte[], ProviderError>> LoadAsync(CancellationToken cancellationToken)
     {
         var run = await RunAsync(["lookup", .. Attributes], null, cancellationToken).ConfigureAwait(false);
@@ -23,6 +25,7 @@ internal sealed class SecretToolTokenCacheStore(string executable = "secret-tool
         };
     }
 
+    /// <inheritdoc/>
     public async Task<Result<Unit, ProviderError>> SaveAsync(byte[] cache, CancellationToken cancellationToken)
     {
         var run = await RunAsync(["store", "--label=AStarDev CloudSync OneDrive", .. Attributes], Convert.ToBase64String(cache), cancellationToken).ConfigureAwait(false);

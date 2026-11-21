@@ -6,6 +6,8 @@ namespace AStarDev.CloudSync.OneDrive;
 /// <summary>Signs in to OneDrive and keeps the token cache in the <see cref="ITokenCacheStore"/>.</summary>
 internal sealed class OneDriveConnector(ITokenCacheStore store, IBrowserSignIn signIn)
 {
+    /// <summary>Loads the stored token cache, runs the browser sign-in with it, and saves the updated cache before returning the account.</summary>
+    /// <returns>The signed-in account, or a <see cref="ProviderError"/> when the keyring cannot be read or written or sign-in fails. Nothing is saved after a failed sign-in.</returns>
     public async Task<Result<ProviderAccount, ProviderError>> ConnectAsync(CancellationToken cancellationToken)
     {
         var loaded = await store.LoadAsync(cancellationToken).ConfigureAwait(false);

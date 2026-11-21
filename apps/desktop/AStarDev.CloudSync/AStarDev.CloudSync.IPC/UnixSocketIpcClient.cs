@@ -21,8 +21,10 @@ internal sealed class UnixSocketIpcClient(string socketPath, Action<IpcError>? o
     private long lastId;
     private int disposed;
 
+    /// <inheritdoc/>
     public Task Disconnected => disconnected.Task;
 
+    /// <inheritdoc/>
     public async Task<Result<Unit, IpcError>> ConnectAsync(CancellationToken cancellationToken)
     {
         cancellationToken.ThrowIfCancellationRequested();
@@ -38,15 +40,19 @@ internal sealed class UnixSocketIpcClient(string socketPath, Action<IpcError>? o
         };
     }
 
+    /// <inheritdoc/>
     public Task<Result<CommandResult, IpcError>> SendAsync(ICommand command, CancellationToken cancellationToken)
         => RequestAsync<CommandResult>(command, (id, payload) => new CommandEnvelope(id, command.GetType().Name, payload), cancellationToken);
 
+    /// <inheritdoc/>
     public Task<Result<TResult, IpcError>> QueryAsync<TResult>(IQuery<TResult> query, CancellationToken cancellationToken)
         => RequestAsync<TResult>(query, (id, payload) => new QueryEnvelope(id, query.GetType().Name, payload), cancellationToken);
 
+    /// <inheritdoc/>
     public Task<Result<Unit, IpcError>> SubscribeAsync(CancellationToken cancellationToken)
         => RequestAsync<Unit>(default(Unit), (id, _) => new SubscribeEnvelope(id), cancellationToken);
 
+    /// <inheritdoc/>
     public void OnEvent<TEvent>(Action<TEvent> handler) where TEvent : IEvent
     {
         Func<JsonElement, Result<Unit, IpcError>> handle = payload => IpcJson.FromElement<TEvent>(payload) switch
@@ -62,6 +68,7 @@ internal sealed class UnixSocketIpcClient(string socketPath, Action<IpcError>? o
         eventHandlers.AddOrUpdate(typeof(TEvent).Name, _ => ImmutableList.Create(handle), (_, existing) => existing.Add(handle));
     }
 
+    /// <summary>Closes the connection: requests still waiting fail with <see cref="ConnectionLost"/> and <see cref="Disconnected"/> completes. Safe to call more than once.</summary>
     public async ValueTask DisposeAsync()
     {
         if (Interlocked.Exchange(ref disposed, 1) == 1)

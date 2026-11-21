@@ -8,8 +8,10 @@ namespace AStarDev.CloudSync.IPC;
 /// </summary>
 public interface IIpcServer : IAsyncDisposable
 {
-    /// <summary>Handlers must be mapped before <see cref="StartAsync"/>. A handler that throws is reported as <see cref="HandlerFailed"/>.</summary>
-    /// <summary>Registers the one handler that answers <typeparamref name="TCommand"/>. Mapping the same type again replaces the earlier handler.</summary>
+    /// <summary>
+    /// Registers the one handler that answers <typeparamref name="TCommand"/>. Mapping the same type again replaces the earlier handler.
+    /// Handlers must be mapped before <see cref="StartAsync"/>. A handler that throws is reported as <see cref="HandlerFailed"/>.
+    /// </summary>
     /// <example>
     /// <code>
     /// server.MapCommand((StartSyncCommand command, CancellationToken token) =>

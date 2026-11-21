@@ -3,11 +3,13 @@ using AStarDev.FunctionalParadigm;
 
 namespace AStarDev.CloudSync.IPC;
 
+/// <summary>One complete frame payload, with the length header already removed.</summary>
 internal sealed record Frame(byte[] Payload);
 
 /// <summary>The stream ended cleanly between frames. Expected, so a success case, not a failure.</summary>
 internal sealed record EndOfStream;
 
+/// <summary>What one read produced: a whole <see cref="Frame"/>, or a clean <see cref="EndOfStream"/>.</summary>
 internal union FrameRead(Frame, EndOfStream);
 
 /// <summary>Length-prefixed framing: a 4 byte big-endian payload length, then the payload.</summary>
@@ -18,6 +20,8 @@ internal static class FrameCodec
     /// <summary>Bounds what a peer can make us allocate.</summary>
     public const int MaxFrameSize = 1024 * 1024;
 
+    /// <summary>Writes the header and <paramref name="payload"/> in a single write, then flushes. An oversized payload is refused before any byte is written.</summary>
+    /// <returns><see cref="FrameTooLarge"/> when <paramref name="payload"/> exceeds <see cref="MaxFrameSize"/>, or <see cref="ConnectionLost"/> when the stream fails.</returns>
     public static async Task<Result<Unit, IpcError>> WriteAsync(Stream stream, ReadOnlyMemory<byte> payload, CancellationToken cancellationToken)
     {
         cancellationToken.ThrowIfCancellationRequested();
@@ -40,6 +44,10 @@ internal static class FrameCodec
         return written.ToResult(IpcErrors.AsConnectionLost);
     }
 
+    /// <summary>
+    /// Reads exactly one frame. The declared length is checked before the payload buffer is allocated.
+    /// A stream that ends before the first header byte is <see cref="EndOfStream"/>; one that ends inside a frame is <see cref="MalformedFrame"/>.
+    /// </summary>
     public static async Task<Result<FrameRead, IpcError>> ReadAsync(Stream stream, CancellationToken cancellationToken)
     {
         var header = new byte[HeaderSize];

@@ -7,6 +7,7 @@ internal sealed class EnvelopeChannel(Stream stream) : IAsyncDisposable
 {
     private readonly SemaphoreSlim sendLock = new(1, 1);
 
+    /// <summary>Encodes the envelope and writes it as one frame. Concurrent senders take turns, so frames never interleave on the stream.</summary>
     public async Task<Result<Unit, IpcError>> SendAsync(Envelope envelope, CancellationToken cancellationToken)
     {
         cancellationToken.ThrowIfCancellationRequested();
@@ -27,6 +28,7 @@ internal sealed class EnvelopeChannel(Stream stream) : IAsyncDisposable
             Fail<IpcError> fail => fail
         };
 
+    /// <summary>Closes the connection's stream. The channel owns the stream, so callers never dispose it themselves.</summary>
     public ValueTask DisposeAsync() => stream.DisposeAsync();
 
     private async Task<Result<Unit, IpcError>> WriteExclusivelyAsync(byte[] bytes, CancellationToken cancellationToken)
