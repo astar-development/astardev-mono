@@ -1,7 +1,9 @@
 using System.Diagnostics;
 using System.Diagnostics.Metrics;
 using Microsoft.Extensions.DependencyInjection;
+using Microsoft.Extensions.Options;
 using OpenTelemetry;
+using OpenTelemetry.Logs;
 using OpenTelemetry.Metrics;
 using OpenTelemetry.Resources;
 using OpenTelemetry.Trace;
@@ -63,5 +65,17 @@ public sealed class TelemetryRegistrationShould
         await host.StartAsync(Token);
         host.Services.GetRequiredService<TracerProvider>().ShouldNotBeNull();
         await host.StopAsync(Token);
+    }
+
+    [Fact]
+    public async Task export_log_messages_with_their_placeholders_replaced()
+    {
+        using var host = TelemetryTestHost.Create();
+        await host.StartAsync(Token);
+
+        var options = host.Services.GetRequiredService<IOptions<OpenTelemetryLoggerOptions>>().Value;
+        await host.StopAsync(Token);
+
+        options.IncludeFormattedMessage.ShouldBeTrue();
     }
 }
