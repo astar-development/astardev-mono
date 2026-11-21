@@ -1,0 +1,16 @@
+<UserControl xmlns="https://github.com/avaloniaui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:vm="using:AStarDev.CloudSync.UI.ViewModels"
+             xmlns:views="using:AStarDev.CloudSync.UI.Views"
+             x:Class="AStarDev.CloudSync.UI.Views.StatusBarView"
+             x:DataType="vm:StatusBarViewModel">
+    <Border Padding="8,4" Background="{DynamicResource Surface.Raised.Brush}" BorderBrush="{DynamicResource Border.Brush}" BorderThickness="0,1,0,0">
+        <StackPanel Orientation="Horizontal" Spacing="24">
+            <TextBlock Text="{Binding Connection.StatusText}" />
+            <views:StatusIndicatorView DataContext="{Binding ProviderHealth}" />
+            <TextBlock Text="{Binding QueueActivityText}" Foreground="{DynamicResource Text.Secondary.Brush}" />
+            <TextBlock Text="{Binding ErrorStateText}" Foreground="{DynamicResource Text.Secondary.Brush}" />
+            <TextBlock Text="{Binding LastActivityText}" Foreground="{DynamicResource Text.Secondary.Brush}" />
+        </StackPanel>
+    </Border>
+</UserControl>

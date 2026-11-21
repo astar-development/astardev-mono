@@ -1,6 +1,7 @@
 using System;
 using System.Diagnostics.CodeAnalysis;
 using AStarDev.CloudSync.UI.ViewModels;
+using AStarDev.CloudSync.UI.Views;
 using Avalonia.Controls;
 using Avalonia.Controls.Templates;
 
@@ -15,7 +16,7 @@ namespace AStarDev.CloudSync.UI;
 public class ViewLocator : IDataTemplate
 {
     /// <summary>Creates the view for <paramref name="param"/> by convention: its full type name with <c>ViewModel</c> replaced by <c>View</c>.</summary>
-    /// <returns>A new view; a <see cref="TextBlock"/> naming the missing type when no view matches; <see langword="null"/> for a <see langword="null"/> data context.</returns>
+    /// <returns>A new view; the shared <see cref="StubScreenView"/> for a placeholder screen with no view of its own; a <see cref="TextBlock"/> naming the missing type when no view matches; <see langword="null"/> for a <see langword="null"/> data context.</returns>
     public Control? Build(object? param)
     {
         if (param is null)
@@ -28,7 +29,9 @@ public class ViewLocator : IDataTemplate
         {
             return (Control)Activator.CreateInstance(type)!;
         }
-        
+
+        if (param is StubScreenViewModel) return new StubScreenView();
+
         return new TextBlock { Text = "Not Found: " + name };
     }
 

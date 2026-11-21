@@ -1,0 +1,6 @@
+{
+  "StatusBar.ProviderHealth": "Provider health: not yet available",
+  "StatusBar.QueueActivity": "Queue: not yet available",
+  "StatusBar.ErrorState": "Errors: not yet available",
+  "StatusBar.LastActivity": "Last activity: not yet available"
+}
