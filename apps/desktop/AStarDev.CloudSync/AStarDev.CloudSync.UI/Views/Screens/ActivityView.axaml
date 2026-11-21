@@ -1,0 +1,11 @@
+<UserControl xmlns="https://github.com/avaloniaui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:vm="using:AStarDev.CloudSync.UI.ViewModels.Screens"
+             xmlns:views="using:AStarDev.CloudSync.UI.Views"
+             x:Class="AStarDev.CloudSync.UI.Views.Screens.ActivityView"
+             x:DataType="vm:ActivityViewModel">
+    <DockPanel Margin="16">
+        <TextBlock DockPanel.Dock="Top" Text="{Binding Title}" FontSize="24" FontWeight="SemiBold" Foreground="{DynamicResource Text.Primary.Brush}" />
+        <views:OperationListView />
+    </DockPanel>
+</UserControl>

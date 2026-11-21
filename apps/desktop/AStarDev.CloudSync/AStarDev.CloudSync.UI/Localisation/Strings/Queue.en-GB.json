@@ -1,4 +1,5 @@
 {
   "Queue.Title": "Queue",
-  "Queue.Glyph": "⏳"
+  "Queue.Glyph": "⏳",
+  "Queue.ConflictsNote": "Conflicts are resolved on the Conflicts screen, never from the queue."
 }

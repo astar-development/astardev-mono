@@ -1,0 +1,96 @@
+<UserControl xmlns="https://github.com/avaloniaui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:vm="using:AStarDev.CloudSync.UI.ViewModels.Operations"
+             xmlns:views="using:AStarDev.CloudSync.UI.Views"
+             xmlns:loc="using:AStarDev.CloudSync.UI.Localisation"
+             x:Class="AStarDev.CloudSync.UI.Views.OperationListView"
+             x:DataType="vm:OperationListViewModel">
+    <DockPanel Margin="0,8,0,0">
+        <TextBlock DockPanel.Dock="Top" Text="{Binding SampleDataText}" Foreground="{DynamicResource Trust.Degraded.Brush}" TextWrapping="Wrap" Margin="0,0,0,8" />
+        <StackPanel DockPanel.Dock="Top" IsVisible="{Binding ShowTools}" Spacing="8" Margin="0,0,0,8">
+            <WrapPanel>
+                <StackPanel Margin="0,0,12,8">
+                    <TextBlock Text="{loc:Loc Operations.Filter.Provider}" Foreground="{DynamicResource Text.Secondary.Brush}" />
+                    <ComboBox ItemsSource="{Binding ProviderChoices}" SelectedItem="{Binding SelectedProvider}" MinWidth="150">
+                        <ComboBox.ItemTemplate>
+                            <DataTemplate x:DataType="vm:FilterChoice"><TextBlock Text="{Binding Text}" /></DataTemplate>
+                        </ComboBox.ItemTemplate>
+                    </ComboBox>
+                </StackPanel>
+                <StackPanel Margin="0,0,12,8">
+                    <TextBlock Text="{loc:Loc Operations.Filter.Type}" Foreground="{DynamicResource Text.Secondary.Brush}" />
+                    <ComboBox ItemsSource="{Binding TypeChoices}" SelectedItem="{Binding SelectedType}" MinWidth="150">
+                        <ComboBox.ItemTemplate>
+                            <DataTemplate x:DataType="vm:FilterChoice"><TextBlock Text="{Binding Text}" /></DataTemplate>
+                        </ComboBox.ItemTemplate>
+                    </ComboBox>
+                </StackPanel>
+                <StackPanel Margin="0,0,12,8">
+                    <TextBlock Text="{loc:Loc Operations.Filter.Status}" Foreground="{DynamicResource Text.Secondary.Brush}" />
+                    <ComboBox ItemsSource="{Binding StatusChoices}" SelectedItem="{Binding SelectedStatus}" MinWidth="150">
+                        <ComboBox.ItemTemplate>
+                            <DataTemplate x:DataType="vm:FilterChoice"><TextBlock Text="{Binding Text}" /></DataTemplate>
+                        </ComboBox.ItemTemplate>
+                    </ComboBox>
+                </StackPanel>
+                <StackPanel Margin="0,0,12,8">
+                    <TextBlock Text="{loc:Loc Operations.Filter.From}" Foreground="{DynamicResource Text.Secondary.Brush}" />
+                    <CalendarDatePicker SelectedDate="{Binding DateFrom}" />
+                </StackPanel>
+                <StackPanel Margin="0,0,12,8">
+                    <TextBlock Text="{loc:Loc Operations.Filter.To}" Foreground="{DynamicResource Text.Secondary.Brush}" />
+                    <CalendarDatePicker SelectedDate="{Binding DateTo}" />
+                </StackPanel>
+                <StackPanel Margin="0,0,12,8">
+                    <TextBlock Text="{loc:Loc Operations.Filter.Path}" Foreground="{DynamicResource Text.Secondary.Brush}" />
+                    <TextBox Text="{Binding PathText}" MinWidth="200" />
+                </StackPanel>
+                <Button Content="{loc:Loc Operations.Filter.Clear}" Command="{Binding ClearFilters}" VerticalAlignment="Bottom" Margin="0,0,0,8" />
+            </WrapPanel>
+            <StackPanel Orientation="Horizontal" Spacing="12">
+                <Button Content="{Binding ExportText}" IsEnabled="False" ToolTip.Tip="{Binding ExportDisabledReason}" />
+                <TextBlock Text="{Binding ExportDisabledReason}" Foreground="{DynamicResource Text.Secondary.Brush}" VerticalAlignment="Center" TextWrapping="Wrap" />
+            </StackPanel>
+            <TextBlock Text="{Binding RetentionText}" Foreground="{DynamicResource Text.Secondary.Brush}" TextWrapping="Wrap" />
+        </StackPanel>
+        <Border DockPanel.Dock="Right" IsVisible="{Binding Details.IsOpen}" Width="300" Margin="12,0,0,0" Padding="12" Background="{DynamicResource Surface.Raised.Brush}" BorderBrush="{DynamicResource Border.Brush}" BorderThickness="1">
+            <StackPanel Spacing="6" x:DataType="vm:OperationDetailsViewModel" DataContext="{Binding Details}">
+                <TextBlock Text="{loc:Loc Operations.Details.Title}" FontWeight="SemiBold" Foreground="{DynamicResource Text.Primary.Brush}" />
+                <StackPanel DataContext="{Binding Row}" x:DataType="vm:OperationRowViewModel" Spacing="6">
+                    <TextBlock Text="{loc:Loc Operations.Details.Id}" Foreground="{DynamicResource Text.Secondary.Brush}" />
+                    <TextBlock Text="{Binding Entry.Id}" Foreground="{DynamicResource Text.Primary.Brush}" />
+                    <TextBlock Text="{loc:Loc Operations.Filter.Provider}" Foreground="{DynamicResource Text.Secondary.Brush}" />
+                    <TextBlock Text="{Binding Entry.Provider}" Foreground="{DynamicResource Text.Primary.Brush}" />
+                    <TextBlock Text="{loc:Loc Operations.Filter.Type}" Foreground="{DynamicResource Text.Secondary.Brush}" />
+                    <TextBlock Text="{Binding TypeText}" Foreground="{DynamicResource Text.Primary.Brush}" />
+                    <TextBlock Text="{loc:Loc Operations.Filter.Status}" Foreground="{DynamicResource Text.Secondary.Brush}" />
+                    <views:StatusIndicatorView DataContext="{Binding Status}" />
+                    <TextBlock Text="{loc:Loc Operations.Details.When}" Foreground="{DynamicResource Text.Secondary.Brush}" />
+                    <StackPanel Orientation="Horizontal" Spacing="6">
+                        <TextBlock Text="{Binding Date}" Foreground="{DynamicResource Text.Primary.Brush}" />
+                        <TextBlock Text="{Binding Time}" Foreground="{DynamicResource Text.Primary.Brush}" />
+                    </StackPanel>
+                    <TextBlock Text="{loc:Loc Operations.Filter.Path}" Foreground="{DynamicResource Text.Secondary.Brush}" />
+                    <TextBlock Text="{Binding Entry.Path}" TextWrapping="Wrap" Foreground="{DynamicResource Text.Primary.Brush}" />
+                    <TextBlock Text="{loc:Loc Operations.Details.Size}" Foreground="{DynamicResource Text.Secondary.Brush}" />
+                    <TextBlock Text="{Binding SizeText}" Foreground="{DynamicResource Text.Primary.Brush}" />
+                </StackPanel>
+                <Button Content="{loc:Loc Operations.Details.Close}" Click="OnCloseDetails" />
+            </StackPanel>
+        </Border>
+        <TextBlock DockPanel.Dock="Top" Text="{Binding NoMatchesText}" IsVisible="{Binding HasNoRows}" Foreground="{DynamicResource Text.Secondary.Brush}" />
+        <ListBox ItemsSource="{Binding Rows}" SelectedItem="{Binding Details.Row, Mode=TwoWay}">
+            <ListBox.ItemTemplate>
+                <DataTemplate x:DataType="vm:OperationRowViewModel">
+                    <Grid ColumnDefinitions="110,70,130,140,*" ColumnSpacing="8">
+                        <TextBlock Grid.Column="0" Text="{Binding Date}" Foreground="{DynamicResource Text.Secondary.Brush}" />
+                        <TextBlock Grid.Column="1" Text="{Binding Time}" Foreground="{DynamicResource Text.Secondary.Brush}" />
+                        <TextBlock Grid.Column="2" Text="{Binding TypeText}" Foreground="{DynamicResource Text.Primary.Brush}" />
+                        <views:StatusIndicatorView Grid.Column="3" DataContext="{Binding Status}" />
+                        <TextBlock Grid.Column="4" Text="{Binding Entry.Path}" TextTrimming="CharacterEllipsis" Foreground="{DynamicResource Text.Primary.Brush}" />
+                    </Grid>
+                </DataTemplate>
+            </ListBox.ItemTemplate>
+        </ListBox>
+    </DockPanel>
+</UserControl>
