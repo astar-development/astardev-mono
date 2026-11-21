@@ -2,6 +2,7 @@ using AStarDev.CloudSync.IPC;
 using AStarDev.CloudSync.Observability;
 using AStarDev.CloudSync.UI.Localisation;
 using AStarDev.CloudSync.UI.Navigation;
+using AStarDev.CloudSync.UI.Notifications;
 using AStarDev.CloudSync.UI.Theming;
 using AStarDev.CloudSync.UI.Tray;
 using AStarDev.CloudSync.UI.ViewModels;
@@ -16,6 +17,7 @@ internal static class UiServiceCollectionExtensions
 {
     private static readonly TimeSpan InitialRetryDelay = TimeSpan.FromSeconds(1);
     private static readonly TimeSpan MaxRetryDelay = TimeSpan.FromSeconds(30);
+    private static readonly TimeSpan NotificationAggregationWindow = TimeSpan.FromMinutes(5);
 
     /// <summary>
     /// Registers telemetry, so the UI exports its IPC spans, metrics and logs to the <c>OpenTelemetry:OtlpEndpoint</c> setting the daemon uses. The UI
@@ -60,6 +62,9 @@ internal static class UiServiceCollectionExtensions
         services.AddSingleton(provider => new StatusBarViewModel(provider.GetRequiredService<ConnectionViewModel>(), provider.GetRequiredService<ILocalisationService>()));
         services.AddSingleton(provider => new MainViewModel(provider.GetRequiredService<INavigationService>(), provider.GetServices<IScreen>(), provider.GetRequiredService<StatusBarViewModel>()));
         services.AddSingleton<TrayLifecycle>();
+        services.AddSingleton<PlaceholderNotificationPresenter>();
+        services.AddSingleton<INotificationPresenter>(provider => provider.GetRequiredService<PlaceholderNotificationPresenter>());
+        services.AddSingleton<INotificationService>(provider => new NotificationService(provider.GetRequiredService<INotificationPresenter>(), provider.GetRequiredService<TrayLifecycle>(), provider.GetRequiredService<ILocalisationService>(), TimeProvider.System, NotificationAggregationWindow));
 
         return services;
     }
