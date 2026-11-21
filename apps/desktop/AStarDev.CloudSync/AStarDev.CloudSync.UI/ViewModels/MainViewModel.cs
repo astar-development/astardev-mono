@@ -1,57 +1,45 @@
+using AStarDev.CloudSync.UI.Navigation;
+
 namespace AStarDev.CloudSync.UI.ViewModels;
 
-/// <summary>State behind <see cref="Views.MainWindow"/>.</summary>
+/// <summary>State behind <see cref="Views.MainWindow"/>: the navigation rail, the screen in the content area and the status bar.</summary>
 public sealed class MainViewModel : ViewModelBase
 {
-    /// <summary>Creates the view model and starts listening for the moments the account list and folder tree may have changed.</summary>
-    /// <param name="connection">The app-wide daemon connection, shared rather than created here so its retry loop outlives any one view.</param>
-    /// <param name="connect">The account connection, kept here so its result survives the view being rebuilt.</param>
-    /// <param name="accounts">The account cards. Refreshed whenever the daemon link comes up and whenever a connect attempt finishes.</param>
-    /// <param name="folders">The remote folder tree. Listed afresh whenever the stored selection has been read and whenever a connect attempt succeeds.</param>
-    /// <param name="selection">The ticked folders, local folder and job. Read whenever the daemon link comes up, which then lists the tree so the stored ticks show.</param>
-    public MainViewModel(ConnectionViewModel connection, ConnectViewModel connect, AccountsViewModel accounts, FolderTreeViewModel folders, ScopeSelectionViewModel selection)
+    private readonly INavigationService navigation;
+
+    /// <summary>Creates the view model and follows the navigation service.</summary>
+    /// <param name="navigation">Decides the content. Navigating from anywhere updates <see cref="Content"/> and <see cref="SelectedDestination"/>.</param>
+    /// <param name="screens">Every registered screen. The primary ones become <see cref="Destinations"/>.</param>
+    /// <param name="statusBar">The permanent status bar.</param>
+    internal MainViewModel(INavigationService navigation, IEnumerable<IScreen> screens, StatusBarViewModel statusBar)
     {
-        Connection = connection;
-        Connect = connect;
-        Accounts = accounts;
-        Folders = folders;
-        Selection = selection;
-        connection.PropertyChanged += (_, args) =>
+        this.navigation = navigation;
+        StatusBar = statusBar;
+        var byId = screens.ToDictionary(screen => screen.Id);
+        Destinations = ScreenIds.Primary.Select(id => new DestinationViewModel(id, byId[id].Title, byId[id].Glyph)).ToList();
+        navigation.Navigated += (_, _) =>
         {
-            if (args.PropertyName == nameof(ConnectionViewModel.State) && connection.State == ConnectionState.Connected) RefreshAll();
+            OnPropertyChanged(nameof(Content));
+            OnPropertyChanged(nameof(SelectedDestination));
         };
-        connect.PropertyChanged += (_, args) =>
-        {
-            if (args.PropertyName != nameof(ConnectViewModel.IsBusy) || connect.IsBusy) return;
+    }
 
-            accounts.RefreshCommand.Execute(null);
-            if (connect.ErrorMessage is null) folders.RefreshCommand.Execute(null);
-        };
+    /// <summary>The rail entries in display order: Dashboard, Queue, Conflicts, Activity, History, Providers, Settings.</summary>
+    public IReadOnlyList<DestinationViewModel> Destinations { get; }
 
-        selection.PropertyChanged += (_, args) =>
-        {
-            if (args.PropertyName == nameof(ScopeSelectionViewModel.IsLoading) && !selection.IsLoading) folders.RefreshCommand.Execute(null);
-        };
+    /// <summary>The screen shown in the content area.</summary>
+    public IScreen Content => navigation.Current;
 
-        void RefreshAll()
+    /// <summary>The highlighted rail entry: the current screen, or Settings while an advanced screen is shown. Setting it navigates; <see langword="null"/> is ignored.</summary>
+    public DestinationViewModel? SelectedDestination
+    {
+        get => Destinations.FirstOrDefault(destination => destination.Id == ScreenIds.RailEntryOf(navigation.Current.Id));
+        set
         {
-            accounts.RefreshCommand.Execute(null);
-            selection.RefreshCommand.Execute(null);
+            if (value is not null) _ = navigation.Navigate(value.Id);
         }
     }
 
-    /// <summary>Daemon link state for the status banner.</summary>
-    public ConnectionViewModel Connection { get; }
-
-    /// <summary>Connect button, busy state, item count and errors.</summary>
-    public ConnectViewModel Connect { get; }
-
-    /// <summary>The connected accounts with their Disconnect and Reconnect buttons.</summary>
-    public AccountsViewModel Accounts { get; }
-
-    /// <summary>The remote folders, expanded level by level.</summary>
-    public FolderTreeViewModel Folders { get; }
-
-    /// <summary>The ticked folders with the local folder, bootstrap mode and Create job button.</summary>
-    public ScopeSelectionViewModel Selection { get; }
+    /// <summary>The permanent status bar.</summary>
+    public StatusBarViewModel StatusBar { get; }
 }

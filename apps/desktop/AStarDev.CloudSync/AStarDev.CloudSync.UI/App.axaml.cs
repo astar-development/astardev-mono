@@ -1,10 +1,10 @@
 using Avalonia;
+using Avalonia.Controls;
 using Avalonia.Controls.ApplicationLifetimes;
 using Avalonia.Markup.Xaml;
-using Avalonia.Threading;
-using AStarDev.CloudSync.IPC;
 using AStarDev.CloudSync.UI.Localisation;
 using AStarDev.CloudSync.UI.Theming;
+using AStarDev.CloudSync.UI.Tray;
 using AStarDev.CloudSync.UI.ViewModels;
 using AStarDev.CloudSync.UI.Views;
 using AStarDev.FunctionalParadigm;
@@ -18,9 +18,6 @@ public partial class App : Application
 {
     private const string DefaultTheme = "Dark";
 
-    private static readonly TimeSpan InitialRetryDelay = TimeSpan.FromSeconds(1);
-    private static readonly TimeSpan MaxRetryDelay = TimeSpan.FromSeconds(30);
-
     /// <summary>Loads the styles and resources declared in <c>App.axaml</c>.</summary>
     public override void Initialize() => AvaloniaXamlLoader.Load(this);
 
@@ -33,12 +30,13 @@ public partial class App : Application
     {
         if (ApplicationLifetime is IClassicDesktopStyleApplicationLifetime desktop)
         {
-            var socketPath = DaemonSocketPath.Resolve(Environment.GetEnvironmentVariable(ApplicationConstants.XdgRuntimeDirEnvironmentVariable));
-            var connection = new ConnectionViewModel(() => UnixSocketIpc.CreateClient(socketPath), InitialRetryDelay, MaxRetryDelay, action => Dispatcher.UIThread.Post(action));
             var builder = Host.CreateApplicationBuilder();
             builder.Services.AddCloudSyncUi();
             var host = builder.Build();
-            LocalisationHost.Service = host.Services.GetRequiredService<ILocalisationService>();
+            var localisation = host.Services.GetRequiredService<ILocalisationService>();
+            LocalisationHost.Service = localisation;
+            var connection = host.Services.GetRequiredService<ConnectionViewModel>();
+            _ = host.Services.GetRequiredService<RefreshCoordinator>();
             _ = host.Services.GetRequiredService<IThemeService>().Apply(DefaultTheme);
             var shutdown = new CancellationTokenSource();
             desktop.Exit += (_, _) =>
@@ -48,9 +46,14 @@ public partial class App : Application
             };
             _ = RunAsync(host, connection, shutdown.Token);
 
-            var window = new MainWindow();
-            var selection = new ScopeSelectionViewModel(() => UnixSocketIpc.CreateClient(socketPath), new AvaloniaFolderPicker(window));
-            window.DataContext = new MainViewModel(connection, new ConnectViewModel(() => UnixSocketIpc.CreateClient(socketPath)), new AccountsViewModel(() => UnixSocketIpc.CreateClient(socketPath)), new FolderTreeViewModel(() => UnixSocketIpc.CreateClient(socketPath), selection), selection);
+            var window = new MainWindow { DataContext = host.Services.GetRequiredService<MainViewModel>() };
+            var tray = host.Services.GetRequiredService<TrayLifecycle>();
+            host.Services.GetRequiredService<AvaloniaShell>().Attach(window, desktop);
+            window.Closing += (_, args) =>
+            {
+                if (args.CloseReason == WindowCloseReason.WindowClosing && tray.HandleWindowClosing()) args.Cancel = true;
+            };
+            TrayIcon.SetIcons(this, [TrayIconFactory.Create(tray, localisation)]);
             desktop.MainWindow = window;
         }
 
