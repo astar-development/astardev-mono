@@ -27,14 +27,17 @@ internal sealed class UnixSocketIpcServer(string socketPath, Action<IpcError>? o
     private Task<Result<Unit, IpcError>> serverLoop = Task.FromResult<Result<Unit, IpcError>>(new Ok<Unit>(default));
     private int disposed;
 
+    /// <inheritdoc/>
     public void MapCommand<TCommand>(Func<TCommand, CancellationToken, Task<Result<CommandResult, IpcError>>> handler)
         where TCommand : ICommand
         => commands[typeof(TCommand).Name] = (payload, cancellationToken) => RunAsync(payload, handler, cancellationToken);
 
+    /// <inheritdoc/>
     public void MapQuery<TQuery, TResult>(Func<TQuery, CancellationToken, Task<Result<TResult, IpcError>>> handler)
         where TQuery : IQuery<TResult>
         => queries[typeof(TQuery).Name] = (payload, cancellationToken) => RunAsync(payload, handler, cancellationToken);
 
+    /// <inheritdoc/>
     public Task<Result<Unit, IpcError>> StartAsync(CancellationToken cancellationToken)
     {
         if (cancellationToken.IsCancellationRequested)
@@ -50,6 +53,7 @@ internal sealed class UnixSocketIpcServer(string socketPath, Action<IpcError>? o
         });
     }
 
+    /// <inheritdoc/>
     public async Task<Result<Unit, IpcError>> PublishAsync<TEvent>(TEvent @event, CancellationToken cancellationToken)
         where TEvent : IEvent
     {
@@ -62,6 +66,7 @@ internal sealed class UnixSocketIpcServer(string socketPath, Action<IpcError>? o
         };
     }
 
+    /// <inheritdoc/>
     public async Task<Result<Unit, IpcError>> StopAsync(CancellationToken cancellationToken)
     {
         if (lifetime is null)
@@ -78,6 +83,7 @@ internal sealed class UnixSocketIpcServer(string socketPath, Action<IpcError>? o
         return serverLoop.IsCompletedSuccessfully ? serverLoop.Result : new Ok<Unit>(default);
     }
 
+    /// <summary>Stops the server as <see cref="StopAsync"/> does, without a way to cancel the wait. Safe to call more than once.</summary>
     public async ValueTask DisposeAsync()
     {
         if (Interlocked.Exchange(ref disposed, 1) == 1)

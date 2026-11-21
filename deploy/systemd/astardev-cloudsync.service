@@ -1,0 +1,13 @@
+[Unit]
+Description=AStarDev CloudSync daemon
+After=network-online.target
+Wants=network-online.target
+
+[Service]
+Type=exec
+ExecStart=/usr/bin/env dotnet %h/.local/share/astardev-cloudsync/AStarDev.CloudSync.Daemon.dll
+Restart=on-failure
+RestartSec=5
+
+[Install]
+WantedBy=default.target
