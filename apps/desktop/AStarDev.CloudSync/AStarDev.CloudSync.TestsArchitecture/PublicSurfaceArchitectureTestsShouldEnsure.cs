@@ -13,13 +13,13 @@ public sealed class PublicSurfaceArchitectureTestsShouldEnsure
     [Fact]
     public void the_domain_exposes_only_its_approved_public_types()
         => ShouldExposeExactly(typeof(ItemId).Assembly,
-            "AccountId", "ItemId", "ItemType", "RelativePath", "RemoteItemId", "SyncScope");
+            "Account", "AccountId", "DeltaToken", "ETag", "ItemId", "ItemType", "RelativePath", "RemoteItemId", "SnapshotId", "SyncJobId", "SyncScope");
 
     [Fact]
     public void the_ports_expose_only_their_approved_public_types()
         => ShouldExposeExactly(typeof(ICloudProvider).Assembly,
-            "AuthenticationFailed", "ICloudProvider", "Permanent", "ProviderAccount", "ProviderError",
-            "ProviderItem", "ProviderSnapshotPage", "RateLimited", "Transient");
+            "AccountAlreadyExists", "AccountNotFound", "AuthenticationFailed", "IAccountStore", "ICloudProvider", "Permanent", "ProviderAccount",
+            "ProviderError", "ProviderItem", "ProviderSnapshotPage", "RateLimited", "StorageFailed", "StoreError", "Transient");
 
     [Fact]
     public void ipc_exposes_only_its_approved_public_types_and_no_transport()
@@ -38,10 +38,15 @@ public sealed class PublicSurfaceArchitectureTestsShouldEnsure
         => ShouldExposeExactly(typeof(Observability.TelemetryServiceCollectionExtensions).Assembly, "CorrelationScope", "TelemetryServiceCollectionExtensions");
 
     [Fact]
+    public void persistence_exposes_only_its_approved_public_types()
+        => ShouldExposeExactly(typeof(Persistence.DatabaseOptions).Assembly,
+            "DatabaseError", "DatabaseMode", "DatabaseOptions", "DatabaseUnavailable", "IDatabaseInitialiser", "IDatabaseState",
+            "MigrationFailed", "PersistenceServiceCollectionExtensions");
+
+    [Fact]
     public void modules_without_real_members_expose_only_their_placeholder()
     {
         ShouldExposeExactly(typeof(OneDrive.Class1).Assembly, PlaceholderAnchor);
-        ShouldExposeExactly(typeof(Persistence.Class1).Assembly, PlaceholderAnchor);
         ShouldExposeExactly(typeof(SyncEngine.Class1).Assembly, PlaceholderAnchor);
     }
 

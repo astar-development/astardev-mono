@@ -52,7 +52,7 @@ public sealed class ArchitectureTestsShouldEnsure
     [Fact]
     public void persistence_does_not_depend_on_the_sync_engine() =>
         Types
-            .InAssembly(typeof(Persistence.Class1).Assembly)
+            .InAssembly(typeof(Persistence.DatabaseOptions).Assembly)
             .ShouldNot()
             .HaveDependencyOn("AStarDev.CloudSync.SyncEngine")
             .GetResult().IsSuccessful.ShouldBeTrue();
@@ -103,7 +103,7 @@ public sealed class ArchitectureTestsShouldEnsure
     {
         string[] forbidden = ["AStarDev.CloudSync.IPC", "AStarDev.CloudSync.UI", "AStarDev.CloudSync.Daemon"];
         ShouldNotDependOn(typeof(OneDrive.Class1).Assembly, forbidden);
-        ShouldNotDependOn(typeof(Persistence.Class1).Assembly, forbidden);
+        ShouldNotDependOn(typeof(Persistence.DatabaseOptions).Assembly, forbidden);
     }
 
     [Fact]
@@ -163,7 +163,7 @@ public sealed class ArchitectureTestsShouldEnsure
         typeof(IPC.IIpcClient).Assembly,
         typeof(Observability.TelemetryServiceCollectionExtensions).Assembly,
         typeof(OneDrive.Class1).Assembly,
-        typeof(Persistence.Class1).Assembly,
+        typeof(Persistence.DatabaseOptions).Assembly,
         typeof(SyncEngine.Class1).Assembly
     ];
 
