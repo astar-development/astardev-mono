@@ -38,6 +38,19 @@
                 </ItemsControl.ItemTemplate>
             </ItemsControl>
             <TextBlock Text="{Binding Accounts.ErrorMessage}" Foreground="Red" TextWrapping="Wrap" />
+            <TextBlock Text="Remote folders" FontWeight="SemiBold" />
+            <TreeView ItemsSource="{Binding Folders.Roots}" MaxHeight="400">
+                <TreeView.Styles>
+                    <Style Selector="TreeViewItem" x:DataType="vm:FolderNodeViewModel">
+                        <Setter Property="IsExpanded" Value="{Binding IsExpanded, Mode=TwoWay}" />
+                    </Style>
+                </TreeView.Styles>
+                <TreeView.ItemTemplate>
+                    <TreeDataTemplate x:DataType="vm:FolderNodeViewModel" ItemsSource="{Binding Children}">
+                        <TextBlock Text="{Binding Text}" />
+                    </TreeDataTemplate>
+                </TreeView.ItemTemplate>
+            </TreeView>
         </StackPanel>
     </DockPanel>
 

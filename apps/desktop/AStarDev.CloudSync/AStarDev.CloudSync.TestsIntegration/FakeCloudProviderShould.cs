@@ -31,6 +31,22 @@ public sealed class FakeCloudProviderShould
     }
 
     [Fact]
+    public async Task list_only_the_children_of_the_requested_parent()
+    {
+        var provider = new FakeCloudProvider(pageSize: 10);
+        var parent = new RemoteItemId("docs");
+        var child = new ProviderItem(new RemoteItemId("reports"), new RelativePath("docs/Reports"), ItemType.Folder, 0, DateTimeOffset.UnixEpoch);
+        provider.AddChild(parent, child);
+        provider.AddChild(new RemoteItemId("other"), child with { RemoteItemId = new RemoteItemId("elsewhere") });
+
+        var listed = await provider.ListChildrenAsync(parent, TestContext.Current.CancellationToken);
+        var empty = await provider.ListChildrenAsync(new RemoteItemId("unknown"), TestContext.Current.CancellationToken);
+
+        listed.Value.ShouldBeOfType<Ok<IReadOnlyList<ProviderItem>>>().Value.ShouldBe([child]);
+        empty.Value.ShouldBeOfType<Ok<IReadOnlyList<ProviderItem>>>().Value.ShouldBeEmpty();
+    }
+
+    [Fact]
     public async Task fail_as_scripted_then_succeed()
     {
         var provider = new FakeCloudProvider(pageSize: 10);

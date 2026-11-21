@@ -32,4 +32,6 @@ internal static class ApplicationConstants
     public static string AccountConnectedText => "Connected";
 
     public static string ReauthenticationRequiredText => "Sign in again to resume syncing";
+
+    public static string LoadingFoldersText => "Loading...";
 }

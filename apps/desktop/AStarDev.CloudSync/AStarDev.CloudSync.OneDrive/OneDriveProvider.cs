@@ -35,4 +35,9 @@ internal sealed class OneDriveProvider(IOptions<OneDriveSettings> settings, ITok
     /// <remarks>Without a successful <see cref="ConnectAsync"/> first, Graph refuses the request and the result is <see cref="AuthenticationFailed"/>.</remarks>
     public Task<Result<ProviderSnapshotPage, ProviderError>> GetSnapshotAsync(SyncScope scope, CancellationToken cancellationToken)
         => enumerator.GetSnapshotAsync(scope, cancellationToken);
+
+    /// <inheritdoc/>
+    /// <remarks>Without a successful <see cref="ConnectAsync"/> first, Graph refuses the request and the result is <see cref="AuthenticationFailed"/>.</remarks>
+    public Task<Result<IReadOnlyList<ProviderItem>, ProviderError>> ListChildrenAsync(RemoteItemId parent, CancellationToken cancellationToken)
+        => enumerator.ListChildrenAsync(parent, cancellationToken);
 }

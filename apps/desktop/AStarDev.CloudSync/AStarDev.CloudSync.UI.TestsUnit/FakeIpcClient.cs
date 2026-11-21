@@ -13,6 +13,10 @@ internal sealed class FakeIpcClient(List<string> calls, bool available) : IIpcCl
 
     public Result<AccountsView, IpcError> AccountsReply { get; init; } = new Ok<AccountsView>(new AccountsView([]));
 
+    public Func<GetRemoteFolders, Result<RemoteFoldersView, IpcError>> FoldersReply { get; init; } = _ => new Ok<RemoteFoldersView>(new RemoteFoldersView([]));
+
+    public List<GetRemoteFolders> FolderQueries { get; } = [];
+
     public List<ICommand> Sent { get; } = [];
 
     public TaskCompletionSource? HoldCommand { get; init; }
@@ -52,8 +56,16 @@ internal sealed class FakeIpcClient(List<string> calls, bool available) : IIpcCl
         {
             GetRemoteRootSummary => (Result<TResult, IpcError>)(object)SummaryReply,
             GetAccounts => (Result<TResult, IpcError>)(object)AccountsReply,
+            GetRemoteFolders folders => (Result<TResult, IpcError>)(object)Record(folders),
             _ => new Ok<TResult>((TResult)(object)Status)
         });
+    }
+
+    private Result<RemoteFoldersView, IpcError> Record(GetRemoteFolders query)
+    {
+        FolderQueries.Add(query);
+
+        return FoldersReply(query);
     }
 
     public void OnEvent<TEvent>(Action<TEvent> handler)

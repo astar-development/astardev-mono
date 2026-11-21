@@ -14,7 +14,11 @@ internal sealed class StubCloudProvider : ICloudProvider
 
     public Result<Unit, ProviderError> DisconnectResult { get; init; } = new Ok<Unit>(default);
 
+    public Result<IReadOnlyList<ProviderItem>, ProviderError> ChildrenResult { get; init; } = new Ok<IReadOnlyList<ProviderItem>>([]);
+
     public List<SyncScope> Scopes { get; } = [];
+
+    public List<RemoteItemId> Parents { get; } = [];
 
     public List<string> Reconnected { get; } = [];
 
@@ -50,6 +54,16 @@ internal sealed class StubCloudProvider : ICloudProvider
 
         return Task.FromResult(SnapshotResult);
     }
+
+    public Task<Result<IReadOnlyList<ProviderItem>, ProviderError>> ListChildrenAsync(RemoteItemId parent, CancellationToken cancellationToken)
+    {
+        cancellationToken.ThrowIfCancellationRequested();
+        Parents.Add(parent);
+
+        return Task.FromResult(ChildrenResult);
+    }
+
+    public static ProviderItem Folder(string id, string path) => new(new RemoteItemId(id), new RelativePath(path), ItemType.Folder, 0, DateTimeOffset.UnixEpoch);
 
     public static ProviderItem Item(string id) => new(new RemoteItemId(id), new RelativePath(id), ItemType.File, 1, DateTimeOffset.UnixEpoch);
 }

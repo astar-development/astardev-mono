@@ -27,8 +27,8 @@ public sealed class PublicSurfaceArchitectureTestsShouldEnsure
             [
              "AccountConnected", "AccountDisconnected", "AccountState", "AccountView", "AccountsView", "CommandOutcome", "CommandResult", "ConnectAccount",
              "ConnectionFailed", "ConnectionLost", "DaemonState", "DaemonStatusChanged", "DaemonStatusView", "DisconnectAccount", "FrameTooLarge",
-             "GetAccounts", "GetDaemonStatus", "GetRemoteRootSummary", "HandlerFailed", "ICommand",
-             "IEvent", "IIpcClient", "IIpcServer", "IpcError", "IQuery`1", "ListenFailed", "MalformedFrame", "NotConnected", "RemoteRootSummaryView",
+             "GetAccounts", "GetDaemonStatus", "GetRemoteFolders", "GetRemoteRootSummary", "HandlerFailed", "ICommand",
+             "IEvent", "IIpcClient", "IIpcServer", "IpcError", "IQuery`1", "ListenFailed", "MalformedFrame", "NotConnected", "RemoteFolderView", "RemoteFoldersView", "RemoteRootSummaryView",
              "UnixSocketIpc"]);
 
     [Fact]

@@ -12,10 +12,19 @@ internal sealed class RootEnumerator(HttpClient client, OneDriveTelemetry teleme
 {
     /// <summary>Fetches every page under the scope's root and returns the items as a single <see cref="ProviderSnapshotPage"/>.</summary>
     /// <returns>All items, or the first <see cref="ProviderError"/> met; items from earlier pages are dropped on failure. Cancellation propagates as <see cref="OperationCanceledException"/>.</returns>
-    public Task<Result<ProviderSnapshotPage, ProviderError>> GetSnapshotAsync(SyncScope scope, CancellationToken cancellationToken)
-        => CollectAsync($"me/drive/items/{Uri.EscapeDataString(scope.RemoteRootId.Value)}/children", [], cancellationToken);
+    public async Task<Result<ProviderSnapshotPage, ProviderError>> GetSnapshotAsync(SyncScope scope, CancellationToken cancellationToken)
+        => await ListChildrenAsync(scope.RemoteRootId, cancellationToken).ConfigureAwait(false) switch
+        {
+            Ok<IReadOnlyList<ProviderItem>> ok => new Ok<ProviderSnapshotPage>(new ProviderSnapshotPage(ok.Value)),
+            Fail<ProviderError> fail => fail
+        };
 
-    private async Task<Result<ProviderSnapshotPage, ProviderError>> CollectAsync(string url, List<ProviderItem> items, CancellationToken cancellationToken)
+    /// <summary>Fetches every page of children of one folder.</summary>
+    /// <returns>All children, or the first <see cref="ProviderError"/> met; items from earlier pages are dropped on failure. Cancellation propagates as <see cref="OperationCanceledException"/>.</returns>
+    public Task<Result<IReadOnlyList<ProviderItem>, ProviderError>> ListChildrenAsync(RemoteItemId parent, CancellationToken cancellationToken)
+        => CollectAsync($"me/drive/items/{Uri.EscapeDataString(parent.Value)}/children", [], cancellationToken);
+
+    private async Task<Result<IReadOnlyList<ProviderItem>, ProviderError>> CollectAsync(string url, List<ProviderItem> items, CancellationToken cancellationToken)
     {
         var page = await GetPageAsync(url, cancellationToken).ConfigureAwait(false);
 
@@ -26,13 +35,13 @@ internal sealed class RootEnumerator(HttpClient client, OneDriveTelemetry teleme
         };
     }
 
-    private async Task<Result<ProviderSnapshotPage, ProviderError>> ContinueAsync(GraphChildrenPage page, List<ProviderItem> items, CancellationToken cancellationToken)
+    private async Task<Result<IReadOnlyList<ProviderItem>, ProviderError>> ContinueAsync(GraphChildrenPage page, List<ProviderItem> items, CancellationToken cancellationToken)
     {
         items.AddRange((page.Value ?? []).Select(DriveItemMapping.ToProviderItem));
 
         return page.NextLink is { } next
             ? await CollectAsync(next, items, cancellationToken).ConfigureAwait(false)
-            : new Ok<ProviderSnapshotPage>(new ProviderSnapshotPage(items));
+            : new Ok<IReadOnlyList<ProviderItem>>(items);
     }
 
     private async Task<Result<GraphChildrenPage, ProviderError>> GetPageAsync(string url, CancellationToken cancellationToken)
