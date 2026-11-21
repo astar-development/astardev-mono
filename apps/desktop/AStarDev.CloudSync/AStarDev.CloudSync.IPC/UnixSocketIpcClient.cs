@@ -1,5 +1,6 @@
 using System.Collections.Concurrent;
 using System.Collections.Immutable;
+using System.Diagnostics;
 using System.Net.Sockets;
 using System.Text.Json;
 using AStarDev.FunctionalParadigm;
@@ -42,15 +43,15 @@ internal sealed class UnixSocketIpcClient(string socketPath, Action<IpcError>? o
 
     /// <inheritdoc/>
     public Task<Result<CommandResult, IpcError>> SendAsync(ICommand command, CancellationToken cancellationToken)
-        => RequestAsync<CommandResult>(command, (id, payload) => new CommandEnvelope(id, command.GetType().Name, payload), cancellationToken);
+        => RequestAsync<CommandResult>(ApplicationConstants.CommandKind, command.GetType().Name, command, (id, payload) => new CommandEnvelope(id, command.GetType().Name, payload), cancellationToken);
 
     /// <inheritdoc/>
     public Task<Result<TResult, IpcError>> QueryAsync<TResult>(IQuery<TResult> query, CancellationToken cancellationToken)
-        => RequestAsync<TResult>(query, (id, payload) => new QueryEnvelope(id, query.GetType().Name, payload), cancellationToken);
+        => RequestAsync<TResult>(ApplicationConstants.QueryKind, query.GetType().Name, query, (id, payload) => new QueryEnvelope(id, query.GetType().Name, payload), cancellationToken);
 
     /// <inheritdoc/>
     public Task<Result<Unit, IpcError>> SubscribeAsync(CancellationToken cancellationToken)
-        => RequestAsync<Unit>(default(Unit), (id, _) => new SubscribeEnvelope(id), cancellationToken);
+        => RequestAsync<Unit>(ApplicationConstants.SubscribeKind, ApplicationConstants.SubscribeMessageType, default(Unit), (id, _) => new SubscribeEnvelope(id), cancellationToken);
 
     /// <inheritdoc/>
     public void OnEvent<TEvent>(Action<TEvent> handler) where TEvent : IEvent
@@ -110,24 +111,30 @@ internal sealed class UnixSocketIpcClient(string socketPath, Action<IpcError>? o
     private Result<Unit, IpcError> Attach(Socket socket)
     {
         channel = new EnvelopeChannel(new NetworkStream(socket, ownsSocket: true));
+        IpcTelemetry.ConnectionOpened(ApplicationConstants.ClientSide);
         readLoop = ReadLoopAsync(channel, closing.Token);
 
         return new Ok<Unit>(default);
     }
 
-    private async Task<Result<TResponse, IpcError>> RequestAsync<TResponse>(object message, Func<long, JsonElement, RequestEnvelope> create, CancellationToken cancellationToken)
+    private async Task<Result<TResponse, IpcError>> RequestAsync<TResponse>(string kind, string type, object message, Func<long, JsonElement, RequestEnvelope> create, CancellationToken cancellationToken)
     {
         cancellationToken.ThrowIfCancellationRequested();
 
-        return IpcJson.ToElement(message) switch
+        using var activity = IpcTelemetry.StartClientRequest(kind, type);
+        var started = Stopwatch.GetTimestamp();
+        Result<TResponse, IpcError> result = IpcJson.ToElement(message) switch
         {
-            Ok<JsonElement> payload => await ExchangeAsync(id => create(id, payload.Value), cancellationToken) switch
+            Ok<JsonElement> payload => await ExchangeAsync(id => IpcTelemetry.Inject(create(id, payload.Value), activity), cancellationToken) switch
             {
                 Ok<JsonElement> response => IpcJson.FromElement<TResponse>(response.Value),
                 Fail<IpcError> exchangeFailure => exchangeFailure
             },
             Fail<IpcError> encodeFailure => encodeFailure
         };
+        IpcTelemetry.CompleteRequest(activity, ApplicationConstants.ClientSide, kind, type, started, result);
+
+        return result;
     }
 
     private async Task<Result<JsonElement, IpcError>> ExchangeAsync(Func<long, RequestEnvelope> create, CancellationToken cancellationToken)
@@ -176,6 +183,7 @@ internal sealed class UnixSocketIpcClient(string socketPath, Action<IpcError>? o
         }
         finally
         {
+            IpcTelemetry.ConnectionClosed(ApplicationConstants.ClientSide);
             disconnected.TrySetResult();
             foreach (var id in pending.Keys)
             {
@@ -196,13 +204,18 @@ internal sealed class UnixSocketIpcClient(string socketPath, Action<IpcError>? o
                 refused.TrySetResult(new Fail<IpcError>(new HandlerFailed(error.Message)));
                 break;
             case EventEnvelope @event when eventHandlers.TryGetValue(@event.Type, out var handlers):
-                foreach (var handle in handlers)
-                {
-                    if (handle(@event.Payload) is Fail<IpcError> failure)
-                        report(failure.Error);
-                }
-
+                Handle(@event, handlers);
                 break;
+        }
+    }
+
+    private void Handle(EventEnvelope @event, ImmutableList<Func<JsonElement, Result<Unit, IpcError>>> handlers)
+    {
+        using var activity = IpcTelemetry.StartEventReceive(@event);
+        foreach (var handle in handlers)
+        {
+            if (handle(@event.Payload) is Fail<IpcError> failure)
+                report(failure.Error);
         }
     }
 }

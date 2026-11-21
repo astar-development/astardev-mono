@@ -17,8 +17,20 @@ namespace AStarDev.CloudSync.IPC;
 [JsonDerivedType(typeof(EventEnvelope), ApplicationConstants.EventKind)]
 internal abstract record Envelope;
 
+/// <summary>An envelope that can carry the W3C trace context of the span that sent it, so the receiving span joins the same trace. Both fields are omitted from the wire when empty.</summary>
+internal abstract record TracedEnvelope : Envelope
+{
+    /// <summary>The sender's span as a W3C <c>traceparent</c> value. <see langword="null"/> when the sender is not being traced.</summary>
+    [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
+    public string? Traceparent { get; init; }
+
+    /// <summary>The W3C <c>tracestate</c> value that goes with <see cref="Traceparent"/>. <see langword="null"/> when there is none.</summary>
+    [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
+    public string? Tracestate { get; init; }
+}
+
 /// <summary>Client request, answered by a <see cref="ResponseEnvelope"/> or an <see cref="ErrorEnvelope"/> with the same id.</summary>
-internal abstract record RequestEnvelope(long Id) : Envelope;
+internal abstract record RequestEnvelope(long Id) : TracedEnvelope;
 
 /// <summary>Carries an <see cref="ICommand"/>. <paramref name="Type"/> is the command's type name, which picks the server handler.</summary>
 internal sealed record CommandEnvelope(long Id, string Type, JsonElement Payload) : RequestEnvelope(Id);
@@ -36,7 +48,7 @@ internal sealed record ResponseEnvelope(long Id, JsonElement Payload) : Envelope
 internal sealed record ErrorEnvelope(long Id, string Message) : Envelope;
 
 /// <summary>Server push to subscribed connections. Has no id because nothing answers it; <paramref name="Type"/> picks the handlers registered with <see cref="IIpcClient.OnEvent{TEvent}"/>.</summary>
-internal sealed record EventEnvelope(string Type, JsonElement Payload) : Envelope;
+internal sealed record EventEnvelope(string Type, JsonElement Payload) : TracedEnvelope;
 
 /// <summary>Every call here can throw on bad input, so each is wrapped and returned as a <see cref="Result{TResult, TError}"/>.</summary>
 internal static class IpcJson
