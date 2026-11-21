@@ -1,4 +1,5 @@
 using Aspire.Hosting;
+using Microsoft.Extensions.Logging.Abstractions;
 
 namespace AStarDev.AppHost.TestsIntegration;
 
@@ -39,16 +40,19 @@ public sealed class AppHostShould
 
         var daemon = builder.Resources.Single(resource => resource.Name == "CloudSyncDaemon");
         var ui = builder.Resources.Single(resource => resource.Name == "CloudSync");
-        var daemonPath = await EnvironmentValue(daemon, "Ipc__SocketPath");
-        var uiPath = await EnvironmentValue(ui, "Ipc__SocketPath");
+        var daemonPath = await EnvironmentValue(builder.ExecutionContext, daemon, "Ipc__SocketPath", cancellationToken);
+        var uiPath = await EnvironmentValue(builder.ExecutionContext, ui, "Ipc__SocketPath", cancellationToken);
         daemonPath.ShouldNotBeNullOrWhiteSpace();
         uiPath.ShouldBe(daemonPath);
     }
 
-    static async Task<string?> EnvironmentValue(IResource resource, string name)
+    private static async Task<string?> EnvironmentValue(DistributedApplicationExecutionContext executionContext, IResource resource, string name, CancellationToken cancellationToken)
     {
-        var values = await ((IResourceWithEnvironment)resource).GetEnvironmentVariableValuesAsync(DistributedApplicationOperation.Run);
+        var configuration = await ExecutionConfigurationBuilder
+            .Create(resource)
+            .WithEnvironmentVariablesConfig()
+            .BuildAsync(executionContext, NullLogger.Instance, cancellationToken);
 
-        return values.GetValueOrDefault(name);
+        return configuration.EnvironmentVariables.FirstOrDefault(variable => variable.Key == name).Value;
     }
 }
