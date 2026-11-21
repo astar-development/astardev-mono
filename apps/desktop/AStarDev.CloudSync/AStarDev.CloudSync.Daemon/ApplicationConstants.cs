@@ -26,4 +26,6 @@ internal static class ApplicationConstants
     public static string BackgroundServicesStageName => "Background services";
 
     public static string AcceptConnectionsStageName => "Accept connections";
+
+    public static string DriveRootItemId => "root";
 }

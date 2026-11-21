@@ -3,11 +3,11 @@ using AStarDev.FunctionalParadigm;
 
 namespace AStarDev.CloudSync.OneDrive;
 
-/// <summary>Signs in to OneDrive and keeps the token cache in the <see cref="ITokenCacheStore"/>.</summary>
-internal sealed class OneDriveConnector(ITokenCacheStore store, IBrowserSignIn signIn)
+/// <summary>Signs in to OneDrive, keeps the token cache in the <see cref="ITokenCacheStore"/> and hands the access token to the <see cref="AccessTokenHolder"/>.</summary>
+internal sealed class OneDriveConnector(ITokenCacheStore store, AccessTokenHolder holder, IBrowserSignIn signIn)
 {
     /// <summary>Loads the stored token cache, runs the browser sign-in with it, and saves the updated cache before returning the account.</summary>
-    /// <returns>The signed-in account, or a <see cref="ProviderError"/> when the keyring cannot be read or written or sign-in fails. Nothing is saved after a failed sign-in.</returns>
+    /// <returns>The signed-in account, or a <see cref="ProviderError"/> when the keyring cannot be read or written or sign-in fails. Nothing is saved and no token is kept after a failed sign-in.</returns>
     public async Task<Result<ProviderAccount, ProviderError>> ConnectAsync(CancellationToken cancellationToken)
     {
         var loaded = await store.LoadAsync(cancellationToken).ConfigureAwait(false);
@@ -36,8 +36,15 @@ internal sealed class OneDriveConnector(ITokenCacheStore store, IBrowserSignIn s
 
         return saved switch
         {
-            Ok<Unit> => new Ok<ProviderAccount>(outcome.Account),
+            Ok<Unit> => Authorised(outcome),
             Fail<ProviderError> fail => fail
         };
+    }
+
+    private Ok<ProviderAccount> Authorised(SignInOutcome outcome)
+    {
+        holder.Set(outcome.AccessToken);
+
+        return new Ok<ProviderAccount>(outcome.Account);
     }
 }

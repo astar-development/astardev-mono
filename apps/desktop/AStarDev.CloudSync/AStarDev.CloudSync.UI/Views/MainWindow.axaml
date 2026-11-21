@@ -13,6 +13,15 @@
         <Border DockPanel.Dock="Top" Padding="8" Background="{DynamicResource SystemControlBackgroundBaseLowBrush}">
             <TextBlock Text="{Binding Connection.StatusText}" />
         </Border>
+        <StackPanel Margin="16" Spacing="8">
+            <Button Content="Connect OneDrive" Command="{Binding Connect.ConnectCommand}" HorizontalAlignment="Left" />
+            <StackPanel Orientation="Horizontal" Spacing="8" IsVisible="{Binding Connect.IsBusy}">
+                <ProgressBar IsIndeterminate="True" Width="120" />
+                <TextBlock Text="Waiting for sign-in in your browser..." />
+            </StackPanel>
+            <TextBlock Text="{Binding Connect.ItemCountText}" />
+            <TextBlock Text="{Binding Connect.ErrorMessage}" Foreground="Red" TextWrapping="Wrap" />
+        </StackPanel>
     </DockPanel>
 
 </Window>

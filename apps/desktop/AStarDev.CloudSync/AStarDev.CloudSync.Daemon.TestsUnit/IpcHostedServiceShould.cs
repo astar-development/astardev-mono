@@ -9,11 +9,18 @@ public sealed class IpcHostedServiceShould
 {
     private static CancellationToken Token => TestContext.Current.CancellationToken;
 
+    private static IpcHostedService Create(FakeIpcServer server)
+    {
+        var provider = new StubCloudProvider();
+
+        return new IpcHostedService(server, new ConnectAccountHandler(provider, server, NullLogger<ConnectAccountHandler>.Instance), new RootSummaryQuery(provider), TimeProvider.System, NullLogger<IpcHostedService>.Instance);
+    }
+
     [Fact]
     public async Task stop_the_server_when_stopped()
     {
         var server = new FakeIpcServer([]);
-        var service = new IpcHostedService(server, TimeProvider.System, NullLogger<IpcHostedService>.Instance);
+        var service = Create(server);
 
         await service.StopAsync(Token);
 
@@ -23,7 +30,7 @@ public sealed class IpcHostedServiceShould
     [Fact]
     public async Task honour_cancellation_when_starting()
     {
-        var service = new IpcHostedService(new FakeIpcServer([]), TimeProvider.System, NullLogger<IpcHostedService>.Instance);
+        var service = Create(new FakeIpcServer([]));
         using var source = new CancellationTokenSource();
         await source.CancelAsync();
 
@@ -33,7 +40,7 @@ public sealed class IpcHostedServiceShould
     [Fact]
     public async Task honour_cancellation_when_stopping()
     {
-        var service = new IpcHostedService(new FakeIpcServer([]), TimeProvider.System, NullLogger<IpcHostedService>.Instance);
+        var service = Create(new FakeIpcServer([]));
         using var source = new CancellationTokenSource();
         await source.CancelAsync();
 
@@ -43,7 +50,7 @@ public sealed class IpcHostedServiceShould
     [Fact]
     public async Task return_a_startup_error_for_the_accept_connections_stage_when_the_server_cannot_listen()
     {
-        var service = new IpcHostedService(new FakeIpcServer([], new ListenFailed("address in use")), TimeProvider.System, NullLogger<IpcHostedService>.Instance);
+        var service = Create(new FakeIpcServer([], new ListenFailed("address in use")));
 
         var result = await service.ListenAsync(Token);
 
@@ -62,7 +69,7 @@ public sealed class IpcHostedServiceShould
 
         foreach (var failure in failures)
         {
-            var service = new IpcHostedService(new FakeIpcServer([], failure), TimeProvider.System, NullLogger<IpcHostedService>.Instance);
+            var service = Create(new FakeIpcServer([], failure));
 
             var result = await service.ListenAsync(Token);
 
@@ -74,7 +81,7 @@ public sealed class IpcHostedServiceShould
     public async Task return_success_once_the_server_is_listening()
     {
         var ran = new List<string>();
-        var service = new IpcHostedService(new FakeIpcServer(ran), TimeProvider.System, NullLogger<IpcHostedService>.Instance);
+        var service = Create(new FakeIpcServer(ran));
 
         var result = await service.ListenAsync(Token);
 
@@ -85,7 +92,7 @@ public sealed class IpcHostedServiceShould
     [Fact]
     public async Task fail_the_host_start_with_the_startup_error_when_the_server_cannot_listen()
     {
-        var service = new IpcHostedService(new FakeIpcServer([], new ListenFailed("address in use")), TimeProvider.System, NullLogger<IpcHostedService>.Instance);
+        var service = Create(new FakeIpcServer([], new ListenFailed("address in use")));
 
         var exception = await Should.ThrowAsync<StartupFailedException>(() => service.StartAsync(Token));
 

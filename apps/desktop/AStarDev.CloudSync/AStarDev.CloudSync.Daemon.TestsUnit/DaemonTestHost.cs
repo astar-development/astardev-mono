@@ -1,5 +1,7 @@
 using AStarDev.CloudSync.Persistence;
+using AStarDev.CloudSync.Ports;
 using Microsoft.Extensions.DependencyInjection;
+using Microsoft.Extensions.DependencyInjection.Extensions;
 using Microsoft.Extensions.Hosting;
 
 namespace AStarDev.CloudSync.Daemon.TestsUnit;
@@ -25,6 +27,9 @@ internal sealed class DaemonTestHost(IHost host, string socketPath, string datab
 
         return new DaemonTestHost(builder.Build(), socketPath, databasePath);
     }
+
+    public static DaemonTestHost CreateWith(ICloudProvider provider)
+        => Create(configureServices: services => services.RemoveAll<ICloudProvider>().AddSingleton(provider));
 
     public Task StartAsync(CancellationToken cancellationToken) => host.StartAsync(cancellationToken);
 

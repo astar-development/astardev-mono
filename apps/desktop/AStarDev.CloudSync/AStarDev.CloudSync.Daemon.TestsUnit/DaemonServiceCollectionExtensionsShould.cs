@@ -2,6 +2,7 @@ using System.Diagnostics;
 using AStarDev.CloudSync.Daemon.Startup;
 using AStarDev.CloudSync.IPC;
 using AStarDev.CloudSync.Persistence;
+using AStarDev.CloudSync.Ports;
 using AStarDev.FunctionalParadigm;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Diagnostics.HealthChecks;
@@ -32,6 +33,14 @@ public sealed class DaemonServiceCollectionExtensionsShould
             "Background services",
             "Accept connections"
         ]);
+    }
+
+    [Fact]
+    public async Task register_onedrive_as_the_cloud_provider()
+    {
+        await using var host = DaemonTestHost.Create();
+
+        host.Services.GetRequiredService<ICloudProvider>().GetType().FullName.ShouldBe("AStarDev.CloudSync.OneDrive.OneDriveProvider");
     }
 
     [Fact]
