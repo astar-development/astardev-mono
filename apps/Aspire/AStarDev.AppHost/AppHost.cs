@@ -18,6 +18,9 @@ var daemon = builder.AddDotnetProject("CloudSyncDaemon", Project("../../desktop/
     .WithEnvironment("Ipc__SocketPath", socketPath)
     .WithEnvironment("OpenTelemetry__OtlpEndpoint", otlpEndpoint);
 
+if (builder.Configuration["OneDrive:ClientId"] is { Length: > 0 } oneDriveClientId)
+    daemon.WithEnvironment("OneDrive__ClientId", oneDriveClientId);
+
 builder.AddDotnetProject("CloudSync", Project("../../desktop/AStarDev.CloudSync/AStarDev.CloudSync.UI/AStarDev.CloudSync.UI.csproj"))
     .WithEnvironment("Ipc__SocketPath", socketPath)
     .WithEnvironment("ApplicationInsights__ConnectionString", "")

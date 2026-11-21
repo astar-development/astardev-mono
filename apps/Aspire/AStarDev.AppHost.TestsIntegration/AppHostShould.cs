@@ -46,6 +46,18 @@ public sealed class AppHostShould
         uiPath.ShouldBe(daemonPath);
     }
 
+    [Fact]
+    public async Task forward_the_onedrive_client_id_to_the_daemon()
+    {
+        var cancellationToken = TestContext.Current.CancellationToken;
+        var builder = await DistributedApplicationTestingBuilder.CreateAsync<Projects.AStarDev_AppHost>(["OneDrive:ClientId=test-client-id"], cancellationToken);
+
+        await using var app = await builder.BuildAsync(cancellationToken);
+
+        var daemon = builder.Resources.Single(resource => resource.Name == "CloudSyncDaemon");
+        (await EnvironmentValue(builder.ExecutionContext, daemon, "OneDrive__ClientId", cancellationToken)).ShouldBe("test-client-id");
+    }
+
     private static async Task<string?> EnvironmentValue(DistributedApplicationExecutionContext executionContext, IResource resource, string name, CancellationToken cancellationToken)
     {
         var configuration = await ExecutionConfigurationBuilder
