@@ -32,12 +32,11 @@ public sealed class ResultShould
         Result<int, string> success = new Ok<int>(42);
         Result<int, string> failure = new Fail<string>("boom");
 
-        Describe(success).ShouldBe("ok 42");
-        Describe(failure).ShouldBe("fail boom");
+        DescribeExhaustively(success).ShouldBe("ok 42");
+        DescribeExhaustively(failure).ShouldBe("fail boom");
     }
 
-    // No discard arm: the build fails (CS8509) if the union stops being exhaustive.
-    private static string Describe(Result<int, string> result) => result switch
+    private static string DescribeExhaustively(Result<int, string> result) => result switch
     {
         Ok<int> ok => $"ok {ok.Value}",
         Fail<string> fail => $"fail {fail.Error}"

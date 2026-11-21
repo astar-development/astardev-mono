@@ -13,7 +13,7 @@ public sealed class ProviderErrorsShould
             new Permanent("access denied")
         ];
 
-        errors.Select(Describe).ShouldBe(["rate limited", "transient", "authentication failed", "permanent"]);
+        errors.Select(DescribeExhaustively).ShouldBe(["rate limited", "transient", "authentication failed", "permanent"]);
     }
 
     [Fact]
@@ -24,8 +24,7 @@ public sealed class ProviderErrorsShould
         error.Value.ShouldBeOfType<RateLimited>().RetryAfter.ShouldBe(TimeSpan.FromSeconds(30));
     }
 
-    // No discard arm: the build fails (CS8509) if the union gains or loses a case.
-    private static string Describe(ProviderError error) => error switch
+    private static string DescribeExhaustively(ProviderError error) => error switch
     {
         RateLimited => "rate limited",
         Transient => "transient",

@@ -37,7 +37,7 @@ internal static class FrameCodec
             return default(Unit);
         }, cancellationToken);
 
-        return written.MapError(IpcErrors.AsConnectionLost);
+        return written.ToResult(IpcErrors.AsConnectionLost);
     }
 
     public static async Task<Result<FrameRead, IpcError>> ReadAsync(Stream stream, CancellationToken cancellationToken)
@@ -45,7 +45,7 @@ internal static class FrameCodec
         var header = new byte[HeaderSize];
         var headerBytes = await Try.RunAsync(token => ReadUpToAsync(stream, header, token), cancellationToken);
 
-        return headerBytes.MapError(IpcErrors.AsConnectionLost) switch
+        return headerBytes.ToResult(IpcErrors.AsConnectionLost) switch
         {
             Ok<int> { Value: 0 } => new Ok<FrameRead>(new EndOfStream()),
             Ok<int> { Value: < HeaderSize } => new Fail<IpcError>(new MalformedFrame("The stream ended inside a frame header.")),
@@ -57,20 +57,14 @@ internal static class FrameCodec
     private static async Task<Result<FrameRead, IpcError>> ReadPayloadAsync(Stream stream, int length, CancellationToken cancellationToken)
     {
         // refused from the header alone, before any payload is allocated or read
-        if (length < 0)
-        {
-            return new Fail<IpcError>(new MalformedFrame($"A frame cannot have a length of {length}."));
-        }
+        if (length < 0) return new Fail<IpcError>(new MalformedFrame($"A frame cannot have a length of {length}."));
 
-        if (length > MaxFrameSize)
-        {
-            return new Fail<IpcError>(new FrameTooLarge(length, MaxFrameSize));
-        }
+        if (length > MaxFrameSize) return new Fail<IpcError>(new FrameTooLarge(length, MaxFrameSize));
 
         var payload = new byte[length];
         var payloadBytes = await Try.RunAsync(token => ReadUpToAsync(stream, payload, token), cancellationToken);
 
-        return payloadBytes.MapError(IpcErrors.AsConnectionLost) switch
+        return payloadBytes.ToResult(IpcErrors.AsConnectionLost) switch
         {
             Ok<int> { Value: var read } when read < length => new Fail<IpcError>(new MalformedFrame("The stream ended inside a frame payload.")),
             Ok<int> => new Ok<FrameRead>(new Frame(payload)),
@@ -85,10 +79,7 @@ internal static class FrameCodec
         while (read < buffer.Length)
         {
             var count = await stream.ReadAsync(buffer.AsMemory(read), cancellationToken);
-            if (count == 0)
-            {
-                break;
-            }
+            if (count == 0) break;
 
             read += count;
         }

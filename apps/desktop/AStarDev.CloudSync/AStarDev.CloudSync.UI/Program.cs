@@ -1,7 +1,7 @@
 ﻿using Avalonia;
 using System;
 
-namespace AStarDev.CloudSync;
+namespace AStarDev.CloudSync.UI;
 
 sealed class Program
 {

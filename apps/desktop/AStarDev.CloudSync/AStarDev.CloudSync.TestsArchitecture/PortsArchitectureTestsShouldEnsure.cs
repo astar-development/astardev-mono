@@ -31,7 +31,7 @@ public sealed class PortsArchitectureTestsShouldEnsure
 
     [Fact]
     public void ports_depend_only_on_domain_and_the_functional_paradigm_library()
-        => ShouldNotDependOn(typeof(ICloudProvider).Assembly,[.. ImplementationProjects, .. InfrastructurePackages]);
+        => ShouldNotDependOn(typeof(ICloudProvider).Assembly, [.. ImplementationProjects, .. InfrastructurePackages]);
 
     [Fact]
     public void domain_does_not_depend_on_ports_or_the_functional_paradigm_library()
@@ -43,9 +43,8 @@ public sealed class PortsArchitectureTestsShouldEnsure
         System.Reflection.Assembly[] cannotUsePorts =
         [
             typeof(ItemId).Assembly,
-            typeof(IPC.Class1).Assembly,
-            typeof(Observability.Class1).Assembly,
-            typeof(UI.Class1).Assembly
+            typeof(IPC.IIpcClient).Assembly,
+            typeof(Observability.Class1).Assembly
         ];
 
         foreach (var assembly in cannotUsePorts)

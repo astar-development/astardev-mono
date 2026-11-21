@@ -46,7 +46,6 @@ public sealed class FrameCodecShould
     [Fact]
     public async Task return_a_failure_for_an_oversize_frame()
     {
-        // a peer announcing an oversized frame is refused from the header alone, before any payload is read
         using var stream = new MemoryStream(Header(FrameCodec.MaxFrameSize + 1));
 
         var failure = (await FrameCodec.ReadAsync(stream, Token)).ShouldFail();
@@ -70,14 +69,21 @@ public sealed class FrameCodecShould
         using var stream = new MemoryStream();
         (await FrameCodec.WriteAsync(stream, new byte[10], Token)).ShouldSucceed();
 
-        // payload cut short
-        stream.SetLength(stream.Length - 1);
-        stream.Position = 0;
-        (await FrameCodec.ReadAsync(stream, Token)).ShouldFail().Value.ShouldBeOfType<MalformedFrame>();
+        await PayloadCutShortShouldBeMalformedAsync();
+        await HeaderCutShortShouldBeMalformedAsync();
 
-        // header cut short
-        using var halfHeader = new MemoryStream(Header(10)[..2]);
-        (await FrameCodec.ReadAsync(halfHeader, Token)).ShouldFail().Value.ShouldBeOfType<MalformedFrame>();
+        async Task PayloadCutShortShouldBeMalformedAsync()
+        {
+            stream.SetLength(stream.Length - 1);
+            stream.Position = 0;
+            (await FrameCodec.ReadAsync(stream, Token)).ShouldFail().Value.ShouldBeOfType<MalformedFrame>();
+        }
+
+        async Task HeaderCutShortShouldBeMalformedAsync()
+        {
+            using var halfHeader = new MemoryStream(Header(10)[..2]);
+            (await FrameCodec.ReadAsync(halfHeader, Token)).ShouldFail().Value.ShouldBeOfType<MalformedFrame>();
+        }
     }
 
     [Fact]
@@ -118,7 +124,7 @@ public sealed class FrameCodecShould
     [Fact]
     public async Task honour_cancellation_while_waiting_for_a_frame()
     {
-        await using var stream = new SilentStream();
+        await using var stream = new StreamThatBlocksReadsUntilCancelled();
         using var cancelling = new CancellationTokenSource();
 
         var pending = FrameCodec.ReadAsync(stream, cancelling.Token);
@@ -127,8 +133,7 @@ public sealed class FrameCodecShould
         await ResultAssertions.ShouldBeCancelledAsync(async () => await pending);
     }
 
-    /// <summary>A peer that never says anything: every read waits until it is cancelled.</summary>
-    private sealed class SilentStream : Stream
+    private sealed class StreamThatBlocksReadsUntilCancelled : Stream
     {
         public override bool CanRead => true;
         public override bool CanSeek => false;
