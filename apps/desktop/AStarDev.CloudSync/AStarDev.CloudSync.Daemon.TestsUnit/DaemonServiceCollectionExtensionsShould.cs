@@ -44,6 +44,19 @@ public sealed class DaemonServiceCollectionExtensionsShould
     }
 
     [Fact]
+    public async Task reconnect_stored_accounts_before_the_daemon_accepts_connections()
+    {
+        var provider = new StubCloudProvider();
+        await using var host = DaemonTestHost.CreateWith(provider);
+        await host.AddAccountAsync("acct-1", Domain.AccountStatus.Connected, Token);
+
+        await host.StartAsync(Token);
+        await host.StopAsync(Token);
+
+        provider.Reconnected.ShouldBe(["acct-1"]);
+    }
+
+    [Fact]
     public async Task start_the_ipc_server_only_after_the_startup_sequence()
     {
         await using var host = DaemonTestHost.Create();

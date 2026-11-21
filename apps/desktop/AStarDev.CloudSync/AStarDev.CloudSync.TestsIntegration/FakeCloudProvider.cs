@@ -39,6 +39,20 @@ internal sealed class FakeCloudProvider(int pageSize) : ICloudProvider
         return Task.FromResult(result);
     }
 
+    public Task<Result<ProviderAccount, ProviderError>> ReconnectAsync(string accountIdentifier, CancellationToken cancellationToken)
+    {
+        cancellationToken.ThrowIfCancellationRequested();
+
+        return Task.FromResult<Result<ProviderAccount, ProviderError>>(new Ok<ProviderAccount>(new ProviderAccount(accountIdentifier, "Fake Account")));
+    }
+
+    public Task<Result<Unit, ProviderError>> DisconnectAsync(string accountIdentifier, CancellationToken cancellationToken)
+    {
+        cancellationToken.ThrowIfCancellationRequested();
+
+        return Task.FromResult<Result<Unit, ProviderError>>(new Ok<Unit>(default));
+    }
+
     public Task<Result<ProviderSnapshotPage, ProviderError>> GetSnapshotAsync(SyncScope scope, CancellationToken cancellationToken)
     {
         cancellationToken.ThrowIfCancellationRequested();

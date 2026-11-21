@@ -11,6 +11,8 @@ internal sealed class FakeIpcClient(List<string> calls, bool available) : IIpcCl
 
     public Result<RemoteRootSummaryView, IpcError> SummaryReply { get; init; } = new Ok<RemoteRootSummaryView>(new RemoteRootSummaryView(0));
 
+    public Result<AccountsView, IpcError> AccountsReply { get; init; } = new Ok<AccountsView>(new AccountsView([]));
+
     public List<ICommand> Sent { get; } = [];
 
     public TaskCompletionSource? HoldCommand { get; init; }
@@ -49,6 +51,7 @@ internal sealed class FakeIpcClient(List<string> calls, bool available) : IIpcCl
         return Task.FromResult(query switch
         {
             GetRemoteRootSummary => (Result<TResult, IpcError>)(object)SummaryReply,
+            GetAccounts => (Result<TResult, IpcError>)(object)AccountsReply,
             _ => new Ok<TResult>((TResult)(object)Status)
         });
     }

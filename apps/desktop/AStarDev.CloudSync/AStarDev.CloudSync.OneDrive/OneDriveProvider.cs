@@ -18,6 +18,20 @@ internal sealed class OneDriveProvider(IOptions<OneDriveSettings> settings, ITok
         };
 
     /// <inheritdoc/>
+    /// <remarks>The client id is read from the <c>OneDrive:ClientId</c> setting on every call; a missing one is an <see cref="AuthenticationFailed"/> value that says so. The token cache holds a single sign-in, so only one account can be reconnected at a time.</remarks>
+    public async Task<Result<ProviderAccount, ProviderError>> ReconnectAsync(string accountIdentifier, CancellationToken cancellationToken)
+        => OneDriveOptions.Create(settings.Value.ClientId) switch
+        {
+            Ok<OneDriveOptions> options => await new OneDriveReconnector(store, holder, new MsalSilentSignIn(options.Value)).ReconnectAsync(accountIdentifier, cancellationToken).ConfigureAwait(false),
+            Fail<ProviderError> fail => fail
+        };
+
+    /// <inheritdoc/>
+    /// <remarks>Removes the whole Secret Service entry, because the token cache holds a single sign-in, and drops the access token held in memory. Needs no client id.</remarks>
+    public Task<Result<Unit, ProviderError>> DisconnectAsync(string accountIdentifier, CancellationToken cancellationToken)
+        => new OneDriveDisconnector(store, holder).DisconnectAsync(cancellationToken);
+
+    /// <inheritdoc/>
     /// <remarks>Without a successful <see cref="ConnectAsync"/> first, Graph refuses the request and the result is <see cref="AuthenticationFailed"/>.</remarks>
     public Task<Result<ProviderSnapshotPage, ProviderError>> GetSnapshotAsync(SyncScope scope, CancellationToken cancellationToken)
         => enumerator.GetSnapshotAsync(scope, cancellationToken);

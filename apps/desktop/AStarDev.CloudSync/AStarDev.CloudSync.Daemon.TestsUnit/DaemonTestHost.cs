@@ -1,3 +1,4 @@
+using AStarDev.CloudSync.Domain;
 using AStarDev.CloudSync.Persistence;
 using AStarDev.CloudSync.Ports;
 using Microsoft.Extensions.DependencyInjection;
@@ -30,6 +31,18 @@ internal sealed class DaemonTestHost(IHost host, string socketPath, string datab
 
     public static DaemonTestHost CreateWith(ICloudProvider provider)
         => Create(configureServices: services => services.RemoveAll<ICloudProvider>().AddSingleton(provider));
+
+    public async Task InitialiseDatabaseAsync(CancellationToken cancellationToken)
+        => await Services.GetRequiredService<IDatabaseInitialiser>().InitialiseAsync(cancellationToken);
+
+    public async Task<Account> AddAccountAsync(string identifier, AccountStatus status, CancellationToken cancellationToken)
+    {
+        await InitialiseDatabaseAsync(cancellationToken);
+        var account = new Account(new AccountId(Guid.NewGuid()), "OneDrive", $"{identifier}@example.com", identifier, DateTimeOffset.UnixEpoch, status);
+        await Services.GetRequiredService<IAccountStore>().AddAsync(account, cancellationToken);
+
+        return account;
+    }
 
     public Task StartAsync(CancellationToken cancellationToken) => host.StartAsync(cancellationToken);
 

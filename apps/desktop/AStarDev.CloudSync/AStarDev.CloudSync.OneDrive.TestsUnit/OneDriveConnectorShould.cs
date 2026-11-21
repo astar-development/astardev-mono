@@ -83,6 +83,9 @@ public sealed class OneDriveConnectorShould
 
         public Task<Result<byte[], ProviderError>> LoadAsync(CancellationToken cancellationToken) => Task.FromResult(LoadResult);
 
+        public Task<Result<Unit, ProviderError>> ClearAsync(CancellationToken cancellationToken)
+            => Task.FromResult<Result<Unit, ProviderError>>(new Ok<Unit>(default));
+
         public Task<Result<Unit, ProviderError>> SaveAsync(byte[] cache, CancellationToken cancellationToken)
         {
             Saved = cache;

@@ -1,6 +1,7 @@
 using AStarDev.CloudSync.Daemon.Startup;
 using AStarDev.CloudSync.IPC;
 using AStarDev.FunctionalParadigm;
+using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging.Abstractions;
 
 namespace AStarDev.CloudSync.Daemon.TestsUnit;
@@ -11,9 +12,16 @@ public sealed class IpcHostedServiceShould
 
     private static IpcHostedService Create(FakeIpcServer server)
     {
-        var provider = new StubCloudProvider();
+        var services = DaemonTestHost.CreateWith(new StubCloudProvider()).Services;
 
-        return new IpcHostedService(server, new ConnectAccountHandler(provider, server, NullLogger<ConnectAccountHandler>.Instance), new RootSummaryQuery(provider), TimeProvider.System, NullLogger<IpcHostedService>.Instance);
+        return new IpcHostedService(
+            server,
+            services.GetRequiredService<ConnectAccountHandler>(),
+            services.GetRequiredService<DisconnectAccountHandler>(),
+            services.GetRequiredService<AccountsQuery>(),
+            services.GetRequiredService<RootSummaryQuery>(),
+            TimeProvider.System,
+            NullLogger<IpcHostedService>.Instance);
     }
 
     [Fact]

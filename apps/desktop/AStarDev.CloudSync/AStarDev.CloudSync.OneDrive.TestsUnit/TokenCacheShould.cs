@@ -20,6 +20,16 @@ public sealed class TokenCacheShould
     }
 
     [Fact]
+    public async Task fail_to_clear_when_secret_service_is_unavailable()
+    {
+        var store = new SecretToolTokenCacheStore(MissingTool);
+
+        var cleared = await store.ClearAsync(TestContext.Current.CancellationToken);
+
+        cleared.Value.ShouldBeOfType<Fail<ProviderError>>().Error.Value.ShouldBeOfType<AuthenticationFailed>().Message.ShouldContain("Secret Service");
+    }
+
+    [Fact]
     public async Task never_fall_back_to_a_file()
     {
         var before = TokenFiles();
@@ -40,6 +50,7 @@ public sealed class TokenCacheShould
 
         await Should.ThrowAsync<OperationCanceledException>(() => store.LoadAsync(cancelled.Token));
         await Should.ThrowAsync<OperationCanceledException>(() => store.SaveAsync([1], cancelled.Token));
+        await Should.ThrowAsync<OperationCanceledException>(() => store.ClearAsync(cancelled.Token));
     }
 
     private static string[] TokenFiles()

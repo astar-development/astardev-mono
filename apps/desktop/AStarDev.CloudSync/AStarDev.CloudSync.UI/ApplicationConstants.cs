@@ -26,4 +26,10 @@ internal static class ApplicationConstants
     public static string OneItemText => "1 item in the drive root";
 
     public static string ItemCountFormat => "{0} items in the drive root";
+
+    public static string RequestRejectedText => "The daemon declined the request.";
+
+    public static string AccountConnectedText => "Connected";
+
+    public static string ReauthenticationRequiredText => "Sign in again to resume syncing";
 }

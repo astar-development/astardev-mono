@@ -1,3 +1,4 @@
+using AStarDev.CloudSync.Domain;
 using AStarDev.CloudSync.IPC;
 using AStarDev.CloudSync.Ports;
 using AStarDev.FunctionalParadigm;
@@ -27,6 +28,55 @@ public sealed class ConnectAccountHandlerShould
 
         result.Value.ShouldBeOfType<Ok<CommandResult>>().Value.Outcome.ShouldBe(CommandOutcome.Accepted);
         connected.DisplayName.ShouldBe("Ada");
+    }
+
+    [Fact]
+    public async Task store_the_account_after_connecting()
+    {
+        await using var host = DaemonTestHost.CreateWith(new StubCloudProvider());
+        await using var client = UnixSocketIpc.CreateClient(host.SocketPath);
+        await host.StartAsync(Token);
+        (await client.ConnectAsync(Token)).Value.ShouldBeOfType<Ok<Unit>>();
+
+        await client.SendAsync(new ConnectAccount(), Token);
+        var stored = await host.Services.GetRequiredService<IAccountStore>().ListAsync(Token);
+        await host.StopAsync(Token);
+
+        var account = stored.Value.ShouldBeOfType<Ok<IReadOnlyList<Account>>>().Value.ShouldHaveSingleItem();
+        account.ProviderType.ShouldBe("OneDrive");
+        account.DisplayName.ShouldBe("Ada");
+        account.AccountIdentifier.ShouldBe("id");
+        account.Status.ShouldBe(AccountStatus.Connected);
+    }
+
+    [Fact]
+    public async Task mark_a_known_account_connected_again_instead_of_adding_a_second()
+    {
+        await using var host = DaemonTestHost.CreateWith(new StubCloudProvider());
+        var known = await host.AddAccountAsync("id", AccountStatus.ReauthenticationRequired, Token);
+        await using var client = UnixSocketIpc.CreateClient(host.SocketPath);
+        await host.StartAsync(Token);
+        (await client.ConnectAsync(Token)).Value.ShouldBeOfType<Ok<Unit>>();
+
+        var result = await client.SendAsync(new ConnectAccount(), Token);
+        var stored = await host.Services.GetRequiredService<IAccountStore>().ListAsync(Token);
+        await host.StopAsync(Token);
+
+        result.Value.ShouldBeOfType<Ok<CommandResult>>().Value.Outcome.ShouldBe(CommandOutcome.Accepted);
+        stored.Value.ShouldBeOfType<Ok<IReadOnlyList<Account>>>().Value.ShouldBe([known with { Status = AccountStatus.Connected }]);
+    }
+
+    [Fact]
+    public async Task reject_when_the_account_cannot_be_stored()
+    {
+        await using var host = DaemonTestHost.CreateWith(new StubCloudProvider());
+        var handler = host.Services.GetRequiredService<ConnectAccountHandler>();
+
+        var result = await handler.HandleAsync(new ConnectAccount(), Token);
+
+        var reply = result.Value.ShouldBeOfType<Ok<CommandResult>>().Value;
+        reply.Outcome.ShouldBe(CommandOutcome.Rejected);
+        reply.Message!.ShouldContain("could not be saved");
     }
 
     [Fact]

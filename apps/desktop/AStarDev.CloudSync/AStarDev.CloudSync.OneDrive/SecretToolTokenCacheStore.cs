@@ -37,6 +37,20 @@ internal sealed class SecretToolTokenCacheStore(string executable = "secret-tool
         };
     }
 
+    /// <inheritdoc/>
+    /// <remarks>Exit code 1 with nothing on stderr means there was no entry, which counts as cleared.</remarks>
+    public async Task<Result<Unit, ProviderError>> ClearAsync(CancellationToken cancellationToken)
+    {
+        var run = await RunAsync(["clear", .. Attributes], null, cancellationToken).ConfigureAwait(false);
+
+        return run.ToResult(AuthenticationErrors.From) switch
+        {
+            Ok<ToolRun> { Value.ExitCode: 0 } => new Ok<Unit>(default),
+            Ok<ToolRun> { Value: { ExitCode: 1, StdErr: "" } } => new Ok<Unit>(default),
+            _ => new Fail<ProviderError>(new AuthenticationFailed(Unavailable))
+        };
+    }
+
     private static Result<byte[], ProviderError> Decode(string text)
         => Try.Run(() => Convert.FromBase64String(text.Trim())).ToResult(AuthenticationErrors.From) switch
         {

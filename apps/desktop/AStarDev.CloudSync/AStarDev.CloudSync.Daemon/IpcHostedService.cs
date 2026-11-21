@@ -7,7 +7,7 @@ using Microsoft.Extensions.Logging;
 namespace AStarDev.CloudSync.Daemon;
 
 /// <summary>Serves the IPC contract. Registered after <see cref="StartupHostedService"/>, so it only listens once every recovery stage has finished.</summary>
-internal sealed class IpcHostedService(IIpcServer server, ConnectAccountHandler connectAccount, RootSummaryQuery rootSummary, TimeProvider timeProvider, ILogger<IpcHostedService> logger) : IHostedService
+internal sealed class IpcHostedService(IIpcServer server, ConnectAccountHandler connectAccount, DisconnectAccountHandler disconnectAccount, AccountsQuery accounts, RootSummaryQuery rootSummary, TimeProvider timeProvider, ILogger<IpcHostedService> logger) : IHostedService
 {
     private static readonly string Version = typeof(IpcHostedService).Assembly.GetName().Version?.ToString() ?? ApplicationConstants.UnknownVersion;
 
@@ -23,6 +23,8 @@ internal sealed class IpcHostedService(IIpcServer server, ConnectAccountHandler 
         var status = new DaemonStatusView(DaemonState.Running, Version, timeProvider.GetUtcNow());
         server.MapQuery((GetDaemonStatus _, CancellationToken _) => AnswerStatus(status));
         server.MapCommand<ConnectAccount>(connectAccount.HandleAsync);
+        server.MapCommand<DisconnectAccount>(disconnectAccount.HandleAsync);
+        server.MapQuery<GetAccounts, AccountsView>(accounts.HandleAsync);
         server.MapQuery<GetRemoteRootSummary, RemoteRootSummaryView>(rootSummary.HandleAsync);
 
         return await server.StartAsync(cancellationToken) switch

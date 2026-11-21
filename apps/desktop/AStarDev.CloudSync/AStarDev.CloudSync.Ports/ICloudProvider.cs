@@ -14,6 +14,18 @@ public interface ICloudProvider
     /// <returns>The connected account, or <see cref="AuthenticationFailed"/> when the credentials are refused.</returns>
     Task<Result<ProviderAccount, ProviderError>> ConnectAsync(CancellationToken cancellationToken);
 
+    /// <summary>Signs in again from the stored sign-in, without opening a browser. Call at start-up for every stored account.</summary>
+    /// <param name="accountIdentifier">The provider's id for the account, as <see cref="ProviderAccount.AccountIdentifier"/> reported it.</param>
+    /// <param name="cancellationToken">Cancelling abandons the attempt and surfaces as <see cref="OperationCanceledException"/>, never as a <see cref="ProviderError"/>.</param>
+    /// <returns>The account, <see cref="AuthenticationFailed"/> when the stored sign-in is missing or no longer accepted and the user must sign in again, or <see cref="Transient"/> when the provider could not be reached.</returns>
+    Task<Result<ProviderAccount, ProviderError>> ReconnectAsync(string accountIdentifier, CancellationToken cancellationToken);
+
+    /// <summary>Forgets the stored sign-in of an account, so nothing about it remains on this machine.</summary>
+    /// <param name="accountIdentifier">The provider's id for the account.</param>
+    /// <param name="cancellationToken">Cancelling abandons the removal.</param>
+    /// <returns>Success, also when there was nothing stored; or the reason the stored sign-in could not be removed. Safe to call twice.</returns>
+    Task<Result<Unit, ProviderError>> DisconnectAsync(string accountIdentifier, CancellationToken cancellationToken);
+
     /// <summary>Lists the remote items under the scope's root as they are now, one page at a time.</summary>
     /// <param name="scope">The remote folder to list.</param>
     /// <param name="cancellationToken">Cancelling abandons the listing and surfaces as <see cref="OperationCanceledException"/>, never as a <see cref="ProviderError"/>.</param>

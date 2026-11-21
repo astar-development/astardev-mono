@@ -58,6 +58,50 @@ internal sealed class AccountStore(IDbContextFactory<CloudSyncDbContext> context
         return outcome.ToResult(ToStorageFailure);
     }
 
+    /// <inheritdoc/>
+    public async Task<Result<Unit, StoreError>> UpdateStatusAsync(AccountId id, AccountStatus status, CancellationToken cancellationToken)
+    {
+        var outcome = await Try.RunAsync(async token =>
+        {
+            await using var context = await contextFactory.CreateDbContextAsync(token).ConfigureAwait(false);
+            var entity = await context.Accounts.SingleOrDefaultAsync(account => account.Id == id, token).ConfigureAwait(false);
+            if (entity is null) return false;
+
+            entity.Status = status;
+            await context.SaveChangesAsync(token).ConfigureAwait(false);
+
+            return true;
+        }, cancellationToken).ConfigureAwait(false);
+
+        return ToUnitResult(outcome, id);
+    }
+
+    /// <inheritdoc/>
+    public async Task<Result<Unit, StoreError>> RemoveAsync(AccountId id, CancellationToken cancellationToken)
+    {
+        var outcome = await Try.RunAsync(async token =>
+        {
+            await using var context = await contextFactory.CreateDbContextAsync(token).ConfigureAwait(false);
+            var entity = await context.Accounts.SingleOrDefaultAsync(account => account.Id == id, token).ConfigureAwait(false);
+            if (entity is null) return false;
+
+            context.Accounts.Remove(entity);
+            await context.SaveChangesAsync(token).ConfigureAwait(false);
+
+            return true;
+        }, cancellationToken).ConfigureAwait(false);
+
+        return ToUnitResult(outcome, id);
+    }
+
+    private static Result<Unit, StoreError> ToUnitResult(Exceptional<bool> outcome, AccountId id)
+        => outcome.ToResult(ToStorageFailure) switch
+        {
+            Ok<bool> { Value: true } => new Ok<Unit>(default),
+            Ok<bool> => new Fail<StoreError>(new AccountNotFound(id)),
+            Fail<StoreError> fail => fail
+        };
+
     private static bool IsConstraintViolation(Exception exception)
         => exception is DbUpdateException { InnerException: SqliteException { SqliteErrorCode: SqliteConstraint } };
 
