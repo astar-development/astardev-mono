@@ -1,0 +1,35 @@
+<UserControl xmlns="https://github.com/avaloniaui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:vm="using:AStarDev.CloudSync.UI.ViewModels"
+             xmlns:screens="using:AStarDev.CloudSync.UI.ViewModels.Screens"
+             xmlns:loc="using:AStarDev.CloudSync.UI.Localisation"
+             x:Class="AStarDev.CloudSync.UI.Views.Screens.ProvidersView"
+             x:DataType="screens:ProvidersViewModel">
+    <StackPanel Margin="16" Spacing="8">
+        <TextBlock Text="{Binding Title}" FontSize="24" FontWeight="SemiBold" Foreground="{DynamicResource Text.Primary.Brush}" />
+        <Button Content="{loc:Loc Common.Connect}" Command="{Binding Connect.ConnectCommand}" HorizontalAlignment="Left" />
+        <StackPanel Orientation="Horizontal" Spacing="8" IsVisible="{Binding Connect.IsBusy}">
+            <ProgressBar IsIndeterminate="True" Width="120" />
+            <TextBlock Text="{loc:Loc Common.WaitingForSignIn}" />
+        </StackPanel>
+        <TextBlock Text="{Binding Connect.ItemCountText}" />
+        <TextBlock Text="{Binding Connect.ErrorMessage}" Foreground="{DynamicResource Trust.Critical.Brush}" TextWrapping="Wrap" />
+        <ItemsControl ItemsSource="{Binding Accounts.Accounts}">
+            <ItemsControl.ItemTemplate>
+                <DataTemplate x:DataType="vm:AccountCardViewModel">
+                    <Border BorderThickness="1" BorderBrush="{DynamicResource Border.Brush}" Padding="8" Margin="0,0,0,8">
+                        <StackPanel Spacing="4">
+                            <TextBlock Text="{Binding DisplayName}" FontWeight="SemiBold" />
+                            <TextBlock Text="{Binding StatusText}" />
+                            <StackPanel Orientation="Horizontal" Spacing="8">
+                                <Button Content="{loc:Loc Common.Reconnect}" Command="{Binding ReconnectCommand}" IsVisible="{Binding CanReconnect}" />
+                                <Button Content="{loc:Loc Common.Disconnect}" Command="{Binding DisconnectCommand}" />
+                            </StackPanel>
+                        </StackPanel>
+                    </Border>
+                </DataTemplate>
+            </ItemsControl.ItemTemplate>
+        </ItemsControl>
+        <TextBlock Text="{Binding Accounts.ErrorMessage}" Foreground="{DynamicResource Trust.Critical.Brush}" TextWrapping="Wrap" />
+    </StackPanel>
+</UserControl>

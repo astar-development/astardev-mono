@@ -1,0 +1,8 @@
+{
+  "Tray.ToolTip": "CloudSync",
+  "Tray.OpenDashboard": "Open Dashboard",
+  "Tray.PauseSync": "Pause Sync",
+  "Tray.ResumeSync": "Resume Sync",
+  "Tray.Settings": "Settings",
+  "Tray.Exit": "Exit CloudSync"
+}
