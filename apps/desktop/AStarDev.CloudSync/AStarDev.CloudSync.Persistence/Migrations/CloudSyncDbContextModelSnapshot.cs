@@ -12,7 +12,7 @@ namespace AStarDev.CloudSync.Persistence.Migrations;
 [DbContext(typeof(CloudSyncDbContext))]
 internal sealed partial class CloudSyncDbContextModelSnapshot : ModelSnapshot
 {
-    public override string LastMigrationId => "20261121111750_InitialSchema";
+    public override string LastMigrationId => "20261121140713_AddAccountStatus";
 
     protected override void BuildModel(ModelBuilder modelBuilder)
     {
@@ -38,6 +38,12 @@ internal sealed partial class CloudSyncDbContextModelSnapshot : ModelSnapshot
                 b.Property<string>("ProviderType")
                     .IsRequired()
                     .HasColumnType("TEXT");
+
+                b.Property<string>("Status")
+                    .IsRequired()
+                    .ValueGeneratedOnAdd()
+                    .HasColumnType("TEXT")
+                    .HasDefaultValue("Connected");
 
                 b.HasKey("Id");
 

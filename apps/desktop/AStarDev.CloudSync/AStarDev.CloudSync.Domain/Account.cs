@@ -6,4 +6,5 @@ namespace AStarDev.CloudSync.Domain;
 /// <param name="DisplayName">The name shown to the user.</param>
 /// <param name="AccountIdentifier">The provider's own id for the account. Unique per <paramref name="ProviderType"/>.</param>
 /// <param name="CreatedUtc">When the account was first connected.</param>
-public sealed record Account(AccountId Id, string ProviderType, string DisplayName, string AccountIdentifier, DateTimeOffset CreatedUtc);
+/// <param name="Status">Whether the stored sign-in still works. Defaults to <see cref="AccountStatus.Connected"/> for a newly connected account.</param>
+public sealed record Account(AccountId Id, string ProviderType, string DisplayName, string AccountIdentifier, DateTimeOffset CreatedUtc, AccountStatus Status = AccountStatus.Connected);

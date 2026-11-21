@@ -46,6 +46,7 @@ internal sealed class CloudSyncDbContext(DbContextOptions<CloudSyncDbContext> op
         modelBuilder.Entity<AccountEntity>(account =>
         {
             account.ToTable("Accounts").HasKey(entity => entity.Id);
+            account.Property(entity => entity.Status).HasConversion<string>().HasDefaultValue(AccountStatus.Connected);
             account.HasIndex(entity => new { entity.ProviderType, entity.AccountIdentifier }).IsUnique();
         });
 

@@ -35,6 +35,9 @@ internal static class DaemonServiceCollectionExtensions
         services.AddSingleton(provider => UnixSocketIpc.CreateServer(provider.GetRequiredService<IOptions<IpcOptions>>().Value.SocketPath));
         services.AddSingleton<ConnectAccountHandler>();
         services.AddSingleton<RootSummaryQuery>();
+        services.AddSingleton<DisconnectAccountHandler>();
+        services.AddSingleton<AccountsQuery>();
+        services.AddHealthChecks().AddCheck<ProviderHealthCheck>(ApplicationConstants.ProviderHealthCheckName);
         services.AddHostedService<IpcHostedService>();
 
         return services;

@@ -10,4 +10,7 @@ internal sealed class AccessTokenHolder
 
     /// <summary>Replaces the held token. Requests already in flight keep the token they started with.</summary>
     public void Set(string token) => current = token;
+
+    /// <summary>Forgets the held token, so later requests carry none. Safe to call when nothing is held.</summary>
+    public void Clear() => current = null;
 }

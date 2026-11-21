@@ -64,6 +64,60 @@ public sealed class AccountStoreShould
     }
 
     [Fact]
+    public async Task keep_the_updated_status()
+    {
+        await using var host = await PersistenceTestHost.CreateInitialisedAsync(Token);
+        var store = host.Services.GetRequiredService<IAccountStore>();
+        var account = NewAccount("acct-1");
+        await store.AddAsync(account, Token);
+
+        var updated = await store.UpdateStatusAsync(account.Id, AccountStatus.ReauthenticationRequired, Token);
+        var found = await store.GetAsync(account.Id, Token);
+
+        updated.Value.ShouldBeOfType<Ok<Unit>>();
+        found.Value.ShouldBeOfType<Ok<Account>>().Value.ShouldBe(account with { Status = AccountStatus.ReauthenticationRequired });
+    }
+
+    [Fact]
+    public async Task report_an_unknown_account_when_updating_the_status()
+    {
+        await using var host = await PersistenceTestHost.CreateInitialisedAsync(Token);
+        var store = host.Services.GetRequiredService<IAccountStore>();
+        var id = new AccountId(Guid.NewGuid());
+
+        var result = await store.UpdateStatusAsync(id, AccountStatus.Connected, Token);
+
+        result.Value.ShouldBeOfType<Fail<StoreError>>().Error.Value.ShouldBe(new AccountNotFound(id));
+    }
+
+    [Fact]
+    public async Task forget_a_removed_account()
+    {
+        await using var host = await PersistenceTestHost.CreateInitialisedAsync(Token);
+        var store = host.Services.GetRequiredService<IAccountStore>();
+        var account = NewAccount("acct-1");
+        await store.AddAsync(account, Token);
+
+        var removed = await store.RemoveAsync(account.Id, Token);
+        var found = await store.GetAsync(account.Id, Token);
+
+        removed.Value.ShouldBeOfType<Ok<Unit>>();
+        found.Value.ShouldBeOfType<Fail<StoreError>>().Error.Value.ShouldBe(new AccountNotFound(account.Id));
+    }
+
+    [Fact]
+    public async Task report_an_unknown_account_when_removing()
+    {
+        await using var host = await PersistenceTestHost.CreateInitialisedAsync(Token);
+        var store = host.Services.GetRequiredService<IAccountStore>();
+        var id = new AccountId(Guid.NewGuid());
+
+        var result = await store.RemoveAsync(id, Token);
+
+        result.Value.ShouldBeOfType<Fail<StoreError>>().Error.Value.ShouldBe(new AccountNotFound(id));
+    }
+
+    [Fact]
     public async Task report_storage_failure_when_the_database_has_no_schema()
     {
         await using var host = PersistenceTestHost.Create();
@@ -85,6 +139,8 @@ public sealed class AccountStoreShould
         await Should.ThrowAsync<OperationCanceledException>(() => store.AddAsync(NewAccount("acct-1"), cancelled.Token));
         await Should.ThrowAsync<OperationCanceledException>(() => store.GetAsync(new AccountId(Guid.NewGuid()), cancelled.Token));
         await Should.ThrowAsync<OperationCanceledException>(() => store.ListAsync(cancelled.Token));
+        await Should.ThrowAsync<OperationCanceledException>(() => store.UpdateStatusAsync(new AccountId(Guid.NewGuid()), AccountStatus.Connected, cancelled.Token));
+        await Should.ThrowAsync<OperationCanceledException>(() => store.RemoveAsync(new AccountId(Guid.NewGuid()), cancelled.Token));
     }
 
     private static Account NewAccount(string identifier)

@@ -11,4 +11,7 @@ internal interface ITokenCacheStore
 
     /// <summary>Replaces whatever is stored with <paramref name="cache"/>.</summary>
     Task<Result<Unit, ProviderError>> SaveAsync(byte[] cache, CancellationToken cancellationToken);
+
+    /// <summary>Removes the stored cache. Succeeds when nothing was stored; a store that cannot be reached is a failure, because the sign-in might still be there.</summary>
+    Task<Result<Unit, ProviderError>> ClearAsync(CancellationToken cancellationToken);
 }

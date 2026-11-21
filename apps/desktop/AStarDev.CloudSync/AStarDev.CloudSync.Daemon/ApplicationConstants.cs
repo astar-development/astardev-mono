@@ -28,4 +28,8 @@ internal static class ApplicationConstants
     public static string AcceptConnectionsStageName => "Accept connections";
 
     public static string DriveRootItemId => "root";
+
+    public static string OneDriveProviderType => "OneDrive";
+
+    public static string ProviderHealthCheckName => "provider";
 }

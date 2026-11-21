@@ -13,7 +13,7 @@ public sealed class PublicSurfaceArchitectureTestsShouldEnsure
     [Fact]
     public void the_domain_exposes_only_its_approved_public_types()
         => ShouldExposeExactly(typeof(ItemId).Assembly,
-            "Account", "AccountId", "DeltaToken", "ETag", "ItemId", "ItemType", "RelativePath", "RemoteItemId", "SnapshotId", "SyncJobId", "SyncScope");
+            "Account", "AccountId", "AccountStatus", "DeltaToken", "ETag", "ItemId", "ItemType", "RelativePath", "RemoteItemId", "SnapshotId", "SyncJobId", "SyncScope");
 
     [Fact]
     public void the_ports_expose_only_their_approved_public_types()
@@ -25,8 +25,9 @@ public sealed class PublicSurfaceArchitectureTestsShouldEnsure
     public void ipc_exposes_only_its_approved_public_types_and_no_transport()
         => ShouldExposeExactly(typeof(IPC.IIpcServer).Assembly,
             [
-             "AccountConnected", "CommandOutcome", "CommandResult", "ConnectAccount", "ConnectionFailed", "ConnectionLost", "DaemonState",
-             "DaemonStatusChanged", "DaemonStatusView", "FrameTooLarge", "GetDaemonStatus", "GetRemoteRootSummary", "HandlerFailed", "ICommand",
+             "AccountConnected", "AccountDisconnected", "AccountState", "AccountView", "AccountsView", "CommandOutcome", "CommandResult", "ConnectAccount",
+             "ConnectionFailed", "ConnectionLost", "DaemonState", "DaemonStatusChanged", "DaemonStatusView", "DisconnectAccount", "FrameTooLarge",
+             "GetAccounts", "GetDaemonStatus", "GetRemoteRootSummary", "HandlerFailed", "ICommand",
              "IEvent", "IIpcClient", "IIpcServer", "IpcError", "IQuery`1", "ListenFailed", "MalformedFrame", "NotConnected", "RemoteRootSummaryView",
              "UnixSocketIpc"]);
 
