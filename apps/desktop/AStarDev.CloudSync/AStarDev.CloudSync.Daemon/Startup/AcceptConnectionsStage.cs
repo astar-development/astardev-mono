@@ -2,7 +2,7 @@ using AStarDev.FunctionalParadigm;
 
 namespace AStarDev.CloudSync.Daemon.Startup;
 
-/// <summary>Stage 6: start the IPC server and accept UI connections, only after recovery. Real work arrives in the IPC slice (S3).</summary>
+/// <summary>Stage 6 marker: <see cref="IpcHostedService"/> starts the IPC server right after the startup sequence, so UI connections are only accepted after recovery.</summary>
 internal sealed class AcceptConnectionsStage : IStartupStage
 {
     /// <inheritdoc/>
