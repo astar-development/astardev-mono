@@ -44,7 +44,7 @@ public sealed class PortsArchitectureTestsShouldEnsure
         [
             typeof(ItemId).Assembly,
             typeof(IPC.IIpcClient).Assembly,
-            typeof(Observability.Class1).Assembly
+            typeof(Observability.TelemetryServiceCollectionExtensions).Assembly
         ];
 
         foreach (var assembly in cannotUsePorts)

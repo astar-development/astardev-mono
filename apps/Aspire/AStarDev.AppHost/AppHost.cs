@@ -12,13 +12,16 @@ var socketPath = Path.Combine(
     "astardev-cloudsync",
     "daemon.sock");
 
+var otlpEndpoint = builder.Configuration["ASPIRE_DASHBOARD_OTLP_ENDPOINT_URL"] ?? "";
+
 var daemon = builder.AddDotnetProject("CloudSyncDaemon", Project("../../desktop/AStarDev.CloudSync/AStarDev.CloudSync.Daemon/AStarDev.CloudSync.Daemon.csproj"))
-    .WithEnvironment("Ipc__SocketPath", socketPath);
+    .WithEnvironment("Ipc__SocketPath", socketPath)
+    .WithEnvironment("OpenTelemetry__OtlpEndpoint", otlpEndpoint);
 
 builder.AddDotnetProject("CloudSync", Project("../../desktop/AStarDev.CloudSync/AStarDev.CloudSync.UI/AStarDev.CloudSync.UI.csproj"))
     .WithEnvironment("Ipc__SocketPath", socketPath)
     .WithEnvironment("ApplicationInsights__ConnectionString", "")
-    .WithEnvironment("OpenTelemetry__OtlpEndpoint", builder.Configuration["ASPIRE_DASHBOARD_OTLP_ENDPOINT_URL"] ?? "")
+    .WithEnvironment("OpenTelemetry__OtlpEndpoint", otlpEndpoint)
     .WaitFor(daemon);
 
 builder.Build().Run();
