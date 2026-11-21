@@ -1,0 +1,23 @@
+<UserControl xmlns="https://github.com/avaloniaui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:vm="using:AStarDev.CloudSync.UI.ViewModels.Screens"
+             xmlns:svm="using:AStarDev.CloudSync.UI.ViewModels"
+             xmlns:views="using:AStarDev.CloudSync.UI.Views"
+             x:Class="AStarDev.CloudSync.UI.Views.Screens.QueueView"
+             x:DataType="vm:QueueViewModel">
+    <DockPanel Margin="16">
+        <TextBlock DockPanel.Dock="Top" Text="{Binding Title}" FontSize="24" FontWeight="SemiBold" Foreground="{DynamicResource Text.Primary.Brush}" />
+        <ItemsControl DockPanel.Dock="Top" ItemsSource="{Binding StatusCounts}" Margin="0,8,0,0">
+            <ItemsControl.ItemsPanel>
+                <ItemsPanelTemplate><WrapPanel /></ItemsPanelTemplate>
+            </ItemsControl.ItemsPanel>
+            <ItemsControl.ItemTemplate>
+                <DataTemplate x:DataType="svm:StatusIndicatorViewModel">
+                    <views:StatusIndicatorView Margin="0,0,16,0" />
+                </DataTemplate>
+            </ItemsControl.ItemTemplate>
+        </ItemsControl>
+        <TextBlock DockPanel.Dock="Top" Text="{Binding ConflictsNote}" Foreground="{DynamicResource Text.Secondary.Brush}" TextWrapping="Wrap" Margin="0,8,0,0" />
+        <views:OperationListView />
+    </DockPanel>
+</UserControl>

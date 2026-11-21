@@ -1,0 +1,18 @@
+<UserControl xmlns="https://github.com/avaloniaui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:vm="using:AStarDev.CloudSync.UI.ViewModels.Screens"
+             xmlns:views="using:AStarDev.CloudSync.UI.Views"
+             x:Class="AStarDev.CloudSync.UI.Views.Screens.HistoryView"
+             x:DataType="vm:HistoryViewModel">
+    <DockPanel Margin="16">
+        <TextBlock DockPanel.Dock="Top" Text="{Binding Title}" FontSize="24" FontWeight="SemiBold" Foreground="{DynamicResource Text.Primary.Brush}" />
+        <TabControl SelectedIndex="{Binding TabIndex}">
+            <TabItem Header="{Binding HistoryTabText}">
+                <views:OperationListView />
+            </TabItem>
+            <TabItem Header="{Binding AuditTabText}">
+                <TextBlock Text="{Binding AuditPendingText}" TextWrapping="Wrap" Margin="0,12,0,0" Foreground="{DynamicResource Trust.Degraded.Brush}" />
+            </TabItem>
+        </TabControl>
+    </DockPanel>
+</UserControl>
