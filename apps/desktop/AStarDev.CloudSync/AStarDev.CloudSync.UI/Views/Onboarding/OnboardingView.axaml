@@ -1,0 +1,89 @@
+<UserControl xmlns="https://github.com/avaloniaui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:views="using:AStarDev.CloudSync.UI.Views"
+             xmlns:onboarding="using:AStarDev.CloudSync.UI.ViewModels.Onboarding"
+             xmlns:loc="using:AStarDev.CloudSync.UI.Localisation"
+             x:Class="AStarDev.CloudSync.UI.Views.Onboarding.OnboardingView"
+             x:DataType="onboarding:OnboardingViewModel">
+    <Grid Background="{DynamicResource Onboarding.Overlay.Brush}">
+        <Border Background="{DynamicResource Onboarding.Card.Brush}" BorderBrush="{DynamicResource Border.Brush}" BorderThickness="1" Padding="24" MaxWidth="720" HorizontalAlignment="Center" VerticalAlignment="Center">
+            <StackPanel Spacing="12">
+                <TextBlock Text="{Binding ProgressText}" Foreground="{DynamicResource Text.Secondary.Brush}" />
+
+                <StackPanel Spacing="8" IsVisible="{Binding IsWelcomeStep}">
+                    <TextBlock Text="{loc:Loc Onboarding.Welcome.Heading}" FontSize="24" FontWeight="SemiBold" Foreground="{DynamicResource Text.Primary.Brush}" />
+                    <TextBlock Text="{loc:Loc Onboarding.Welcome.Intro}" TextWrapping="Wrap" />
+                    <TextBlock Text="{loc:Loc Onboarding.Welcome.NothingYet}" TextWrapping="Wrap" FontWeight="SemiBold" />
+                    <TextBlock Text="{loc:Loc Onboarding.Welcome.Steps}" TextWrapping="Wrap" Foreground="{DynamicResource Text.Secondary.Brush}" />
+                    <TextBlock Text="{loc:Loc Onboarding.Welcome.Later}" TextWrapping="Wrap" Foreground="{DynamicResource Text.Secondary.Brush}" />
+                </StackPanel>
+
+                <StackPanel Spacing="8" IsVisible="{Binding IsConnectStep}">
+                    <TextBlock Text="{loc:Loc Onboarding.Connect.Heading}" FontSize="24" FontWeight="SemiBold" Foreground="{DynamicResource Text.Primary.Brush}" />
+                    <TextBlock Text="{loc:Loc Onboarding.Connect.Intro}" TextWrapping="Wrap" />
+                    <Button Content="{loc:Loc Common.Connect}" Command="{Binding Connect.ConnectCommand}" HorizontalAlignment="Left" />
+                    <StackPanel Orientation="Horizontal" Spacing="8" IsVisible="{Binding Connect.IsBusy}">
+                        <ProgressBar IsIndeterminate="True" Width="120" />
+                        <TextBlock Text="{loc:Loc Common.WaitingForSignIn}" />
+                    </StackPanel>
+                    <TextBlock Text="{loc:Loc Onboarding.Connect.Success}" IsVisible="{Binding IsConnected}" Foreground="{DynamicResource Trust.Healthy.Brush}" FontWeight="SemiBold" />
+                    <TextBlock Text="{Binding Connect.ItemCountText}" />
+                    <TextBlock Text="{Binding Connect.ErrorMessage}" Foreground="{DynamicResource Trust.Critical.Brush}" TextWrapping="Wrap" />
+                    <TextBlock Text="{loc:Loc Onboarding.Connect.Retry}" IsVisible="{Binding Connect.ErrorMessage, Converter={x:Static StringConverters.IsNotNullOrEmpty}}" Foreground="{DynamicResource Text.Secondary.Brush}" TextWrapping="Wrap" />
+                </StackPanel>
+
+                <StackPanel Spacing="8" IsVisible="{Binding IsScopesStep}">
+                    <TextBlock Text="{loc:Loc Onboarding.Scopes.Heading}" FontSize="24" FontWeight="SemiBold" Foreground="{DynamicResource Text.Primary.Brush}" />
+                    <TextBlock Text="{loc:Loc Onboarding.Scopes.Intro}" TextWrapping="Wrap" />
+                    <views:FolderTreeView DataContext="{Binding Folders}" />
+                    <TextBlock Text="{loc:Loc Common.LocalFolder}" FontWeight="SemiBold" />
+                    <StackPanel Orientation="Horizontal" Spacing="8">
+                        <TextBox Text="{Binding Selection.LocalRoot, Mode=TwoWay}" Width="360" PlaceholderText="{loc:Loc Common.LocalFolderPlaceholder}" />
+                        <Button Content="{loc:Loc Common.Browse}" Command="{Binding Selection.BrowseCommand}" />
+                    </StackPanel>
+                    <TextBlock Text="{loc:Loc Onboarding.Scopes.Requirement}" IsVisible="{Binding !CanContinue}" Foreground="{DynamicResource Text.Secondary.Brush}" TextWrapping="Wrap" />
+                </StackPanel>
+
+                <StackPanel Spacing="8" IsVisible="{Binding IsReviewStep}">
+                    <TextBlock Text="{loc:Loc Onboarding.Review.Heading}" FontSize="24" FontWeight="SemiBold" Foreground="{DynamicResource Text.Primary.Brush}" />
+                    <TextBlock Text="{loc:Loc Onboarding.Review.Intro}" TextWrapping="Wrap" />
+                    <TextBlock Text="{loc:Loc Onboarding.Review.Provider}" FontWeight="SemiBold" />
+                    <TextBlock Text="{Binding ReviewProvider}" />
+                    <TextBlock Text="{loc:Loc Common.LocalFolder}" FontWeight="SemiBold" />
+                    <TextBlock Text="{Binding ReviewLocalPath}" />
+                    <TextBlock Text="{loc:Loc Onboarding.Review.Folders}" FontWeight="SemiBold" />
+                    <ItemsControl ItemsSource="{Binding ReviewScopes}" />
+                    <TextBlock Text="{loc:Loc Onboarding.Review.EstimatedItems}" FontWeight="SemiBold" />
+                    <TextBlock Text="{Binding EstimatedItemsText}" Foreground="{DynamicResource Text.Secondary.Brush}" />
+                    <TextBlock Text="{loc:Loc Onboarding.Review.AvailableStorage}" FontWeight="SemiBold" />
+                    <TextBlock Text="{Binding AvailableStorageText}" Foreground="{DynamicResource Text.Secondary.Brush}" />
+                    <TextBlock Text="{loc:Loc Onboarding.Review.WhatHappensNext}" TextWrapping="Wrap" FontWeight="SemiBold" />
+                    <ProgressBar IsIndeterminate="True" IsVisible="{Binding Selection.IsBusy}" />
+                    <TextBlock Text="{Binding Selection.StatusMessage}" Foreground="{DynamicResource Trust.Critical.Brush}" TextWrapping="Wrap" />
+                </StackPanel>
+
+                <StackPanel Spacing="8" IsVisible="{Binding IsInitialSyncStep}">
+                    <TextBlock Text="{loc:Loc Onboarding.Sync.Heading}" FontSize="24" FontWeight="SemiBold" Foreground="{DynamicResource Text.Primary.Brush}" />
+                    <TextBlock Text="{loc:Loc Onboarding.Sync.Intro}" TextWrapping="Wrap" />
+                    <TextBlock Text="{loc:Loc Onboarding.Sync.Phase}" FontWeight="SemiBold" />
+                    <TextBlock Text="{Binding PhaseText}" Foreground="{DynamicResource Text.Secondary.Brush}" />
+                    <TextBlock Text="{loc:Loc Onboarding.Sync.Items}" FontWeight="SemiBold" />
+                    <TextBlock Text="{Binding ItemCountsText}" Foreground="{DynamicResource Text.Secondary.Brush}" />
+                    <TextBlock Text="{loc:Loc Onboarding.Sync.Throughput}" FontWeight="SemiBold" />
+                    <TextBlock Text="{Binding ThroughputText}" Foreground="{DynamicResource Text.Secondary.Brush}" />
+                    <TextBlock Text="{loc:Loc Onboarding.Sync.Remaining}" FontWeight="SemiBold" />
+                    <TextBlock Text="{Binding RemainingText}" Foreground="{DynamicResource Text.Secondary.Brush}" />
+                    <TextBlock Text="{Binding Selection.StatusMessage}" Foreground="{DynamicResource Trust.Degraded.Brush}" TextWrapping="Wrap" />
+                </StackPanel>
+
+                <StackPanel Orientation="Horizontal" Spacing="8" HorizontalAlignment="Right">
+                    <Button Content="{loc:Loc Onboarding.Skip}" Command="{Binding SkipCommand}" IsVisible="{Binding !IsInitialSyncStep}" />
+                    <Button Content="{loc:Loc Onboarding.Back}" Command="{Binding BackCommand}" IsVisible="{Binding CanGoBack}" />
+                    <Button Content="{loc:Loc Onboarding.Next}" Command="{Binding NextCommand}" IsEnabled="{Binding CanContinue}" IsVisible="{Binding !IsReviewStep}" />
+                    <Button Content="{loc:Loc Onboarding.Confirm}" Command="{Binding ConfirmCommand}" IsVisible="{Binding IsReviewStep}" />
+                    <Button Content="{loc:Loc Onboarding.Finish}" Command="{Binding FinishCommand}" IsVisible="{Binding IsInitialSyncStep}" />
+                </StackPanel>
+            </StackPanel>
+        </Border>
+    </Grid>
+</UserControl>

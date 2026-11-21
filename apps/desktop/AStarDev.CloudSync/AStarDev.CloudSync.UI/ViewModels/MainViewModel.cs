@@ -1,4 +1,5 @@
 using AStarDev.CloudSync.UI.Navigation;
+using AStarDev.CloudSync.UI.ViewModels.Onboarding;
 
 namespace AStarDev.CloudSync.UI.ViewModels;
 
@@ -11,10 +12,12 @@ public sealed class MainViewModel : ViewModelBase
     /// <param name="navigation">Decides the content. Navigating from anywhere updates <see cref="Content"/> and <see cref="SelectedDestination"/>.</param>
     /// <param name="screens">Every registered screen. The primary ones become <see cref="Destinations"/>.</param>
     /// <param name="statusBar">The permanent status bar.</param>
-    internal MainViewModel(INavigationService navigation, IEnumerable<IScreen> screens, StatusBarViewModel statusBar)
+    /// <param name="onboarding">The first-run flow, drawn over the window while it is active.</param>
+    internal MainViewModel(INavigationService navigation, IEnumerable<IScreen> screens, StatusBarViewModel statusBar, OnboardingViewModel onboarding)
     {
         this.navigation = navigation;
         StatusBar = statusBar;
+        Onboarding = onboarding;
         var byId = screens.ToDictionary(screen => screen.Id);
         Destinations = ScreenIds.Primary.Select(id => new DestinationViewModel(id, byId[id].Title, byId[id].Glyph)).ToList();
         navigation.Navigated += (_, _) =>
@@ -42,4 +45,6 @@ public sealed class MainViewModel : ViewModelBase
 
     /// <summary>The permanent status bar.</summary>
     public StatusBarViewModel StatusBar { get; }
+
+    internal OnboardingViewModel Onboarding { get; }
 }

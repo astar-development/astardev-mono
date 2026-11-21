@@ -12,6 +12,7 @@
         Background="{DynamicResource Surface.Brush}"
         Title="{loc:Loc Common.AppTitle}">
 
+    <Panel>
     <DockPanel>
         <views:StatusBarView DockPanel.Dock="Bottom" DataContext="{Binding StatusBar}" />
         <ListBox DockPanel.Dock="Left" ItemsSource="{Binding Destinations}" SelectedItem="{Binding SelectedDestination, Mode=TwoWay}" Background="{DynamicResource Navigation.Rail.Brush}">
@@ -23,5 +24,7 @@
         </ListBox>
         <ContentControl Content="{Binding Content}" />
     </DockPanel>
+    <ContentControl Content="{Binding Onboarding}" IsVisible="{Binding Onboarding.IsActive}" />
+    </Panel>
 
 </Window>
