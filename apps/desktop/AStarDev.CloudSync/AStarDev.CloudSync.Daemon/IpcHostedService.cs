@@ -13,14 +13,21 @@ internal sealed class IpcHostedService(IIpcServer server, TimeProvider timeProvi
 
     public async Task StartAsync(CancellationToken cancellationToken)
     {
+        if (await ListenAsync(cancellationToken) is Fail<StartupError> fail) throw new StartupFailedException(fail.Error);
+    }
+
+    internal async Task<Result<Unit, StartupError>> ListenAsync(CancellationToken cancellationToken)
+    {
         cancellationToken.ThrowIfCancellationRequested();
 
         var status = new DaemonStatusView(DaemonState.Running, Version, timeProvider.GetUtcNow());
         server.MapQuery((GetDaemonStatus _, CancellationToken _) => AnswerStatus(status));
 
-        var result = await server.StartAsync(cancellationToken);
-
-        if (result is Fail<IpcError> fail) throw new StartupFailedException(new StartupError(ApplicationConstants.AcceptConnectionsStageName, fail.Error.Value?.ToString() ?? string.Empty));
+        return await server.StartAsync(cancellationToken) switch
+        {
+            Ok<Unit> ok => ok,
+            Fail<IpcError> fail => new Fail<StartupError>(IpcStartupErrors.From(fail.Error))
+        };
     }
 
     private Task<Result<DaemonStatusView, IpcError>> AnswerStatus(DaemonStatusView status)
