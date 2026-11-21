@@ -26,6 +26,6 @@ internal sealed class MsalBrowserSignIn(OneDriveOptions options) : IBrowserSignI
         });
         var result = await app.AcquireTokenInteractive(Scopes).ExecuteAsync(cancellationToken).ConfigureAwait(false);
 
-        return new SignInOutcome(new ProviderAccount(result.Account.HomeAccountId.Identifier, result.Account.Username), current);
+        return new SignInOutcome(new ProviderAccount(result.Account.HomeAccountId.Identifier, result.Account.Username), current, result.AccessToken);
     }
 }

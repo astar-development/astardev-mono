@@ -25,9 +25,10 @@ public sealed class PublicSurfaceArchitectureTestsShouldEnsure
     public void ipc_exposes_only_its_approved_public_types_and_no_transport()
         => ShouldExposeExactly(typeof(IPC.IIpcServer).Assembly,
             [
-             "CommandOutcome", "CommandResult", "ConnectionFailed", "ConnectionLost", "DaemonState", "DaemonStatusChanged",
-             "DaemonStatusView", "FrameTooLarge", "GetDaemonStatus", "HandlerFailed", "ICommand", "IEvent", "IIpcClient",
-             "IIpcServer", "IpcError", "IQuery`1", "ListenFailed", "MalformedFrame", "NotConnected", "UnixSocketIpc"]);
+             "AccountConnected", "CommandOutcome", "CommandResult", "ConnectAccount", "ConnectionFailed", "ConnectionLost", "DaemonState",
+             "DaemonStatusChanged", "DaemonStatusView", "FrameTooLarge", "GetDaemonStatus", "GetRemoteRootSummary", "HandlerFailed", "ICommand",
+             "IEvent", "IIpcClient", "IIpcServer", "IpcError", "IQuery`1", "ListenFailed", "MalformedFrame", "NotConnected", "RemoteRootSummaryView",
+             "UnixSocketIpc"]);
 
     [Fact]
     public void the_daemon_exposes_no_public_types()
@@ -44,11 +45,12 @@ public sealed class PublicSurfaceArchitectureTestsShouldEnsure
             "MigrationFailed", "PersistenceServiceCollectionExtensions");
 
     [Fact]
+    public void onedrive_exposes_only_its_approved_public_types()
+        => ShouldExposeExactly(typeof(OneDrive.OneDriveServiceCollectionExtensions).Assembly, "OneDriveServiceCollectionExtensions");
+
+    [Fact]
     public void modules_without_real_members_expose_only_their_placeholder()
-    {
-        ShouldExposeExactly(typeof(OneDrive.Class1).Assembly, PlaceholderAnchor);
-        ShouldExposeExactly(typeof(SyncEngine.Class1).Assembly, PlaceholderAnchor);
-    }
+        => ShouldExposeExactly(typeof(SyncEngine.Class1).Assembly, PlaceholderAnchor);
 
     [Fact]
     public void the_functional_paradigm_library_exposes_only_its_approved_public_types()

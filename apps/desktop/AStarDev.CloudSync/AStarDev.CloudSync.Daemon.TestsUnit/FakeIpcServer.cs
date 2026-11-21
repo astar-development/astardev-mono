@@ -3,7 +3,7 @@ using AStarDev.FunctionalParadigm;
 
 namespace AStarDev.CloudSync.Daemon.TestsUnit;
 
-internal sealed class FakeIpcServer(List<string> ran) : IIpcServer
+internal sealed class FakeIpcServer(List<string> ran, IpcError? startFailure = null) : IIpcServer
 {
     public bool Stopped { get; private set; }
 
@@ -22,7 +22,7 @@ internal sealed class FakeIpcServer(List<string> ran) : IIpcServer
         cancellationToken.ThrowIfCancellationRequested();
         ran.Add("ipc");
 
-        return Task.FromResult<Result<Unit, IpcError>>(new Ok<Unit>(default));
+        return Task.FromResult<Result<Unit, IpcError>>(startFailure is { } failure ? new Fail<IpcError>(failure) : new Ok<Unit>(default));
     }
 
     public Task<Result<Unit, IpcError>> PublishAsync<TEvent>(TEvent @event, CancellationToken cancellationToken)
