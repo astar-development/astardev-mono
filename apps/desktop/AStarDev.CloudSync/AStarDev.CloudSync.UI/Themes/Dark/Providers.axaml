@@ -1,0 +1,11 @@
+<ResourceDictionary xmlns="https://github.com/avaloniaui"
+                    xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml">
+  <SolidColorBrush x:Key="Providers.Health.Healthy.Brush" Color="#4CAF50" />
+  <SolidColorBrush x:Key="Providers.Health.Syncing.Brush" Color="#42A5F5" />
+  <SolidColorBrush x:Key="Providers.Health.Warning.Brush" Color="#FFB300" />
+  <SolidColorBrush x:Key="Providers.Health.Error.Brush" Color="#EF5350" />
+  <SolidColorBrush x:Key="Providers.Health.AuthenticationRequired.Brush" Color="#FF7043" />
+  <SolidColorBrush x:Key="Providers.Health.Offline.Brush" Color="#9E9E9E" />
+  <SolidColorBrush x:Key="Providers.Card.Brush" Color="#2B2B2B" />
+  <SolidColorBrush x:Key="Providers.Banner.Brush" Color="#3A2A22" />
+</ResourceDictionary>

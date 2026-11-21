@@ -1,35 +1,130 @@
 <UserControl xmlns="https://github.com/avaloniaui"
              xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
-             xmlns:vm="using:AStarDev.CloudSync.UI.ViewModels"
              xmlns:screens="using:AStarDev.CloudSync.UI.ViewModels.Screens"
+             xmlns:prov="using:AStarDev.CloudSync.UI.ViewModels.Providers"
+             xmlns:pviews="using:AStarDev.CloudSync.UI.Views.Providers"
              xmlns:loc="using:AStarDev.CloudSync.UI.Localisation"
              x:Class="AStarDev.CloudSync.UI.Views.Screens.ProvidersView"
              x:DataType="screens:ProvidersViewModel">
-    <StackPanel Margin="16" Spacing="8">
-        <TextBlock Text="{Binding Title}" FontSize="24" FontWeight="SemiBold" Foreground="{DynamicResource Text.Primary.Brush}" />
-        <Button Content="{loc:Loc Common.Connect}" Command="{Binding Connect.ConnectCommand}" HorizontalAlignment="Left" />
-        <StackPanel Orientation="Horizontal" Spacing="8" IsVisible="{Binding Connect.IsBusy}">
-            <ProgressBar IsIndeterminate="True" Width="120" />
-            <TextBlock Text="{loc:Loc Common.WaitingForSignIn}" />
-        </StackPanel>
-        <TextBlock Text="{Binding Connect.ItemCountText}" />
-        <TextBlock Text="{Binding Connect.ErrorMessage}" Foreground="{DynamicResource Trust.Critical.Brush}" TextWrapping="Wrap" />
-        <ItemsControl ItemsSource="{Binding Accounts.Accounts}">
-            <ItemsControl.ItemTemplate>
-                <DataTemplate x:DataType="vm:AccountCardViewModel">
-                    <Border BorderThickness="1" BorderBrush="{DynamicResource Border.Brush}" Padding="8" Margin="0,0,0,8">
-                        <StackPanel Spacing="4">
-                            <TextBlock Text="{Binding DisplayName}" FontWeight="SemiBold" />
-                            <TextBlock Text="{Binding StatusText}" />
-                            <StackPanel Orientation="Horizontal" Spacing="8">
-                                <Button Content="{loc:Loc Common.Reconnect}" Command="{Binding ReconnectCommand}" IsVisible="{Binding CanReconnect}" />
-                                <Button Content="{loc:Loc Common.Disconnect}" Command="{Binding DisconnectCommand}" />
-                            </StackPanel>
+    <ScrollViewer>
+        <StackPanel Margin="16" Spacing="12">
+            <DockPanel>
+                <Button DockPanel.Dock="Right" Content="{loc:Loc Providers.AddProvider}" Command="{Binding Add.BeginCommand}" />
+                <TextBlock Text="{Binding Title}" FontSize="24" FontWeight="SemiBold" Foreground="{DynamicResource Text.Primary.Brush}" />
+            </DockPanel>
+
+            <Border IsVisible="{Binding HasRenewalWarning}" Background="{DynamicResource Providers.Banner.Brush}" BorderBrush="{DynamicResource Providers.Health.AuthenticationRequired.Brush}" BorderThickness="1" Padding="12">
+                <DockPanel>
+                    <Button DockPanel.Dock="Right" Content="{loc:Loc Providers.Renewal.Action}" Command="{Binding RenewSignInCommand}" />
+                    <TextBlock Text="{Binding RenewalWarningText}" TextWrapping="Wrap" VerticalAlignment="Center" />
+                </DockPanel>
+            </Border>
+
+            <Border IsVisible="{Binding HasError}" BorderBrush="{DynamicResource Trust.Critical.Brush}" BorderThickness="1" Padding="12">
+                <StackPanel Spacing="4" DataContext="{Binding Error}" x:DataType="prov:ProviderErrorViewModel">
+                    <TextBlock Text="{Binding Message}" Foreground="{DynamicResource Trust.Critical.Brush}" TextWrapping="Wrap" />
+                    <TextBlock Text="{Binding RetryGuidance}" TextWrapping="Wrap" />
+                    <TextBlock Text="{Binding CorrelationText}" Foreground="{DynamicResource Text.Secondary.Brush}" />
+                    <Button Content="{loc:Loc Providers.Error.Diagnostics}" Command="{Binding OpenDiagnosticsCommand}" HorizontalAlignment="Left" />
+                </StackPanel>
+            </Border>
+
+            <StackPanel Orientation="Horizontal" Spacing="8" IsVisible="{Binding Connect.IsBusy}">
+                <ProgressBar IsIndeterminate="True" Width="120" />
+                <TextBlock Text="{loc:Loc Common.WaitingForSignIn}" />
+            </StackPanel>
+            <ProgressBar IsIndeterminate="True" IsVisible="{Binding Accounts.IsBusy}" />
+
+            <Border IsVisible="{Binding Add.IsOpen}" Background="{DynamicResource Providers.Card.Brush}" BorderBrush="{DynamicResource Border.Brush}" BorderThickness="1" Padding="12">
+                <StackPanel Spacing="8" DataContext="{Binding Add}" x:DataType="prov:AddProviderViewModel">
+                    <TextBlock Text="{loc:Loc Providers.Add.Title}" FontWeight="SemiBold" />
+                    <TextBlock Text="{Binding StepTitle}" FontWeight="SemiBold" />
+                    <TextBlock Text="{Binding StepText}" TextWrapping="Wrap" />
+                    <ItemsControl ItemsSource="{Binding Providers}" IsVisible="{Binding IsSelecting}">
+                        <ItemsControl.ItemTemplate>
+                            <DataTemplate x:DataType="prov:ProviderDescriptor">
+                                <StackPanel Orientation="Horizontal" Spacing="8" Margin="0,0,0,4">
+                                    <Button Content="{Binding DisplayName}" IsEnabled="{Binding IsAvailable}" Command="{ReflectionBinding $parent[ItemsControl].DataContext.SelectCommand}" CommandParameter="{Binding}" />
+                                    <TextBlock Text="{loc:Loc Providers.Add.ComingSoon}" IsVisible="{Binding !IsAvailable}" VerticalAlignment="Center" Foreground="{DynamicResource Text.Secondary.Brush}" />
+                                </StackPanel>
+                            </DataTemplate>
+                        </ItemsControl.ItemTemplate>
+                    </ItemsControl>
+                    <StackPanel Orientation="Horizontal" Spacing="8">
+                        <Button Content="{Binding ActionText}" Command="{Binding ContinueCommand}" />
+                        <Button Content="{loc:Loc Providers.Cancel}" Command="{Binding CancelCommand}" />
+                    </StackPanel>
+                </StackPanel>
+            </Border>
+
+            <Border IsVisible="{Binding Removal, Converter={x:Static ObjectConverters.IsNotNull}}" Background="{DynamicResource Providers.Card.Brush}" BorderBrush="{DynamicResource Trust.Critical.Brush}" BorderThickness="1" Padding="12">
+                <StackPanel Spacing="8" DataContext="{Binding Removal}" x:DataType="prov:RemoveProviderViewModel">
+                    <TextBlock Text="{Binding Title}" FontWeight="SemiBold" />
+                    <TextBlock Text="{Binding KeepsFilesText}" TextWrapping="Wrap" />
+                    <TextBlock Text="{Binding RecoveryText}" TextWrapping="Wrap" />
+                    <CheckBox IsChecked="{Binding IsConfirmed}" Content="{loc:Loc Providers.Remove.Confirm}" />
+                    <StackPanel Orientation="Horizontal" Spacing="8">
+                        <Button Content="{loc:Loc Providers.Remove.Action}" Command="{Binding ConfirmCommand}" />
+                        <Button Content="{loc:Loc Providers.Cancel}" Command="{Binding CancelCommand}" />
+                    </StackPanel>
+                </StackPanel>
+            </Border>
+
+            <TextBlock Text="{loc:Loc Providers.HealthSummary}" FontWeight="SemiBold" />
+            <ItemsControl ItemsSource="{Binding HealthSummary}">
+                <ItemsControl.ItemsPanel>
+                    <ItemsPanelTemplate>
+                        <WrapPanel />
+                    </ItemsPanelTemplate>
+                </ItemsControl.ItemsPanel>
+                <ItemsControl.ItemTemplate>
+                    <DataTemplate x:DataType="prov:ProviderHealthCount">
+                        <StackPanel Orientation="Horizontal" Spacing="6" Margin="0,0,16,4">
+                            <pviews:ProviderHealthView DataContext="{Binding Health}" />
+                            <TextBlock Text="{Binding Count}" />
                         </StackPanel>
-                    </Border>
-                </DataTemplate>
-            </ItemsControl.ItemTemplate>
-        </ItemsControl>
-        <TextBlock Text="{Binding Accounts.ErrorMessage}" Foreground="{DynamicResource Trust.Critical.Brush}" TextWrapping="Wrap" />
-    </StackPanel>
+                    </DataTemplate>
+                </ItemsControl.ItemTemplate>
+            </ItemsControl>
+
+            <TextBlock Text="{loc:Loc Providers.ConnectedProviders}" FontWeight="SemiBold" />
+            <TextBlock Text="{loc:Loc Providers.NoProviders}" IsVisible="{Binding !Cards.Count}" Foreground="{DynamicResource Text.Secondary.Brush}" />
+            <ItemsControl ItemsSource="{Binding Cards}">
+                <ItemsControl.ItemTemplate>
+                    <DataTemplate x:DataType="prov:ProviderCardViewModel">
+                        <Border Background="{DynamicResource Providers.Card.Brush}" BorderBrush="{DynamicResource Border.Brush}" BorderThickness="1" Padding="12" Margin="0,0,0,8">
+                            <StackPanel Spacing="4">
+                                <DockPanel>
+                                    <pviews:ProviderHealthView DockPanel.Dock="Right" DataContext="{Binding Health}" />
+                                    <TextBlock Text="{Binding ProviderName}" FontWeight="SemiBold" />
+                                </DockPanel>
+                                <TextBlock Text="{Binding AccountName}" />
+                                <TextBlock Text="{Binding LastSyncText}" Foreground="{DynamicResource Text.Secondary.Brush}" />
+                                <TextBlock Text="{Binding StorageText}" Foreground="{DynamicResource Text.Secondary.Brush}" />
+                                <TextBlock Text="{Binding RecentActivityText}" Foreground="{DynamicResource Text.Secondary.Brush}" />
+                                <ItemsControl ItemsSource="{Binding CapabilityLabels}">
+                                    <ItemsControl.ItemsPanel>
+                                        <ItemsPanelTemplate>
+                                            <WrapPanel />
+                                        </ItemsPanelTemplate>
+                                    </ItemsControl.ItemsPanel>
+                                    <ItemsControl.ItemTemplate>
+                                        <DataTemplate x:DataType="x:String">
+                                            <TextBlock Text="{Binding}" Margin="0,0,12,0" Foreground="{DynamicResource Text.Secondary.Brush}" />
+                                        </DataTemplate>
+                                    </ItemsControl.ItemTemplate>
+                                </ItemsControl>
+                                <StackPanel Orientation="Horizontal" Spacing="8">
+                                    <Button Content="{loc:Loc Providers.Card.Manage}" Command="{Binding ManageCommand}" IsVisible="{Binding CanManage}" />
+                                    <Button Content="{Binding PauseLabel}" Command="{Binding PauseCommand}" IsVisible="{Binding CanPause}" />
+                                    <Button Content="{loc:Loc Providers.Card.Reconnect}" Command="{Binding ReconnectCommand}" IsVisible="{Binding CanReconnect}" />
+                                    <Button Content="{loc:Loc Providers.Card.Remove}" Command="{Binding RemoveCommand}" IsVisible="{Binding CanRemove}" />
+                                </StackPanel>
+                            </StackPanel>
+                        </Border>
+                    </DataTemplate>
+                </ItemsControl.ItemTemplate>
+            </ItemsControl>
+        </StackPanel>
+    </ScrollViewer>
 </UserControl>

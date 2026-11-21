@@ -8,6 +8,9 @@ namespace AStarDev.CloudSync.UI.ViewModels;
 /// <param name="owner">The list the card belongs to, which sends the requests.</param>
 public sealed partial class AccountCardViewModel(AccountView account, AccountsViewModel owner) : ViewModelBase
 {
+    /// <summary>What the daemon reported about the account, for screens that show it their own way.</summary>
+    public AccountView Account => account;
+
     /// <summary>The account's name as the provider shows it.</summary>
     public string DisplayName => account.DisplayName;
 

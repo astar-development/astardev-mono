@@ -2,7 +2,7 @@ using Avalonia.Controls;
 
 namespace AStarDev.CloudSync.UI.Views.Screens;
 
-/// <summary>Providers screen: the connect button and account cards.</summary>
+/// <summary>Providers screen: provider cards, health summary, the add-provider journey, removal and error display.</summary>
 public partial class ProvidersView : UserControl
 {
     /// <summary>Builds the controls declared in <c>ProvidersView.axaml</c>.</summary>
