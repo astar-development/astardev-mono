@@ -7,8 +7,11 @@ namespace AStarDev.CloudSync.UI.ViewModels;
 
 /// <summary>The remote folder tree: the folders at the top of the drive, each listing its subfolders only when it is first expanded.</summary>
 /// <param name="createClient">Creates a fresh client per request; one client is one connection.</param>
-public sealed partial class FolderTreeViewModel(Func<IIpcClient> createClient) : ViewModelBase
+/// <param name="selection">Holds which folders are ticked. When <see langword="null"/> the tree cannot be ticked.</param>
+public sealed partial class FolderTreeViewModel(Func<IIpcClient> createClient, ScopeSelectionViewModel? selection = null) : ViewModelBase
 {
+    internal ScopeSelectionViewModel? Selection => selection;
+
     /// <summary>The rows at the top of the drive: folders, or a single loading or error row. Replaced as a whole by every refresh.</summary>
     public ObservableCollection<FolderNodeViewModel> Roots { get; } = [];
 

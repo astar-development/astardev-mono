@@ -47,10 +47,25 @@
                 </TreeView.Styles>
                 <TreeView.ItemTemplate>
                     <TreeDataTemplate x:DataType="vm:FolderNodeViewModel" ItemsSource="{Binding Children}">
-                        <TextBlock Text="{Binding Text}" />
+                        <StackPanel Orientation="Horizontal" Spacing="4">
+                            <CheckBox IsChecked="{Binding IsSelected, Mode=TwoWay}" IsVisible="{Binding CanSelect}" MinWidth="0" Padding="0" />
+                            <TextBlock Text="{Binding Text}" VerticalAlignment="Center" />
+                        </StackPanel>
                     </TreeDataTemplate>
                 </TreeView.ItemTemplate>
             </TreeView>
+            <TextBlock Text="Local folder" FontWeight="SemiBold" />
+            <StackPanel Orientation="Horizontal" Spacing="8">
+                <TextBox Text="{Binding Selection.LocalRoot, Mode=TwoWay}" IsReadOnly="{Binding Selection.HasJob}" Width="360" PlaceholderText="/home/you/OneDrive" />
+                <Button Content="Browse..." Command="{Binding Selection.BrowseCommand}" IsEnabled="{Binding !Selection.HasJob}" />
+            </StackPanel>
+            <StackPanel Orientation="Horizontal" Spacing="8">
+                <TextBlock Text="First sync" VerticalAlignment="Center" />
+                <ComboBox ItemsSource="{Binding Selection.BootstrapModes}" SelectedItem="{Binding Selection.BootstrapMode, Mode=TwoWay}" IsEnabled="{Binding !Selection.HasJob}" />
+                <Button Content="Create sync job" Command="{Binding Selection.CreateJobCommand}" IsEnabled="{Binding Selection.CanCreateJob}" />
+            </StackPanel>
+            <TextBlock Text="{Binding Selection.JobSummary}" />
+            <TextBlock Text="{Binding Selection.StatusMessage}" Foreground="Red" TextWrapping="Wrap" />
         </StackPanel>
     </DockPanel>
 

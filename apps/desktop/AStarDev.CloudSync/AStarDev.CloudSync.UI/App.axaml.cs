@@ -42,10 +42,10 @@ public partial class App : Application
             };
             _ = RunAsync(host, connection, shutdown.Token);
 
-            desktop.MainWindow = new MainWindow
-            {
-                DataContext = new MainViewModel(connection, new ConnectViewModel(() => UnixSocketIpc.CreateClient(socketPath)), new AccountsViewModel(() => UnixSocketIpc.CreateClient(socketPath)), new FolderTreeViewModel(() => UnixSocketIpc.CreateClient(socketPath))),
-            };
+            var window = new MainWindow();
+            var selection = new ScopeSelectionViewModel(() => UnixSocketIpc.CreateClient(socketPath), new AvaloniaFolderPicker(window));
+            window.DataContext = new MainViewModel(connection, new ConnectViewModel(() => UnixSocketIpc.CreateClient(socketPath)), new AccountsViewModel(() => UnixSocketIpc.CreateClient(socketPath)), new FolderTreeViewModel(() => UnixSocketIpc.CreateClient(socketPath), selection), selection);
+            desktop.MainWindow = window;
         }
 
         base.OnFrameworkInitializationCompleted();

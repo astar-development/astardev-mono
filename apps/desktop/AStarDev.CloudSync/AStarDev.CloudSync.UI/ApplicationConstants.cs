@@ -34,4 +34,12 @@ internal static class ApplicationConstants
     public static string ReauthenticationRequiredText => "Sign in again to resume syncing";
 
     public static string LoadingFoldersText => "Loading...";
+
+    public static string ConnectAccountFirstText => "Connect an account first.";
+
+    public static string JobNotFoundText => "The sync job was created but the daemon did not list it. Restart the app and try again.";
+
+    public static string JobSummaryFormat => "Syncing {0} ({1} mode)";
+
+    public static string PickFolderTitle => "Choose the local sync folder";
 }
