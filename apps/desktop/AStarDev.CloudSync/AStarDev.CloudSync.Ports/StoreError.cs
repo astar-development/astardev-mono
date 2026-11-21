@@ -14,5 +14,21 @@ public sealed record AccountAlreadyExists(AccountId Id);
 /// <param name="Message">The underlying reason, suitable for logs.</param>
 public sealed record StorageFailed(string Message);
 
+/// <summary>No sync job has the requested identity. Retrying will not help unless the job is added first.</summary>
+/// <param name="Id">The identity that was looked up.</param>
+public sealed record SyncJobNotFound(SyncJobId Id);
+
+/// <summary>A sync job is already stored and the MVP allows a single job, so nothing was written.</summary>
+/// <param name="ExistingId">The identity of the job that is already stored.</param>
+public sealed record SyncJobAlreadyExists(SyncJobId ExistingId);
+
+/// <summary>The job already holds this folder as a scope. Nothing was written.</summary>
+/// <param name="Scope">The scope that was being added.</param>
+public sealed record SyncScopeAlreadyExists(SyncScope Scope);
+
+/// <summary>The job does not hold this folder as a scope.</summary>
+/// <param name="Scope">The scope that was being removed.</param>
+public sealed record SyncScopeNotFound(SyncScope Scope);
+
 /// <summary>Closed set of failures that cross the state store boundary.</summary>
-public union StoreError(AccountNotFound, AccountAlreadyExists, StorageFailed);
+public union StoreError(AccountNotFound, AccountAlreadyExists, StorageFailed, SyncJobNotFound, SyncJobAlreadyExists, SyncScopeAlreadyExists, SyncScopeNotFound);

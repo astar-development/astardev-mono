@@ -19,7 +19,7 @@ public sealed class MigrationsShould
 
         result.Value.ShouldBeOfType<Ok<Unit>>();
         host.Services.GetRequiredService<IDatabaseState>().Mode.ShouldBe(DatabaseMode.Normal);
-        tables.ShouldBe(["Accounts", "ItemSnapshots", "Items", "ProviderState", "SyncJobs"]);
+        tables.ShouldBe(["Accounts", "ItemSnapshots", "Items", "ProviderState", "SyncJobs", "SyncScopes"]);
     }
 
     [Fact]
@@ -32,7 +32,7 @@ public sealed class MigrationsShould
         var second = await initialiser.InitialiseAsync(Token);
 
         second.Value.ShouldBeOfType<Ok<Unit>>();
-        (await TableNamesAsync(host.DatabasePath)).Count.ShouldBe(5);
+        (await TableNamesAsync(host.DatabasePath)).Count.ShouldBe(6);
     }
 
     [Fact]

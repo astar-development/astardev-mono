@@ -38,6 +38,11 @@ internal static class DaemonServiceCollectionExtensions
         services.AddSingleton<RemoteFoldersQuery>();
         services.AddSingleton<DisconnectAccountHandler>();
         services.AddSingleton<AccountsQuery>();
+        services.AddSingleton<CreateSyncJobHandler>();
+        services.AddSingleton<AddSyncScopeHandler>();
+        services.AddSingleton<RemoveSyncScopeHandler>();
+        services.AddSingleton<SyncJobsQuery>();
+        services.AddSingleton<SyncScopesQuery>();
         services.AddHealthChecks().AddCheck<ProviderHealthCheck>(ApplicationConstants.ProviderHealthCheckName);
         services.AddHostedService<IpcHostedService>();
 

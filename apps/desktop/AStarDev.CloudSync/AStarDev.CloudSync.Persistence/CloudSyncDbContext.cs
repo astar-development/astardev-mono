@@ -13,6 +13,9 @@ internal sealed class CloudSyncDbContext(DbContextOptions<CloudSyncDbContext> op
     /// <summary>Configured sync relationships.</summary>
     public DbSet<SyncJobEntity> SyncJobs => Set<SyncJobEntity>();
 
+    /// <summary>The remote folders each sync job synchronises.</summary>
+    public DbSet<SyncScopeEntity> SyncScopes => Set<SyncScopeEntity>();
+
     /// <summary>Files and folders under sync, keyed by our identity.</summary>
     public DbSet<ItemEntity> Items => Set<ItemEntity>();
 
@@ -53,7 +56,14 @@ internal sealed class CloudSyncDbContext(DbContextOptions<CloudSyncDbContext> op
         modelBuilder.Entity<SyncJobEntity>(job =>
         {
             job.ToTable("SyncJobs").HasKey(entity => entity.Id);
+            job.Property(entity => entity.BootstrapMode).HasConversion<string>();
             job.HasOne<AccountEntity>().WithMany().HasForeignKey(entity => entity.AccountId).OnDelete(DeleteBehavior.Restrict);
+        });
+
+        modelBuilder.Entity<SyncScopeEntity>(scope =>
+        {
+            scope.ToTable("SyncScopes").HasKey(entity => new { entity.SyncJobId, entity.RemoteRootId });
+            scope.HasOne<SyncJobEntity>().WithMany().HasForeignKey(entity => entity.SyncJobId).OnDelete(DeleteBehavior.Cascade);
         });
 
         modelBuilder.Entity<ItemEntity>(item =>

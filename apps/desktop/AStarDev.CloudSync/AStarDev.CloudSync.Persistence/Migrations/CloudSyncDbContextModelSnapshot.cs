@@ -12,7 +12,7 @@ namespace AStarDev.CloudSync.Persistence.Migrations;
 [DbContext(typeof(CloudSyncDbContext))]
 internal sealed partial class CloudSyncDbContextModelSnapshot : ModelSnapshot
 {
-    public override string LastMigrationId => "20261121140713_AddAccountStatus";
+    public override string LastMigrationId => "20261121151412_AddSyncScopes";
 
     protected override void BuildModel(ModelBuilder modelBuilder)
     {
@@ -155,6 +155,10 @@ internal sealed partial class CloudSyncDbContextModelSnapshot : ModelSnapshot
                 b.Property<Guid>("AccountId")
                     .HasColumnType("TEXT");
 
+                b.Property<string>("BootstrapMode")
+                    .IsRequired()
+                    .HasColumnType("TEXT");
+
                 b.Property<long>("CreatedUtc")
                     .HasColumnType("INTEGER");
 
@@ -181,6 +185,19 @@ internal sealed partial class CloudSyncDbContextModelSnapshot : ModelSnapshot
                 b.HasIndex("AccountId");
 
                 b.ToTable("SyncJobs");
+            });
+
+        modelBuilder.Entity("AStarDev.CloudSync.Persistence.SyncScopeEntity", b =>
+            {
+                b.Property<Guid>("SyncJobId")
+                    .HasColumnType("TEXT");
+
+                b.Property<string>("RemoteRootId")
+                    .HasColumnType("TEXT");
+
+                b.HasKey("SyncJobId", "RemoteRootId");
+
+                b.ToTable("SyncScopes");
             });
 
         modelBuilder.Entity("AStarDev.CloudSync.Persistence.ItemEntity", b =>
@@ -221,6 +238,15 @@ internal sealed partial class CloudSyncDbContextModelSnapshot : ModelSnapshot
                     .WithMany()
                     .HasForeignKey("AccountId")
                     .OnDelete(DeleteBehavior.Restrict)
+                    .IsRequired();
+            });
+
+        modelBuilder.Entity("AStarDev.CloudSync.Persistence.SyncScopeEntity", b =>
+            {
+                b.HasOne("AStarDev.CloudSync.Persistence.SyncJobEntity", null)
+                    .WithMany()
+                    .HasForeignKey("SyncJobId")
+                    .OnDelete(DeleteBehavior.Cascade)
                     .IsRequired();
             });
 #pragma warning restore 612, 618

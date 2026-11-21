@@ -21,6 +21,11 @@ public sealed class IpcHostedServiceShould
             services.GetRequiredService<AccountsQuery>(),
             services.GetRequiredService<RootSummaryQuery>(),
             services.GetRequiredService<RemoteFoldersQuery>(),
+            services.GetRequiredService<CreateSyncJobHandler>(),
+            services.GetRequiredService<AddSyncScopeHandler>(),
+            services.GetRequiredService<RemoveSyncScopeHandler>(),
+            services.GetRequiredService<SyncJobsQuery>(),
+            services.GetRequiredService<SyncScopesQuery>(),
             TimeProvider.System,
             NullLogger<IpcHostedService>.Instance);
     }
