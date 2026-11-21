@@ -1,7 +1,9 @@
 using AStarDev.CloudSync.Daemon.Startup;
 using AStarDev.CloudSync.IPC;
+using AStarDev.CloudSync.Persistence;
 using AStarDev.FunctionalParadigm;
 using Microsoft.Extensions.DependencyInjection;
+using Microsoft.Extensions.Diagnostics.HealthChecks;
 using Microsoft.Extensions.Hosting;
 using Microsoft.Extensions.Logging;
 using OpenTelemetry;
@@ -86,5 +88,36 @@ public sealed class DaemonServiceCollectionExtensionsShould
         serviceName.ShouldBe("astardev-cloudsync-daemon");
         source.HasListeners().ShouldBeTrue();
         loggerProviders.ShouldContain(typeof(OpenTelemetryLoggerProvider));
+    }
+
+    [Fact]
+    public async Task create_the_database_schema_when_the_host_starts()
+    {
+        await using var host = DaemonTestHost.Create();
+
+        await host.StartAsync(Token);
+        var report = await host.Services.GetRequiredService<HealthCheckService>().CheckHealthAsync(Token);
+        await host.StopAsync(Token);
+
+        host.Services.GetRequiredService<IDatabaseState>().Mode.ShouldBe(DatabaseMode.Normal);
+        File.Exists(host.DatabasePath).ShouldBeTrue();
+        report.Entries["database"].Status.ShouldBe(HealthStatus.Healthy);
+    }
+
+    [Fact]
+    public async Task keep_serving_status_in_recovery_mode_and_report_the_database_unhealthy()
+    {
+        await using var host = DaemonTestHost.Create(InfrastructureInitialisationStageShould.CorruptDatabaseAt);
+        await using var client = UnixSocketIpc.CreateClient(host.SocketPath);
+
+        await host.StartAsync(Token);
+        (await client.ConnectAsync(Token)).Value.ShouldBeOfType<Ok<Unit>>();
+        var status = await client.QueryAsync(new GetDaemonStatus(), Token);
+        var report = await host.Services.GetRequiredService<HealthCheckService>().CheckHealthAsync(Token);
+        await host.StopAsync(Token);
+
+        status.Value.ShouldBeOfType<Ok<DaemonStatusView>>();
+        host.Services.GetRequiredService<IDatabaseState>().Mode.ShouldBe(DatabaseMode.Recovery);
+        report.Entries["database"].Status.ShouldBe(HealthStatus.Unhealthy);
     }
 }

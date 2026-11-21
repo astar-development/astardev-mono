@@ -1,7 +1,5 @@
 namespace AStarDev.CloudSync.Domain;
 
-/// <summary>
-/// Placeholder for now, required to make Architecture tests compile.
-/// </summary>
-/// <param name="Value">Identifier text. The real shape of this identity is decided when the Domain is built out.</param>
-public record ItemId(string Value);
+/// <summary>Our own identity for a synchronised file or folder. It does not change when the item is renamed or moved, unlike its <see cref="RelativePath"/>.</summary>
+/// <param name="Value">Unique per item. Not the provider's id; that is <see cref="RemoteItemId"/>.</param>
+public readonly record struct ItemId(Guid Value);
