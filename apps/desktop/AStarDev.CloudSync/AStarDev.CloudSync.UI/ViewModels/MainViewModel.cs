@@ -1,9 +1,6 @@
-using CommunityToolkit.Mvvm.ComponentModel;
-
 namespace AStarDev.CloudSync.UI.ViewModels;
 
-public partial class MainViewModel : ViewModelBase
+public sealed class MainViewModel(ConnectionViewModel connection) : ViewModelBase
 {
-    [ObservableProperty]
-    public partial string Greeting { get; set; } = "Welcome to Avalonia!";
+    public ConnectionViewModel Connection { get; } = connection;
 }

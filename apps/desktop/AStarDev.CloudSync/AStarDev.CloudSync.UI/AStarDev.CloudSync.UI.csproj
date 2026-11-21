@@ -3,8 +3,18 @@
     <OutputType>WinExe</OutputType>
     <TargetFramework>net11.0</TargetFramework>
     <Nullable>enable</Nullable>
+    <ImplicitUsings>enable</ImplicitUsings>
     <ApplicationManifest>app.manifest</ApplicationManifest>
   </PropertyGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="..\AStarDev.CloudSync.IPC\AStarDev.CloudSync.IPC.csproj" />
+    <ProjectReference Include="..\..\..\..\nuget-packages\AStarDev.FunctionalParadigm\AStarDev.FunctionalParadigm.csproj" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <InternalsVisibleTo Include="AStarDev.CloudSync.UI.TestsUnit" />
+  </ItemGroup>
 
   <ItemGroup>
     <Folder Include="Models\" />
