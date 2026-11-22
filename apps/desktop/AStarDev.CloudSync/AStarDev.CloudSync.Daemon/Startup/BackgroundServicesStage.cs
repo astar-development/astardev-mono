@@ -7,8 +7,8 @@ using Microsoft.Extensions.Logging;
 
 namespace AStarDev.CloudSync.Daemon.Startup;
 
-/// <summary>Stage 5: start the background work. Today that is the crawl of every enabled job, which continues from its checkpoints; the operation scheduler, workers and delta processing arrive in later slices.</summary>
-internal sealed class BackgroundServicesStage(ISyncJobStore jobs, SyncRunner runner, OperationScheduler scheduler, IDatabaseState databaseState, ILogger<BackgroundServicesStage> logger) : IStartupStage
+/// <summary>Stage 5: start the background work. Today that is the crawl of every enabled job, which continues from its checkpoints, and the observation of its local root; the operation scheduler, workers and delta processing arrive in later slices.</summary>
+internal sealed class BackgroundServicesStage(ISyncJobStore jobs, SyncRunner runner, LocalObservationRunner observation, OperationScheduler scheduler, IDatabaseState databaseState, ILogger<BackgroundServicesStage> logger) : IStartupStage
 {
     /// <inheritdoc/>
     public string Name => ApplicationConstants.BackgroundServicesStageName;
@@ -36,6 +36,7 @@ internal sealed class BackgroundServicesStage(ISyncJobStore jobs, SyncRunner run
         foreach (var job in listed.Where(job => job.Enabled))
         {
             if (await runner.StartAsync(job.Id, cancellationToken) is Fail<StoreError> fail) logger.LogWarning("Job {Job} could not be resumed: {Message}", job.Id.Value, StoreErrorMessages.Describe(fail.Error, "read", "sync job"));
+            if (await observation.StartAsync(job.Id, cancellationToken) is Fail<StoreError> observationFail) logger.LogWarning("Job {Job} local observation could not be started: {Message}", job.Id.Value, StoreErrorMessages.Describe(observationFail.Error, "read", "sync job"));
         }
 
         return new Ok<Unit>(default);
