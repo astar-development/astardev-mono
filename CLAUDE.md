@@ -51,6 +51,7 @@ Architecture docs in `docs/architecture/` = source of truth; start at `00 archit
 - Error types = closed unions of records (`IpcError`, `ProviderError`, `StartupError`). Match exhaustively with `switch`, no `_` default.
 - `Domain` must not reference `FunctionalParadigm`; any other module may.
 - Cancellation not failure: `OperationCanceledException` propagates.
+- No nulls inside the application: an absent value is `Option<T>`, never `null`. `null` is allowed only at an external edge: a public API (public type or member of a module's approved surface, such as a `string? name` parameter or a nullable return) may accept or return `null`, and converts it at once with `Option.FromNullable`. Internal and private members never take, return or store `null`. Framework contracts that force it (events, `Exception.InnerException`) are the only other exception.
 
 ## Async
 
