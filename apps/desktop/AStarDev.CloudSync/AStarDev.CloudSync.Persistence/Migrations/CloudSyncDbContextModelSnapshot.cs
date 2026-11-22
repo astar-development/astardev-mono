@@ -15,7 +15,7 @@ internal sealed partial class CloudSyncDbContextModelSnapshot : ModelSnapshot
     // If you encounter a merge conflict in the line below, it means you need to
     // discard one of the migration branches and recreate its migrations on top of
     // the other branch. See https://aka.ms/efcore-docs-migrations-conflicts for more info.
-    public override string LastMigrationId => "20261122103734_AddKnownSnapshotsAndConflicts";
+    public override string LastMigrationId => "20261122112701_AddEventJournal";
 
     protected override void BuildModel(ModelBuilder modelBuilder)
     {
@@ -205,6 +205,33 @@ internal sealed partial class CloudSyncDbContextModelSnapshot : ModelSnapshot
                 b.HasIndex("ItemId");
 
                 b.ToTable("ItemSnapshots");
+            });
+
+        modelBuilder.Entity("AStarDev.CloudSync.Persistence.JournalEntryEntity", b =>
+            {
+                b.Property<Guid>("Id")
+                    .ValueGeneratedOnAdd()
+                    .HasColumnType("TEXT");
+
+                b.Property<Guid>("AggregateId")
+                    .HasColumnType("TEXT");
+
+                b.Property<string>("EventType")
+                    .IsRequired()
+                    .HasColumnType("TEXT");
+
+                b.Property<long>("OccurredUtc")
+                    .HasColumnType("INTEGER");
+
+                b.Property<string>("PayloadJson")
+                    .IsRequired()
+                    .HasColumnType("TEXT");
+
+                b.HasKey("Id");
+
+                b.HasIndex("AggregateId", "OccurredUtc");
+
+                b.ToTable("EventJournal");
             });
 
         modelBuilder.Entity("AStarDev.CloudSync.Persistence.KnownSnapshotEntity", b =>

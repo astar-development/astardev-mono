@@ -36,6 +36,7 @@ public static class PersistenceServiceCollectionExtensions
         services.AddSingleton<IItemStateStore, ItemStateStore>();
         services.AddSingleton<IKnownSnapshotStore, KnownSnapshotStore>();
         services.AddSingleton<IConflictStore, ConflictStore>();
+        services.AddSingleton<IEventJournal, EventJournalStore>();
         services.AddHealthChecks().AddCheck<DatabaseHealthCheck>(ApplicationConstants.DatabaseHealthCheckName);
 
         return services;

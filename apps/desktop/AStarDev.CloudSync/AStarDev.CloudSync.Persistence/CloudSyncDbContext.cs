@@ -43,6 +43,9 @@ internal sealed class CloudSyncDbContext(DbContextOptions<CloudSyncDbContext> op
     /// <summary>Disagreements waiting for the user.</summary>
     public DbSet<ConflictEntity> Conflicts => Set<ConflictEntity>();
 
+    /// <summary>The append-only journal of significant occurrences.</summary>
+    public DbSet<JournalEntryEntity> EventJournal => Set<JournalEntryEntity>();
+
     /// <summary>Saves inside a <c>persistence.save</c> span; see <see cref="PersistenceTelemetry"/>.</summary>
     public override int SaveChanges(bool acceptAllChangesOnSuccess)
     {
@@ -127,6 +130,12 @@ internal sealed class CloudSyncDbContext(DbContextOptions<CloudSyncDbContext> op
             conflict.HasOne<SyncJobEntity>().WithMany().HasForeignKey(entity => entity.SyncJobId).OnDelete(DeleteBehavior.Cascade);
             conflict.HasIndex(entity => new { entity.SyncJobId, entity.Status, entity.CreatedUtc });
             conflict.HasIndex(entity => new { entity.ItemId, entity.Type, entity.Status });
+        });
+
+        modelBuilder.Entity<JournalEntryEntity>(entry =>
+        {
+            entry.ToTable("EventJournal").HasKey(entity => entity.Id);
+            entry.HasIndex(entity => new { entity.AggregateId, entity.OccurredUtc });
         });
 
         modelBuilder.Entity<ItemEntity>(item =>

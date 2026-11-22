@@ -7,7 +7,7 @@ using Microsoft.Extensions.Logging;
 namespace AStarDev.CloudSync.Daemon;
 
 /// <summary>Serves the IPC contract. Registered after <see cref="StartupHostedService"/>, so it only listens once every recovery stage has finished.</summary>
-internal sealed class IpcHostedService(IIpcServer server, ConnectAccountHandler connectAccount, DisconnectAccountHandler disconnectAccount, AccountsQuery accounts, RootSummaryQuery rootSummary, RemoteFoldersQuery remoteFolders, CreateSyncJobHandler createSyncJob, AddSyncScopeHandler addSyncScope, RemoveSyncScopeHandler removeSyncScope, SyncJobsQuery syncJobs, SyncScopesQuery syncScopes, StartSyncHandler startSync, StopSyncHandler stopSync, ActivitiesQuery activities, DeadLettersQuery deadLetters, RetryOperationHandler retryOperation, IgnoreOperationHandler ignoreOperation, TimeProvider timeProvider, ILogger<IpcHostedService> logger) : IHostedService
+internal sealed class IpcHostedService(IIpcServer server, ConnectAccountHandler connectAccount, DisconnectAccountHandler disconnectAccount, AccountsQuery accounts, RootSummaryQuery rootSummary, RemoteFoldersQuery remoteFolders, CreateSyncJobHandler createSyncJob, AddSyncScopeHandler addSyncScope, RemoveSyncScopeHandler removeSyncScope, SyncJobsQuery syncJobs, SyncScopesQuery syncScopes, StartSyncHandler startSync, StopSyncHandler stopSync, ActivitiesQuery activities, ConflictsQuery conflicts, DeadLettersQuery deadLetters, RetryOperationHandler retryOperation, IgnoreOperationHandler ignoreOperation, TimeProvider timeProvider, ILogger<IpcHostedService> logger) : IHostedService
 {
     private static readonly string Version = typeof(IpcHostedService).Assembly.GetName().Version?.ToString() ?? ApplicationConstants.UnknownVersion;
 
@@ -35,6 +35,7 @@ internal sealed class IpcHostedService(IIpcServer server, ConnectAccountHandler 
         server.MapCommand<StartSync>(startSync.HandleAsync);
         server.MapCommand<StopSync>(stopSync.HandleAsync);
         server.MapQuery<GetActivities, ActivitiesView>(activities.HandleAsync);
+        server.MapQuery<GetConflicts, ConflictsView>(conflicts.HandleAsync);
         server.MapQuery<GetDeadLetters, DeadLettersView>(deadLetters.HandleAsync);
         server.MapCommand<RetryOperation>(retryOperation.HandleAsync);
         server.MapCommand<IgnoreOperation>(ignoreOperation.HandleAsync);

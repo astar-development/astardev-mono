@@ -29,6 +29,7 @@ public sealed class IpcHostedServiceShould
             services.GetRequiredService<StartSyncHandler>(),
             services.GetRequiredService<StopSyncHandler>(),
             services.GetRequiredService<ActivitiesQuery>(),
+            services.GetRequiredService<ConflictsQuery>(),
             services.GetRequiredService<DeadLettersQuery>(),
             services.GetRequiredService<RetryOperationHandler>(),
             services.GetRequiredService<IgnoreOperationHandler>(),
