@@ -19,6 +19,14 @@ internal sealed class FakeCloudProvider(int pageSize) : ICloudProvider
 
     public Action<int>? BeforePage { get; set; }
 
+    public Dictionary<RemoteItemId, byte[]> Contents { get; } = [];
+
+    public List<(RelativePath Path, byte[] Content, DateTimeOffset ModifiedUtc)> Uploads { get; } = [];
+
+    public List<(RemoteItemId ItemId, RelativePath Path)> Renames { get; } = [];
+
+    public List<RemoteItemId> Deletes { get; } = [];
+
     public int PagesServed { get; private set; }
 
     public int ItemsServed { get; private set; }
@@ -138,6 +146,43 @@ internal sealed class FakeCloudProvider(int pageSize) : ICloudProvider
         var newToken = last ? new DeltaToken($"delta-{root.Value}-{++tokensIssued}") : (DeltaToken?)null;
 
         return Task.FromResult<Result<ProviderDeltaPage, ProviderError>>(new Ok<ProviderDeltaPage>(new ProviderDeltaPage(page, last ? null : next.ToString(), newToken)));
+    }
+
+    public Task<Result<Stream, ProviderError>> DownloadAsync(RemoteItemId itemId, CancellationToken cancellationToken)
+    {
+        cancellationToken.ThrowIfCancellationRequested();
+
+        Result<Stream, ProviderError> result = Contents.TryGetValue(itemId, out var bytes)
+            ? new Ok<Stream>(new MemoryStream(bytes))
+            : new Fail<ProviderError>(new Permanent($"No content for {itemId.Value}"));
+
+        return Task.FromResult(result);
+    }
+
+    public async Task<Result<Unit, ProviderError>> UploadAsync(UploadRequest request, CancellationToken cancellationToken)
+    {
+        cancellationToken.ThrowIfCancellationRequested();
+        using var copy = new MemoryStream();
+        await request.Content.CopyToAsync(copy, cancellationToken);
+        Uploads.Add((request.Path, copy.ToArray(), request.ModifiedUtc));
+
+        return new Ok<Unit>(default);
+    }
+
+    public Task<Result<Unit, ProviderError>> RenameAsync(RemoteItemId itemId, RelativePath path, CancellationToken cancellationToken)
+    {
+        cancellationToken.ThrowIfCancellationRequested();
+        Renames.Add((itemId, path));
+
+        return Task.FromResult<Result<Unit, ProviderError>>(new Ok<Unit>(default));
+    }
+
+    public Task<Result<Unit, ProviderError>> DeleteAsync(RemoteItemId itemId, CancellationToken cancellationToken)
+    {
+        cancellationToken.ThrowIfCancellationRequested();
+        Deletes.Add(itemId);
+
+        return Task.FromResult<Result<Unit, ProviderError>>(new Ok<Unit>(default));
     }
 
     private string NextListingToken(RemoteItemId root)

@@ -6,7 +6,6 @@ namespace AStarDev.CloudSync.Ports;
 /// <summary>
 /// The only way the sync engine talks to a cloud provider. Failure is a <see cref="ProviderError"/> value, never an exception;
 /// cancellation is not a failure and propagates as <see cref="OperationCanceledException"/>.
-/// Later slices add the remaining members of doc 09 (download, upload, rename, delete).
 /// </summary>
 public interface ICloudProvider
 {
@@ -56,4 +55,29 @@ public interface ICloudProvider
     /// <param name="cancellationToken">Cancelling abandons the call and surfaces as <see cref="OperationCanceledException"/>, never as a <see cref="ProviderError"/>.</param>
     /// <returns>One page of changes, or the reason it failed. The last page carries the new <see cref="ProviderDeltaPage.DeltaToken"/>. <see cref="InvalidDeltaToken"/> means the token is spent: do not retry, list the root again. The same call can be repeated after other failures.</returns>
     Task<Result<ProviderDeltaPage, ProviderError>> GetDeltasAsync(RemoteItemId root, DeltaToken token, string? resumeToken, CancellationToken cancellationToken);
+
+    /// <summary>Opens the content of one remote file for reading.</summary>
+    /// <param name="itemId">The file to read.</param>
+    /// <param name="cancellationToken">Cancelling abandons the call and surfaces as <see cref="OperationCanceledException"/>, never as a <see cref="ProviderError"/>.</param>
+    /// <returns>A stream of the content that the caller must dispose, or <see cref="Permanent"/> when the file is missing or forbidden. Nothing is read until the stream is; a failure while reading surfaces as an <see cref="IOException"/> from the stream. The same call can be repeated.</returns>
+    Task<Result<Stream, ProviderError>> DownloadAsync(RemoteItemId itemId, CancellationToken cancellationToken);
+
+    /// <summary>Puts a file's content at a remote path, replacing what is there, and gives the remote copy the request's modified time.</summary>
+    /// <param name="request">What to send and where.</param>
+    /// <param name="cancellationToken">Cancelling abandons the upload and surfaces as <see cref="OperationCanceledException"/>, never as a <see cref="ProviderError"/>.</param>
+    /// <returns>Success, or the reason the upload failed. Small files go in one request, larger ones in chunks of one upload session. A failed upload leaves the earlier remote content in place; repeating the call starts the upload again from the beginning.</returns>
+    Task<Result<Unit, ProviderError>> UploadAsync(UploadRequest request, CancellationToken cancellationToken);
+
+    /// <summary>Renames or moves a remote item to a new path.</summary>
+    /// <param name="itemId">The item to move.</param>
+    /// <param name="path">The new path relative to the remote root. The folder it sits in must exist.</param>
+    /// <param name="cancellationToken">Cancelling abandons the call and surfaces as <see cref="OperationCanceledException"/>, never as a <see cref="ProviderError"/>.</param>
+    /// <returns>Success, also when the item is already at the path, or the reason the move failed.</returns>
+    Task<Result<Unit, ProviderError>> RenameAsync(RemoteItemId itemId, RelativePath path, CancellationToken cancellationToken);
+
+    /// <summary>Deletes a remote item.</summary>
+    /// <param name="itemId">The item to delete.</param>
+    /// <param name="cancellationToken">Cancelling abandons the call and surfaces as <see cref="OperationCanceledException"/>, never as a <see cref="ProviderError"/>.</param>
+    /// <returns>Success, also when the item is already gone, so calling twice is safe; or the reason the delete failed.</returns>
+    Task<Result<Unit, ProviderError>> DeleteAsync(RemoteItemId itemId, CancellationToken cancellationToken);
 }

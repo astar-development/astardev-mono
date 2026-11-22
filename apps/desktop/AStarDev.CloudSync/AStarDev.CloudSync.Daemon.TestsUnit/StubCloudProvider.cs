@@ -75,6 +75,34 @@ internal sealed class StubCloudProvider : ICloudProvider
         return Task.FromResult(ChildrenResult);
     }
 
+    public Task<Result<Stream, ProviderError>> DownloadAsync(RemoteItemId itemId, CancellationToken cancellationToken)
+    {
+        cancellationToken.ThrowIfCancellationRequested();
+
+        return Task.FromResult<Result<Stream, ProviderError>>(new Ok<Stream>(new MemoryStream()));
+    }
+
+    public Task<Result<Unit, ProviderError>> UploadAsync(UploadRequest request, CancellationToken cancellationToken)
+    {
+        cancellationToken.ThrowIfCancellationRequested();
+
+        return Task.FromResult<Result<Unit, ProviderError>>(new Ok<Unit>(default));
+    }
+
+    public Task<Result<Unit, ProviderError>> RenameAsync(RemoteItemId itemId, RelativePath path, CancellationToken cancellationToken)
+    {
+        cancellationToken.ThrowIfCancellationRequested();
+
+        return Task.FromResult<Result<Unit, ProviderError>>(new Ok<Unit>(default));
+    }
+
+    public Task<Result<Unit, ProviderError>> DeleteAsync(RemoteItemId itemId, CancellationToken cancellationToken)
+    {
+        cancellationToken.ThrowIfCancellationRequested();
+
+        return Task.FromResult<Result<Unit, ProviderError>>(new Ok<Unit>(default));
+    }
+
     public static ProviderItem Folder(string id, string path) => new(new RemoteItemId(id), new RelativePath(path), ItemType.Folder, 0, DateTimeOffset.UnixEpoch);
 
     public static ProviderItem Item(string id) => new(new RemoteItemId(id), new RelativePath(id), ItemType.File, 1, DateTimeOffset.UnixEpoch);
