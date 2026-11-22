@@ -14,10 +14,7 @@ public sealed class TelemetryOptionsShould
     }
 
     [Fact]
-    public void reject_an_otlp_endpoint_that_is_not_http_or_https()
-    {
-        Should.Throw<OptionsValidationException>(() => TelemetryTestHost.Create("ftp://localhost:4317").Services.GetRequiredService<IOptions<TelemetryOptions>>().Value);
-    }
+    public void reject_an_otlp_endpoint_that_is_not_http_or_https() => Should.Throw<OptionsValidationException>(() => TelemetryTestHost.Create("ftp://localhost:4317").Services.GetRequiredService<IOptions<TelemetryOptions>>().Value);
 
     [Theory]
     [InlineData("")]

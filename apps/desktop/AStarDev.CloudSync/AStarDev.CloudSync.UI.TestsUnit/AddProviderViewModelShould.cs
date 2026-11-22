@@ -8,10 +8,7 @@ public sealed class AddProviderViewModelShould
     private static AddProviderStep[] AllSteps => Enum.GetValues<AddProviderStep>();
 
     [Fact]
-    public void define_the_seven_steps_of_the_journey_in_order()
-    {
-        AllSteps.ShouldBe([AddProviderStep.SelectProvider, AddProviderStep.Authenticate, AddProviderStep.GrantPermissions, AddProviderStep.VerifyAccess, AddProviderStep.ChooseSyncRoot, AddProviderStep.ReviewConfiguration, AddProviderStep.Activate]);
-    }
+    public void define_the_seven_steps_of_the_journey_in_order() => AllSteps.ShouldBe([AddProviderStep.SelectProvider, AddProviderStep.Authenticate, AddProviderStep.GrantPermissions, AddProviderStep.VerifyAccess, AddProviderStep.ChooseSyncRoot, AddProviderStep.ReviewConfiguration, AddProviderStep.Activate]);
 
     [Fact]
     public async Task walk_every_step_reusing_the_connect_flow_then_close()

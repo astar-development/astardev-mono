@@ -8,9 +8,7 @@ namespace AStarDev.CloudSync.Persistence.Migrations;
 internal sealed partial class AddCrawlCheckpoints : Migration
 {
     /// <inheritdoc />
-    protected override void Up(MigrationBuilder migrationBuilder)
-    {
-        migrationBuilder.CreateTable(
+    protected override void Up(MigrationBuilder migrationBuilder) => migrationBuilder.CreateTable(
             name: "CrawlCheckpoints",
             columns: table => new
             {
@@ -32,12 +30,8 @@ internal sealed partial class AddCrawlCheckpoints : Migration
                     principalColumns: ["SyncJobId", "RemoteRootId"],
                     onDelete: ReferentialAction.Cascade);
             });
-    }
 
     /// <inheritdoc />
-    protected override void Down(MigrationBuilder migrationBuilder)
-    {
-        migrationBuilder.DropTable(
+    protected override void Down(MigrationBuilder migrationBuilder) => migrationBuilder.DropTable(
             name: "CrawlCheckpoints");
-    }
 }

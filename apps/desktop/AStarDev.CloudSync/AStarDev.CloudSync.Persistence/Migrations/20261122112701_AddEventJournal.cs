@@ -33,9 +33,6 @@ internal sealed partial class AddEventJournal : Migration
     }
 
     /// <inheritdoc />
-    protected override void Down(MigrationBuilder migrationBuilder)
-    {
-        migrationBuilder.DropTable(
+    protected override void Down(MigrationBuilder migrationBuilder) => migrationBuilder.DropTable(
             name: "EventJournal");
-    }
 }

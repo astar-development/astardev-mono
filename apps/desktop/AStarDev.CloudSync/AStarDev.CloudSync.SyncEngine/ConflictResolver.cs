@@ -115,9 +115,10 @@ public sealed class ConflictResolver
     private async Task<Result<Unit, ResolutionError>> DeferAsync(Conflict conflict, CancellationToken cancellationToken)
     {
         var status = await conflictStore.UpdateStatusAsync(conflict.Id, ConflictStatus.Deferred, cancellationToken);
-        if (status.Value is Fail<StoreError> statusFailure) return Stored(statusFailure.Error);
 
-        return await RecordAsync(conflict with { Status = ConflictStatus.Deferred }, ConflictResolution.Defer, null, cancellationToken);
+        return (status.Value is Fail<StoreError> statusFailure)
+            ? Stored(statusFailure.Error)
+            : await RecordAsync(conflict with { Status = ConflictStatus.Deferred }, ConflictResolution.Defer, null, cancellationToken);
     }
 
     private async Task<Result<Loaded, ResolutionError>> LoadAsync(Conflict conflict, CancellationToken cancellationToken)
@@ -137,10 +138,14 @@ public sealed class ConflictResolver
         var items = ((Ok<IReadOnlyList<StoredItem>>)rows.Value).Value;
         var state = CanonicalStateBuilder.Build(items, ((Ok<IReadOnlyList<KnownEntry>>)known.Value).Value).FirstOrDefault(candidate => candidate.ItemId == conflict.ItemId);
         if (state is null) return Refusal(new ConflictItemGone(conflict.Id));
-        if (SyncPlanner.BusyItems(((Ok<IReadOnlyList<Operation>>)operations.Value).Value).Contains(conflict.ItemId)) return Refusal(new ConflictItemBusy(conflict.Id));
 
-        return new Ok<Loaded>(new Loaded(((Ok<SyncJob>)job.Value).Value, state, items));
+        return ConflictDetected(conflict, operations)
+            ? Refusal(new ConflictItemBusy(conflict.Id))
+            : new Ok<Loaded>(new Loaded(((Ok<SyncJob>)job.Value).Value, state, items));
     }
+
+    private static bool ConflictDetected(Conflict conflict, Result<IReadOnlyList<Operation>, StoreError> operations) =>
+        SyncPlanner.BusyItems(((Ok<IReadOnlyList<Operation>>)operations.Value).Value).Contains(conflict.ItemId);
 
     private async Task<Result<RelativePath, ResolutionError>> CopyLocalAsync(Conflict conflict, Loaded context, CancellationToken cancellationToken)
     {
@@ -164,9 +169,8 @@ public sealed class ConflictResolver
 
         var snapshot = new LocalSnapshot(target, local.Size, local.ModifiedUtc, null, local.Fingerprint);
         var recorded = await observations.RecordAsync(conflict.SyncJobId, [snapshot], [], timeProvider.GetUtcNow(), cancellationToken);
-        if (recorded.Value is Fail<StoreError> recordFailure) return Stored(recordFailure.Error);
 
-        return new Ok<RelativePath>(target);
+        return recorded.Value is Fail<StoreError> recordFailure ? Stored(recordFailure.Error) : new Ok<RelativePath>(target);
     }
 
     private static string Describe(ProviderError error) => error.Value?.ToString() ?? "unknown";

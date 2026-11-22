@@ -14,16 +14,14 @@ internal sealed class ConflictViewFactory(CanonicalStateReader states)
     /// <param name="conflicts">The conflicts to describe. Empty reads nothing.</param>
     /// <param name="cancellationToken">Cancelling abandons the read and surfaces as <see cref="OperationCanceledException"/>.</param>
     /// <returns>One view per conflict. A conflict whose item the daemon no longer knows gets an empty path and no sides. Or the store's failure.</returns>
-    public async Task<Result<IReadOnlyList<ConflictView>, StoreError>> CreateAsync(SyncJobId jobId, IReadOnlyList<Conflict> conflicts, CancellationToken cancellationToken)
-    {
-        if (conflicts.Count == 0) return new Ok<IReadOnlyList<ConflictView>>([]);
-
-        return await states.ReadAsync(jobId, cancellationToken) switch
-        {
-            Ok<IReadOnlyList<CanonicalItemState>> ok => new Ok<IReadOnlyList<ConflictView>>(Describe(conflicts, ok.Value)),
-            Fail<StoreError> fail => fail
-        };
-    }
+    public async Task<Result<IReadOnlyList<ConflictView>, StoreError>> CreateAsync(SyncJobId jobId, IReadOnlyList<Conflict> conflicts, CancellationToken cancellationToken) =>
+        conflicts.Count == 0
+            ? new Ok<IReadOnlyList<ConflictView>>([])
+            : await states.ReadAsync(jobId, cancellationToken) switch
+            {
+                Ok<IReadOnlyList<CanonicalItemState>> ok => new Ok<IReadOnlyList<ConflictView>>(Describe(conflicts, ok.Value)),
+                Fail<StoreError> fail => fail
+            };
 
     /// <summary>Builds the view of a conflict without reading the item state: empty path and no sides.</summary>
     /// <param name="conflict">The conflict to describe.</param>
@@ -44,7 +42,16 @@ internal sealed class ConflictViewFactory(CanonicalStateReader states)
         conflict.Type.ToString(),
         conflict.CreatedUtc,
         conflict.Status.ToString(),
-        state?.Remote?.Path.Value ?? state?.Local?.Path.Value ?? state?.Known?.Path.Value ?? string.Empty,
-        state?.Local is { } local ? new ConflictSideView(local.Path.Value, local.ModifiedUtc, local.Size) : null,
-        state?.Remote is { } remote ? new ConflictSideView(remote.Path.Value, remote.ModifiedUtc, remote.Size) : null);
+        SetRemotePath(state),
+        SetLocalConflictDetails(state),
+        SetRemoveConflictDetails(state));
+
+    private static ConflictSideView? SetRemoveConflictDetails(CanonicalItemState? state) =>
+        state?.Remote is { } remote ? new ConflictSideView(remote.Path.Value, remote.ModifiedUtc, remote.Size) : null;
+
+    private static ConflictSideView? SetLocalConflictDetails(CanonicalItemState? state) =>
+        state?.Local is { } local ? new ConflictSideView(local.Path.Value, local.ModifiedUtc, local.Size) : null;
+
+    private static string SetRemotePath(CanonicalItemState? state) =>
+        state?.Remote?.Path.Value ?? state?.Local?.Path.Value ?? state?.Known?.Path.Value ?? string.Empty;
 }
