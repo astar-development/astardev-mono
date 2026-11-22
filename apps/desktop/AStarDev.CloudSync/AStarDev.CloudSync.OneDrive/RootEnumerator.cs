@@ -10,12 +10,18 @@ namespace AStarDev.CloudSync.OneDrive;
 /// <param name="telemetry">Receives a span and a request count per page.</param>
 internal sealed class RootEnumerator(HttpClient client, OneDriveTelemetry telemetry)
 {
-    /// <summary>Fetches one page of the whole tree under a remote root through Graph's delta endpoint, which lists every descendant flat. The resume token is Graph's next link, used as the request URL.</summary>
+    private readonly PathResolver resolver = new(client, telemetry);
+
+    /// <summary>Fetches one page of the whole tree under a remote root through Graph's delta endpoint, which lists every descendant flat. Paths are built from parent ids and are relative to <paramref name="root"/>. The resume token is Graph's next link, used as the request URL.</summary>
     /// <returns>The page, with the final page carrying Graph's delta link as the delta token, or the <see cref="ProviderError"/> met. Cancellation propagates as <see cref="OperationCanceledException"/>.</returns>
     public async Task<Result<ProviderSnapshotPage, ProviderError>> GetSnapshotAsync(RemoteItemId root, string? resumeToken, CancellationToken cancellationToken)
         => await GetPageAsync(resumeToken ?? $"me/drive/items/{Uri.EscapeDataString(root.Value)}/delta", cancellationToken).ConfigureAwait(false) switch
         {
-            Ok<GraphChildrenPage> ok => new Ok<ProviderSnapshotPage>(DeltaMapping.ToSnapshotPage(root, ok.Value)),
+            Ok<GraphChildrenPage> ok => await resolver.ResolveAsync(root, ok.Value.Value ?? [], cancellationToken).ConfigureAwait(false) switch
+            {
+                Ok<IReadOnlyDictionary<string, string>> paths => new Ok<ProviderSnapshotPage>(DeltaMapping.ToSnapshotPage(root, ok.Value, paths.Value)),
+                Fail<ProviderError> fail => fail
+            },
             Fail<ProviderError> fail => fail
         };
 
@@ -24,7 +30,11 @@ internal sealed class RootEnumerator(HttpClient client, OneDriveTelemetry teleme
     public async Task<Result<ProviderDeltaPage, ProviderError>> GetDeltasAsync(RemoteItemId root, DeltaToken token, string? resumeToken, CancellationToken cancellationToken)
         => await GetPageAsync(resumeToken ?? token.Value, cancellationToken).ConfigureAwait(false) switch
         {
-            Ok<GraphChildrenPage> ok => new Ok<ProviderDeltaPage>(DeltaMapping.ToDeltaPage(ok.Value)),
+            Ok<GraphChildrenPage> ok => await resolver.ResolveAsync(root, ok.Value.Value ?? [], cancellationToken).ConfigureAwait(false) switch
+            {
+                Ok<IReadOnlyDictionary<string, string>> paths => new Ok<ProviderDeltaPage>(DeltaMapping.ToDeltaPage(ok.Value, paths.Value)),
+                Fail<ProviderError> fail => fail
+            },
             Fail<ProviderError> fail => fail
         };
 

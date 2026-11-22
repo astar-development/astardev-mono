@@ -35,7 +35,7 @@ internal sealed class OneDriveProvider(IOptions<OneDriveSettings> settings, ITok
     /// <remarks>
     /// Without a successful <see cref="ConnectAsync"/> first, Graph refuses the request and the result is <see cref="AuthenticationFailed"/>.
     /// Returns one page of the whole tree under the root through Graph's delta endpoint, so the listing is recursive and flat; the resume token is a Graph next link. The last page carries the Graph delta link as the delta token. Graph reports no total, so <see cref="ProviderSnapshotPage.TotalItems"/> is <see langword="null"/>.
-    /// Paths are relative to the drive root, which equals the sync root only when the root is the drive root; OneDrive Personal may omit paths from delta responses.
+    /// Paths are built from parent ids and names, so they are relative to <paramref name="root"/> and correct where OneDrive Personal omits parent paths. A parent not yet seen is read from Graph, costing one request per unknown folder after a restart; an item whose parent Graph no longer has, or that lies outside the root, is left out.
     /// </remarks>
     public Task<Result<ProviderSnapshotPage, ProviderError>> GetSnapshotAsync(RemoteItemId root, string? resumeToken, CancellationToken cancellationToken)
         => enumerator.GetSnapshotAsync(root, resumeToken, cancellationToken);
@@ -43,7 +43,7 @@ internal sealed class OneDriveProvider(IOptions<OneDriveSettings> settings, ITok
     /// <inheritdoc/>
     /// <remarks>
     /// The token is a Graph delta link and the resume token a Graph next link, both used as the request URL. HTTP 410 is <see cref="InvalidDeltaToken"/>.
-    /// Graph does not report renames, so a renamed or moved item arrives as <see cref="ChangeKind.Modified"/> with its new path.
+    /// Graph does not report renames, so a renamed or moved item arrives as <see cref="ChangeKind.Modified"/> with its new path. Paths are resolved as for <see cref="GetSnapshotAsync"/>.
     /// </remarks>
     public Task<Result<ProviderDeltaPage, ProviderError>> GetDeltasAsync(RemoteItemId root, DeltaToken token, string? resumeToken, CancellationToken cancellationToken)
         => enumerator.GetDeltasAsync(root, token, resumeToken, cancellationToken);
