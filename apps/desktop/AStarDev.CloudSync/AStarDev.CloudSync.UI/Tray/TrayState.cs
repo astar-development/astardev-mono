@@ -13,4 +13,12 @@ internal sealed record TrayState(TrustLevel Level, string IconKey, string ToolTi
     /// <param name="level">The level to convey.</param>
     /// <param name="localisation">Supplies the tooltip text.</param>
     public static TrayState For(TrustLevel level, ILocalisationService localisation) => new(level, $"Icon.Trust.{level}", localisation.Get($"Tray.State.{level}"));
+
+    /// <summary>The tooltip for <paramref name="level"/>, saying how many conflicts need review when there are any.</summary>
+    /// <param name="level">The level to convey.</param>
+    /// <param name="conflictCount">How many conflicts wait for the user. Zero or less adds nothing.</param>
+    /// <param name="localisation">Supplies the tooltip text.</param>
+    public static string ToolTipFor(TrustLevel level, int conflictCount, ILocalisationService localisation) => conflictCount > 0
+        ? localisation.Format("Tray.ToolTip.Conflicts", ("state", For(level, localisation).ToolTip), ("count", conflictCount))
+        : For(level, localisation).ToolTip;
 }

@@ -15,11 +15,14 @@ internal sealed class TrayLifecycle(IMainWindowHost window, INavigationService n
 {
     private bool exiting;
 
-    /// <summary>Raised after <see cref="IconState"/> changes. The tray icon listens to redraw itself.</summary>
+    /// <summary>Raised after <see cref="IconState"/> or <see cref="ConflictCount"/> changes. The tray icon listens to redraw itself.</summary>
     public event EventHandler? IconStateChanged;
 
     /// <summary>What the tray icon should convey. Healthy until <see cref="SetIconState"/> says otherwise.</summary>
     public TrustLevel IconState { get; private set; } = TrustLevel.Healthy;
+
+    /// <summary>How many conflicts wait for the user. Zero until <see cref="SetConflictCount"/> says otherwise; the tray shows a badge and a count while it is above zero.</summary>
+    public int ConflictCount { get; private set; }
 
     /// <summary>Call when the main window is closing.</summary>
     /// <returns><see langword="true"/> when the close must be cancelled because the window was hidden to the tray instead; <see langword="false"/> once <see cref="Exit"/> was called, so the close goes ahead.</returns>
@@ -49,6 +52,9 @@ internal sealed class TrayLifecycle(IMainWindowHost window, INavigationService n
     /// <summary>Tray menu: Settings.</summary>
     public void OpenSettings() => Open(ScreenId.Settings);
 
+    /// <summary>Tray menu: Conflicts. Opens the Conflict Centre.</summary>
+    public void OpenConflicts() => Open(ScreenId.Conflicts);
+
     /// <summary>Tray menu: Pause Sync. Does nothing until the daemon has a pause command.</summary>
     public void PauseSync()
     {
@@ -64,6 +70,14 @@ internal sealed class TrayLifecycle(IMainWindowHost window, INavigationService n
     {
         exiting = true;
         application.Exit();
+    }
+
+    /// <summary>Sets the conflict count and raises <see cref="IconStateChanged"/>. A negative count is treated as zero.</summary>
+    /// <param name="count">How many conflicts wait for the user.</param>
+    public void SetConflictCount(int count)
+    {
+        ConflictCount = Math.Max(count, 0);
+        IconStateChanged?.Invoke(this, EventArgs.Empty);
     }
 
     /// <summary>Changes the icon state and raises <see cref="IconStateChanged"/>.</summary>

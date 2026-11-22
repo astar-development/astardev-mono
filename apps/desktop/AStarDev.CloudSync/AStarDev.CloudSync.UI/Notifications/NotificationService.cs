@@ -57,6 +57,10 @@ internal sealed class NotificationService(INotificationPresenter presenter, Tray
         NotificationEventKind.AuthenticationExpiring => NotificationCategory.Warning,
         NotificationEventKind.ConflictDetected => NotificationCategory.Conflict,
         NotificationEventKind.ItemFailed => NotificationCategory.Error,
+        NotificationEventKind.AuthenticationExpired => NotificationCategory.Error,
+        NotificationEventKind.InitialCrawlComplete => NotificationCategory.Informational,
+        NotificationEventKind.SyncScopeComplete => NotificationCategory.Informational,
+        NotificationEventKind.UserActionRequired => NotificationCategory.Warning,
         _ => NotificationCategory.Critical
     };
 
@@ -68,6 +72,10 @@ internal sealed class NotificationService(INotificationPresenter presenter, Tray
         NotificationEventKind.AuthenticationExpiring => new NotificationTarget(ScreenId.Providers, notificationEvent.SubjectId),
         NotificationEventKind.ConflictDetected => new NotificationTarget(ScreenId.Conflicts, notificationEvent.SubjectId),
         NotificationEventKind.ItemFailed => new NotificationTarget(ScreenId.Activity, notificationEvent.SubjectId),
+        NotificationEventKind.AuthenticationExpired => new NotificationTarget(ScreenId.Providers, notificationEvent.SubjectId),
+        NotificationEventKind.InitialCrawlComplete => new NotificationTarget(ScreenId.Activity, notificationEvent.SubjectId),
+        NotificationEventKind.SyncScopeComplete => new NotificationTarget(ScreenId.Activity, null),
+        NotificationEventKind.UserActionRequired => new NotificationTarget(ScreenId.Activity, notificationEvent.SubjectId),
         _ => new NotificationTarget(ScreenId.Dashboard, null)
     };
 }
