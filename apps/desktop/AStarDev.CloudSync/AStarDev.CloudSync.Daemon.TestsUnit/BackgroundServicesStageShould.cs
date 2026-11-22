@@ -32,6 +32,28 @@ public sealed class BackgroundServicesStageShould : IDisposable
     }
 
     [Fact]
+    public async Task observe_the_local_root_of_every_enabled_job()
+    {
+        await File.WriteAllTextAsync(Path.Combine(localRoot, "a.txt"), "abc", Token);
+        await using var host = DaemonTestHost.CreateWith(new StubCloudProvider());
+        var account = await host.AddAccountAsync("id", AccountStatus.Connected, Token);
+        var job = await host.AddJobAsync(account, localRoot, Token);
+
+        await host.Services.GetServices<IStartupStage>().OfType<BackgroundServicesStage>().Single().ExecuteAsync(Token);
+        var store = host.Services.GetRequiredService<ILocalObservationStore>();
+        var deadline = DateTimeOffset.UtcNow.AddSeconds(10);
+        var present = new List<LocalSnapshot>();
+
+        while (present.Count == 0 && DateTimeOffset.UtcNow < deadline)
+        {
+            await Task.Delay(20, Token);
+            present = [.. (await store.ListPresentAsync(job.Id, default, Token)).Value.ShouldBeOfType<Ok<IReadOnlyList<LocalSnapshot>>>().Value];
+        }
+
+        present.Select(snapshot => snapshot.Path.Value).ShouldBe(["a.txt"]);
+    }
+
+    [Fact]
     public async Task start_nothing_when_there_is_no_job()
     {
         await using var host = DaemonTestHost.CreateWith(new StubCloudProvider());
