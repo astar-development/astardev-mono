@@ -16,6 +16,14 @@ internal static class DriveItemMapping
         item.Size,
         item.LastModifiedDateTime);
 
+    /// <summary>Maps one drive item whose sync-root-relative path is already worked out.</summary>
+    public static ProviderItem ToProviderItem(GraphDriveItem item, string path) => new(
+        new RemoteItemId(item.Id),
+        new RelativePath(path),
+        item.Folder is null ? ItemType.File : ItemType.Folder,
+        item.Size,
+        item.LastModifiedDateTime);
+
     private static string RelativeTo(string? parentPath, string name)
     {
         var markerAt = parentPath?.IndexOf(RootMarker, StringComparison.Ordinal) ?? -1;
