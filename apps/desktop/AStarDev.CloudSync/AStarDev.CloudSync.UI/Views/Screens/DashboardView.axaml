@@ -12,10 +12,6 @@
 
             <Border Classes="card" Padding="0">
                 <UniformGrid Rows="1" Columns="4">
-                    <StackPanel Margin="20,14" Spacing="2" DataContext="{Binding Health}" x:DataType="vm:SyncHealthPresentation">
-                        <views:StatusIndicatorView DataContext="{Binding Indicator}" />
-                        <TextBlock Text="{Binding Headline}" FontSize="18" FontWeight="SemiBold" Foreground="{DynamicResource Accent.Brush}" TextWrapping="Wrap" />
-                    </StackPanel>
                     <StackPanel Margin="20,14" Spacing="2">
                         <TextBlock Text="{Binding Providers.Count}" FontSize="22" FontWeight="SemiBold" Foreground="{DynamicResource Text.Primary.Brush}" />
                         <TextBlock Text="{Binding ProvidersHeading}" Foreground="{DynamicResource Text.Secondary.Brush}" />
@@ -28,88 +24,120 @@
                         <TextBlock Text="{Binding ConflictsText}" FontSize="14" FontWeight="SemiBold" Foreground="{DynamicResource Text.Primary.Brush}" />
                         <TextBlock Text="{Binding AttentionHeading}" Foreground="{DynamicResource Text.Secondary.Brush}" />
                     </StackPanel>
+                    <StackPanel Margin="20,14" Spacing="2" DataContext="{Binding Health}" x:DataType="vm:SyncHealthPresentation">
+                        <TextBlock Text="{Binding Headline}" FontSize="22" FontWeight="SemiBold" Foreground="{DynamicResource Accent.Brush}" TextWrapping="Wrap" />
+                        <TextBlock Text="{Binding Summary}" Foreground="{DynamicResource Text.Secondary.Brush}" TextWrapping="Wrap" />
+                    </StackPanel>
                 </UniformGrid>
             </Border>
-            <Border Classes="card">
-                <StackPanel Spacing="8" DataContext="{Binding Health}" x:DataType="vm:SyncHealthPresentation">
-                    <views:StatusIndicatorView DataContext="{Binding Indicator}" />
-                    <TextBlock Text="{Binding Headline}" FontSize="28" FontWeight="Bold" Foreground="{DynamicResource Text.Primary.Brush}" TextWrapping="Wrap" />
-                    <TextBlock Text="{Binding Summary}" FontSize="16" Foreground="{DynamicResource Text.Primary.Brush}" TextWrapping="Wrap" />
+
+            <Border Classes="card" Padding="0">
+                <StackPanel>
+                    <Grid ColumnDefinitions="*,Auto" Margin="16,12">
+                        <StackPanel Spacing="2" VerticalAlignment="Center" DataContext="{Binding Health}" x:DataType="vm:SyncHealthPresentation">
+                            <views:StatusIndicatorView DataContext="{Binding Indicator}" />
+                            <TextBlock Text="{Binding Summary}" Foreground="{DynamicResource Text.Secondary.Brush}" TextWrapping="Wrap" />
+                        </StackPanel>
+                        <StackPanel Grid.Column="1" Orientation="Horizontal" Spacing="8" VerticalAlignment="Center">
+                            <Button Classes="action" Content="{Binding OpenQueueText}" Command="{Binding OpenQueueCommand}" />
+                            <Button Classes="action" Content="{Binding OpenActivityText}" Command="{Binding OpenActivityCommand}" />
+                        </StackPanel>
+                    </Grid>
+                    <Border Height="1" Background="{DynamicResource Border.Brush}" />
+                    <Grid ColumnDefinitions="2*,1,*">
+                        <StackPanel Margin="16" Spacing="8">
+                            <TextBlock Text="{Binding ProgressHeading}" FontSize="12" Foreground="{DynamicResource Text.Secondary.Brush}" />
+                            <ProgressBar Value="{Binding ProgressPercent}" Minimum="0" Maximum="100" Height="6" />
+                            <TextBlock Text="{Binding ItemsAnalysedText}" Foreground="{DynamicResource Text.Primary.Brush}" />
+                            <StackPanel Orientation="Horizontal" Spacing="24">
+                                <TextBlock Text="{Binding PhaseText}" FontWeight="SemiBold" Foreground="{DynamicResource Text.Primary.Brush}" />
+                                <TextBlock Text="{Binding ThroughputText}" FontWeight="SemiBold" Foreground="{DynamicResource Text.Primary.Brush}" />
+                                <TextBlock Text="{Binding EstimatedRemainingText}" FontWeight="SemiBold" Foreground="{DynamicResource Text.Primary.Brush}" />
+                            </StackPanel>
+                            <ItemsControl ItemsSource="{Binding Stages}">
+                                <ItemsControl.ItemTemplate>
+                                    <DataTemplate x:DataType="vm:PipelineStageRow">
+                                        <StackPanel Orientation="Horizontal" Spacing="8">
+                                            <TextBlock Text="{Binding State}" Width="72" Foreground="{DynamicResource Text.Secondary.Brush}" />
+                                            <TextBlock Text="{Binding Name}" Foreground="{DynamicResource Text.Primary.Brush}" />
+                                        </StackPanel>
+                                    </DataTemplate>
+                                </ItemsControl.ItemTemplate>
+                            </ItemsControl>
+                            <StackPanel Spacing="2">
+                                <TextBlock Text="{Binding LastReconciliationText}" Foreground="{DynamicResource Text.Secondary.Brush}" />
+                                <TextBlock Text="{Binding LastProviderPollText}" Foreground="{DynamicResource Text.Secondary.Brush}" />
+                                <TextBlock Text="{Binding LastQueueActivityText}" Foreground="{DynamicResource Text.Secondary.Brush}" />
+                            </StackPanel>
+                        </StackPanel>
+                        <Border Grid.Column="1" Background="{DynamicResource Border.Brush}" />
+                        <StackPanel Grid.Column="2" Margin="16" Spacing="8">
+                            <TextBlock Text="{Binding ActivityHeading}" FontSize="12" Foreground="{DynamicResource Text.Secondary.Brush}" />
+                            <ItemsControl ItemsSource="{Binding Activities}">
+                                <ItemsControl.ItemTemplate>
+                                    <DataTemplate x:DataType="x:String">
+                                        <StackPanel Orientation="Horizontal" Spacing="10" Margin="0,0,0,8">
+                                            <Border Classes="badge"><TextBlock Text="↻" HorizontalAlignment="Center" VerticalAlignment="Center" Foreground="White" /></Border>
+                                            <TextBlock Text="{Binding}" VerticalAlignment="Center" TextTrimming="CharacterEllipsis" Foreground="{DynamicResource Text.Primary.Brush}" />
+                                        </StackPanel>
+                                    </DataTemplate>
+                                </ItemsControl.ItemTemplate>
+                            </ItemsControl>
+                            <TextBlock Text="{Binding EventsHeading}" FontSize="12" Margin="0,8,0,0" Foreground="{DynamicResource Text.Secondary.Brush}" />
+                            <ItemsControl ItemsSource="{Binding Events}">
+                                <ItemsControl.ItemTemplate>
+                                    <DataTemplate x:DataType="x:String">
+                                        <StackPanel Orientation="Horizontal" Spacing="10" Margin="0,0,0,8">
+                                            <Border Classes="badge"><TextBlock Text="✓" HorizontalAlignment="Center" VerticalAlignment="Center" Foreground="White" /></Border>
+                                            <TextBlock Text="{Binding}" VerticalAlignment="Center" TextTrimming="CharacterEllipsis" Foreground="{DynamicResource Text.Primary.Brush}" />
+                                        </StackPanel>
+                                    </DataTemplate>
+                                </ItemsControl.ItemTemplate>
+                            </ItemsControl>
+                        </StackPanel>
+                    </Grid>
                 </StackPanel>
             </Border>
-            <StackPanel Spacing="2">
-                <TextBlock Text="{Binding LastReconciliationText}" Foreground="{DynamicResource Text.Secondary.Brush}" />
-                <TextBlock Text="{Binding LastProviderPollText}" Foreground="{DynamicResource Text.Secondary.Brush}" />
-                <TextBlock Text="{Binding LastQueueActivityText}" Foreground="{DynamicResource Text.Secondary.Brush}" />
-            </StackPanel>
 
-            <Border Classes="card">
-                <StackPanel Spacing="4">
-                    <TextBlock Text="{Binding ProgressHeading}" FontWeight="SemiBold" Foreground="{DynamicResource Text.Primary.Brush}" />
-                    <TextBlock Text="{Binding ItemsAnalysedText}" Foreground="{DynamicResource Text.Primary.Brush}" />
-                    <TextBlock Text="{Binding PhaseText}" Foreground="{DynamicResource Text.Primary.Brush}" />
-                    <TextBlock Text="{Binding ThroughputText}" Foreground="{DynamicResource Text.Primary.Brush}" />
-                    <TextBlock Text="{Binding EstimatedRemainingText}" Foreground="{DynamicResource Text.Primary.Brush}" />
-                    <ItemsControl ItemsSource="{Binding Stages}">
-                        <ItemsControl.ItemTemplate>
-                            <DataTemplate x:DataType="vm:PipelineStageRow">
-                                <StackPanel Orientation="Horizontal" Spacing="8">
-                                    <TextBlock Text="{Binding State}" Width="72" Foreground="{DynamicResource Text.Secondary.Brush}" />
-                                    <TextBlock Text="{Binding Name}" Foreground="{DynamicResource Text.Primary.Brush}" />
-                                </StackPanel>
-                            </DataTemplate>
-                        </ItemsControl.ItemTemplate>
-                    </ItemsControl>
+            <Border Classes="card" Padding="0">
+                <StackPanel>
+                    <Grid ColumnDefinitions="*,Auto" Margin="16,12">
+                        <TextBlock Text="{Binding QueueHeading}" FontSize="16" FontWeight="SemiBold" VerticalAlignment="Center" Foreground="{DynamicResource Text.Primary.Brush}" />
+                        <Button Grid.Column="1" Classes="action" Content="{Binding OpenConflictsText}" Command="{Binding OpenConflictsCommand}" />
+                    </Grid>
+                    <Border Height="1" Background="{DynamicResource Border.Brush}" />
+                    <Grid ColumnDefinitions="2*,1,*">
+                        <UniformGrid Rows="1" Columns="4" Margin="16">
+                            <TextBlock Text="{Binding PendingText}" FontWeight="SemiBold" Foreground="{DynamicResource Text.Primary.Brush}" />
+                            <TextBlock Text="{Binding RunningText}" FontWeight="SemiBold" Foreground="{DynamicResource Text.Primary.Brush}" />
+                            <TextBlock Text="{Binding CompletedText}" FontWeight="SemiBold" Foreground="{DynamicResource Text.Primary.Brush}" />
+                            <TextBlock Text="{Binding FailedText}" FontWeight="SemiBold" Foreground="{DynamicResource Text.Primary.Brush}" />
+                        </UniformGrid>
+                        <Border Grid.Column="1" Background="{DynamicResource Border.Brush}" />
+                        <StackPanel Grid.Column="2" Margin="16" Spacing="4">
+                            <TextBlock Text="{Binding AttentionHeading}" FontSize="12" Foreground="{DynamicResource Text.Secondary.Brush}" />
+                            <TextBlock Text="{Binding ConflictsText}" Foreground="{DynamicResource Text.Primary.Brush}" />
+                            <TextBlock Text="{Binding ErrorsText}" Foreground="{DynamicResource Text.Primary.Brush}" />
+                            <TextBlock Text="{Binding WarningsText}" Foreground="{DynamicResource Text.Primary.Brush}" />
+                        </StackPanel>
+                    </Grid>
                 </StackPanel>
             </Border>
 
-            <Border Classes="card">
-                <StackPanel Spacing="4">
-                    <TextBlock Text="{Binding ProvidersHeading}" FontWeight="SemiBold" Foreground="{DynamicResource Text.Primary.Brush}" />
-                    <ItemsControl ItemsSource="{Binding Providers}">
+            <Border Classes="card" Padding="0">
+                <StackPanel>
+                    <Grid ColumnDefinitions="*,Auto" Margin="16,12">
+                        <TextBlock Text="{Binding ProvidersHeading}" FontSize="16" FontWeight="SemiBold" VerticalAlignment="Center" Foreground="{DynamicResource Text.Primary.Brush}" />
+                        <Button Grid.Column="1" Classes="action" Content="{Binding OpenProvidersText}" Command="{Binding OpenProvidersCommand}" />
+                    </Grid>
+                    <Border Height="1" Background="{DynamicResource Border.Brush}" />
+                    <ItemsControl Margin="16" ItemsSource="{Binding Providers}">
                         <ItemsControl.ItemTemplate>
                             <DataTemplate x:DataType="vm:StatusIndicatorViewModel">
                                 <views:StatusIndicatorView DataContext="{Binding}" />
                             </DataTemplate>
                         </ItemsControl.ItemTemplate>
                     </ItemsControl>
-                    <Button Content="{Binding OpenProvidersText}" Command="{Binding OpenProvidersCommand}" HorizontalAlignment="Left" />
-                </StackPanel>
-            </Border>
-
-            <Border Classes="card">
-                <StackPanel Spacing="4">
-                    <TextBlock Text="{Binding QueueHeading}" FontWeight="SemiBold" Foreground="{DynamicResource Text.Primary.Brush}" />
-                    <TextBlock Text="{Binding PendingText}" Foreground="{DynamicResource Text.Primary.Brush}" />
-                    <TextBlock Text="{Binding RunningText}" Foreground="{DynamicResource Text.Primary.Brush}" />
-                    <TextBlock Text="{Binding CompletedText}" Foreground="{DynamicResource Text.Primary.Brush}" />
-                    <TextBlock Text="{Binding FailedText}" Foreground="{DynamicResource Text.Primary.Brush}" />
-                    <Button Content="{Binding OpenQueueText}" Command="{Binding OpenQueueCommand}" HorizontalAlignment="Left" />
-                </StackPanel>
-            </Border>
-
-            <Border Classes="card">
-                <StackPanel Spacing="4">
-                    <TextBlock Text="{Binding AttentionHeading}" FontWeight="SemiBold" Foreground="{DynamicResource Text.Primary.Brush}" />
-                    <TextBlock Text="{Binding ConflictsText}" Foreground="{DynamicResource Text.Primary.Brush}" />
-                    <TextBlock Text="{Binding ErrorsText}" Foreground="{DynamicResource Text.Primary.Brush}" />
-                    <TextBlock Text="{Binding WarningsText}" Foreground="{DynamicResource Text.Primary.Brush}" />
-                    <Button Content="{Binding OpenConflictsText}" Command="{Binding OpenConflictsCommand}" HorizontalAlignment="Left" />
-                </StackPanel>
-            </Border>
-
-            <Border Classes="card">
-                <StackPanel Spacing="4">
-                    <TextBlock Text="{Binding ActivityHeading}" FontWeight="SemiBold" Foreground="{DynamicResource Text.Primary.Brush}" />
-                    <ItemsControl ItemsSource="{Binding Activities}" />
-                </StackPanel>
-            </Border>
-
-            <Border Classes="card">
-                <StackPanel Spacing="4">
-                    <TextBlock Text="{Binding EventsHeading}" FontWeight="SemiBold" Foreground="{DynamicResource Text.Primary.Brush}" />
-                    <ItemsControl ItemsSource="{Binding Events}" />
-                    <Button Content="{Binding OpenActivityText}" Command="{Binding OpenActivityCommand}" HorizontalAlignment="Left" />
                 </StackPanel>
             </Border>
         </StackPanel>

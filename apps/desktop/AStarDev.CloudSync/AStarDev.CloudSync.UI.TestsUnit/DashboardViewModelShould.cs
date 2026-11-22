@@ -46,6 +46,14 @@ public sealed class DashboardViewModelShould
     ];
 
     [Fact]
+    public void report_progress_as_a_percentage_of_items_analysed()
+    {
+        var (dashboard, _) = Create();
+
+        dashboard.ProgressPercent.ShouldBe(100d * 183442 / 702144);
+    }
+
+    [Fact]
     public void always_show_attention_required()
     {
         var (dashboard, _) = Create(Snapshot(SyncHealth.Healthy));

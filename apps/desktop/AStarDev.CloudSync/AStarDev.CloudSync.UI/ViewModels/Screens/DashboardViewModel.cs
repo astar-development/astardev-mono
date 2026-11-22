@@ -47,6 +47,9 @@ internal sealed class DashboardViewModel(ILocalisationService localisation, ICul
     /// <summary>Items analysed out of the total, for example "183,442 / 702,144 items analysed".</summary>
     public string ItemsAnalysedText => localisation.Format("Dashboard.Progress.ItemsAnalysed", ("done", snapshot.ItemsAnalysed), ("total", snapshot.ItemsTotal));
 
+    /// <summary>Share of items analysed, 0 to 100; 0 while the total is unknown (zero).</summary>
+    public double ProgressPercent => snapshot.ItemsTotal == 0 ? 0 : Math.Min(100, 100d * snapshot.ItemsAnalysed / snapshot.ItemsTotal);
+
     /// <summary>The pipeline stage running now, in words.</summary>
     public string PhaseText => localisation.Format("Dashboard.Progress.Phase", ("phase", localisation.Get($"Dashboard.Stage.{snapshot.Stage}")));
 

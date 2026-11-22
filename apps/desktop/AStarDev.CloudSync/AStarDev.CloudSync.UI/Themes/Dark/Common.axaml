@@ -6,8 +6,8 @@
   <SolidColorBrush x:Key="Trust.Attention.Brush" Color="#FF7043" />
   <SolidColorBrush x:Key="Trust.Critical.Brush" Color="#EF5350" />
   <SolidColorBrush x:Key="Surface.Brush" Color="#14171C" />
-  <SolidColorBrush x:Key="Surface.Raised.Brush" Color="#1A1E25" />
-  <SolidColorBrush x:Key="Border.Brush" Color="#2A2F38" />
+  <SolidColorBrush x:Key="Surface.Raised.Brush" Color="#1B2028" />
+  <SolidColorBrush x:Key="Border.Brush" Color="#3A424F" />
   <SolidColorBrush x:Key="Text.Primary.Brush" Color="#F0F2F5" />
   <SolidColorBrush x:Key="Text.Secondary.Brush" Color="#9AA3AF" />
   <SolidColorBrush x:Key="Accent.Brush" Color="#3B82F6" />
