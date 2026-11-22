@@ -16,5 +16,9 @@ public sealed record AuthenticationFailed(string Message);
 /// <param name="Message">Provider-supplied reason, suitable for logs.</param>
 public sealed record Permanent(string Message);
 
+/// <summary>The delta token is no longer accepted, for example because it expired. Retrying with it will not help: list the root again and start from the new token.</summary>
+/// <param name="Message">Provider-supplied reason, suitable for logs.</param>
+public sealed record InvalidDeltaToken(string Message);
+
 /// <summary>Closed set of failures that cross the provider boundary. Provider-specific errors are translated into these.</summary>
-public union ProviderError(RateLimited, Transient, AuthenticationFailed, Permanent);
+public union ProviderError(RateLimited, Transient, AuthenticationFailed, Permanent, InvalidDeltaToken);

@@ -12,6 +12,9 @@ internal sealed class FakeCloudProvider(int pageSize) : ICloudProvider
     private readonly Dictionary<RemoteItemId, ProviderError> failingRoots = [];
     private readonly Queue<ProviderError> scriptedFailures = new();
     private readonly Dictionary<RemoteItemId, List<ProviderItem>> children = [];
+    private readonly Dictionary<RemoteItemId, List<ProviderChange>> changes = [];
+    private readonly HashSet<DeltaToken> expiredTokens = [];
+    private int tokensIssued;
 
     public Action<int>? BeforePage { get; set; }
 
@@ -43,6 +46,14 @@ internal sealed class FakeCloudProvider(int pageSize) : ICloudProvider
 
             return new ProviderItem(new RemoteItemId($"item-{index}"), new RelativePath(name), isFolder ? ItemType.Folder : ItemType.File, isFolder ? 0 : index, DateTimeOffset.UnixEpoch.AddSeconds(index));
         });
+
+    public void ScriptChanges(RemoteItemId root, params ProviderChange[] scripted)
+    {
+        if (!changes.TryGetValue(root, out var list)) changes[root] = list = [];
+        list.AddRange(scripted);
+    }
+
+    public void ExpireToken(DeltaToken token) => expiredTokens.Add(token);
 
     public void FailRoot(RemoteItemId root, ProviderError failure) => failingRoots[root] = failure;
 
@@ -107,6 +118,24 @@ internal sealed class FakeCloudProvider(int pageSize) : ICloudProvider
         ResumeTokensSeen.Add(resumeToken);
 
         return Task.FromResult<Result<ProviderSnapshotPage, ProviderError>>(new Ok<ProviderSnapshotPage>(new ProviderSnapshotPage(page, last ? null : next.ToString(), last ? new DeltaToken($"delta-{root.Value}") : null, source.Count)));
+    }
+
+    public Task<Result<ProviderDeltaPage, ProviderError>> GetDeltasAsync(RemoteItemId root, DeltaToken token, string? resumeToken, CancellationToken cancellationToken)
+    {
+        cancellationToken.ThrowIfCancellationRequested();
+
+        if (scriptedFailures.TryDequeue(out var failure)) return Task.FromResult<Result<ProviderDeltaPage, ProviderError>>(new Fail<ProviderError>(failure));
+
+        if (expiredTokens.Contains(token)) return Task.FromResult<Result<ProviderDeltaPage, ProviderError>>(new Fail<ProviderError>(new InvalidDeltaToken($"token {token.Value} expired")));
+
+        var scripted = changes.GetValueOrDefault(root) ?? [];
+        var offset = resumeToken is null ? 0 : int.Parse(resumeToken);
+        var page = scripted.Skip(offset).Take(pageSize).ToList();
+        var next = offset + page.Count;
+        var last = next >= scripted.Count;
+        var newToken = last ? new DeltaToken($"delta-{root.Value}-{++tokensIssued}") : (DeltaToken?)null;
+
+        return Task.FromResult<Result<ProviderDeltaPage, ProviderError>>(new Ok<ProviderDeltaPage>(new ProviderDeltaPage(page, last ? null : next.ToString(), newToken)));
     }
 
     private sealed class ItemSource(int count, Func<int, ProviderItem> at)

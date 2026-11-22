@@ -106,11 +106,13 @@ internal sealed class InitialCrawler(ICloudProvider provider, IItemIndexStore in
         }
     }
 
-    private static TimeSpan? RetryDelay(ProviderError error, int attempt) => error.Value switch
+    private static TimeSpan? RetryDelay(ProviderError error, int attempt) => error switch
     {
         RateLimited limited => limited.RetryAfter,
         Transient => ApplicationConstants.RetryBaseDelay * Math.Pow(2, attempt - 1),
-        _ => null
+        AuthenticationFailed => null,
+        Permanent => null,
+        InvalidDeltaToken => null
     };
 
     private bool Failed(SyncScope scope, string reason)

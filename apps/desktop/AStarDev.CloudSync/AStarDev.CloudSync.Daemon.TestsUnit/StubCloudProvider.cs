@@ -16,6 +16,8 @@ internal sealed class StubCloudProvider : ICloudProvider
 
     public Result<IReadOnlyList<ProviderItem>, ProviderError> ChildrenResult { get; init; } = new Ok<IReadOnlyList<ProviderItem>>([]);
 
+    public Result<ProviderDeltaPage, ProviderError> DeltaResult { get; init; } = new Ok<ProviderDeltaPage>(new ProviderDeltaPage([]));
+
     public List<RemoteItemId> Roots { get; } = [];
 
     public List<RemoteItemId> Parents { get; } = [];
@@ -53,6 +55,13 @@ internal sealed class StubCloudProvider : ICloudProvider
         Roots.Add(root);
 
         return Task.FromResult(SnapshotResult);
+    }
+
+    public Task<Result<ProviderDeltaPage, ProviderError>> GetDeltasAsync(RemoteItemId root, DeltaToken token, string? resumeToken, CancellationToken cancellationToken)
+    {
+        cancellationToken.ThrowIfCancellationRequested();
+
+        return Task.FromResult(DeltaResult);
     }
 
     public Task<Result<IReadOnlyList<ProviderItem>, ProviderError>> ListChildrenAsync(RemoteItemId parent, CancellationToken cancellationToken)
