@@ -14,6 +14,7 @@
 
   <ItemGroup>
     <InternalsVisibleTo Include="AStarDev.CloudSync.OneDrive.TestsUnit" />
+    <InternalsVisibleTo Include="AStarDev.CloudSync.TestsIntegration" />
   </ItemGroup>
 
   <PropertyGroup>

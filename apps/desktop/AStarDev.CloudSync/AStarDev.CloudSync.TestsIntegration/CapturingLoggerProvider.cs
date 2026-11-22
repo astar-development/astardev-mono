@@ -1,3 +1,4 @@
+using System.Diagnostics;
 using Microsoft.Extensions.Logging;
 
 namespace AStarDev.CloudSync.TestsIntegration;
@@ -39,7 +40,7 @@ internal sealed class CapturingLoggerProvider : ILoggerProvider
             var scopes = new List<IReadOnlyDictionary<string, object?>>();
             for (var node = Current.Value; node is not null; node = node.Parent) scopes.Add(node.Values);
 
-            lock (owner.entries) owner.entries.Add(new LogEntry(category, logLevel, eventId.Id, formatter(state, exception), ToDictionary(state), scopes));
+            lock (owner.entries) owner.entries.Add(new LogEntry(category, logLevel, eventId.Id, formatter(state, exception), ToDictionary(state), scopes, Activity.Current?.TraceId ?? default));
         }
 
         private static Dictionary<string, object?> ToDictionary<TState>(TState state)

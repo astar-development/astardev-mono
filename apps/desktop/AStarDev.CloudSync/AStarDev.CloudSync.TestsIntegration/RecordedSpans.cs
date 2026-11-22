@@ -20,6 +20,8 @@ internal sealed class RecordedSpans : IDisposable
         ActivitySource.AddActivityListener(listener);
     }
 
+    public IReadOnlyList<Activity> All => [.. stopped];
+
     public IReadOnlyList<Activity> ForJob(SyncJobId syncJobId)
         => [.. stopped.Where(activity => activity.GetTagItem("cloudsync.sync_job.id") is string id && id == syncJobId.Value.ToString())];
 

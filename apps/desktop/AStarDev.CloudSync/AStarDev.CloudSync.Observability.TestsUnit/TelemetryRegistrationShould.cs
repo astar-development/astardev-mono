@@ -48,6 +48,20 @@ public sealed class TelemetryRegistrationShould
     }
 
     [Fact]
+    public async Task name_the_resource_as_the_apphost_asks_so_the_dashboard_groups_its_telemetry()
+    {
+        var settings = new Dictionary<string, string?> { ["OTEL_SERVICE_NAME"] = "CloudSyncDaemon", ["OTEL_RESOURCE_ATTRIBUTES"] = "service.instance.id=daemon-0" };
+        using var host = TelemetryTestHost.Create(settings: settings);
+        await host.StartAsync(Token);
+
+        var attributes = host.Services.GetRequiredService<TracerProvider>().GetResource().Attributes.ToDictionary(pair => pair.Key, pair => pair.Value);
+        await host.StopAsync(Token);
+
+        attributes["service.name"].ShouldBe("CloudSyncDaemon");
+        attributes["service.instance.id"].ShouldBe("daemon-0");
+    }
+
+    [Fact]
     public async Task start_when_no_otlp_endpoint_is_configured()
     {
         using var host = TelemetryTestHost.Create();
