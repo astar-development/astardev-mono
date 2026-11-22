@@ -3,6 +3,7 @@
   <ItemGroup>
     <ProjectReference Include="..\AStarDev.CloudSync.Domain\AStarDev.CloudSync.Domain.csproj" />
     <ProjectReference Include="..\AStarDev.CloudSync.Ports\AStarDev.CloudSync.Ports.csproj" />
+    <ProjectReference Include="..\AStarDev.CloudSync.Observability\AStarDev.CloudSync.Observability.csproj" />
     <ProjectReference Include="..\..\..\..\nuget-packages\AStarDev.FunctionalParadigm\AStarDev.FunctionalParadigm.csproj" />
   </ItemGroup>
 

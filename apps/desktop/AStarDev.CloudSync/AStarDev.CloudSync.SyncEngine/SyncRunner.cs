@@ -1,4 +1,5 @@
 using AStarDev.CloudSync.Domain;
+using AStarDev.CloudSync.Observability;
 using AStarDev.CloudSync.Ports;
 using AStarDev.FunctionalParadigm;
 using Microsoft.Extensions.Logging;
@@ -71,6 +72,7 @@ public sealed class SyncRunner : IAsyncDisposable
         {
             if (running.ContainsKey(syncJobId)) return new Ok<Unit>(default);
 
+            SyncLog.SyncStarted(logger, syncJobId.Value);
             var cancellation = new CancellationTokenSource();
             running[syncJobId] = new RunningCrawl(cancellation, Task.Run(() => RunAsync(syncJobId, cancellation.Token), CancellationToken.None));
         }
@@ -81,13 +83,21 @@ public sealed class SyncRunner : IAsyncDisposable
     private async Task RunAsync(SyncJobId syncJobId, CancellationToken cancellationToken)
     {
         SyncMetrics.Shared.JobStarted();
+        using var scope = CorrelationScope.Begin(logger, syncJobId: syncJobId.Value.ToString());
+        var completedLogged = false;
         try
         {
             while (true)
             {
                 var summary = await crawler.CrawlAsync(syncJobId, cancellationToken);
                 logger.LogInformation("Crawl of job {Job} ended: {Summary}", syncJobId.Value, summary.Value);
-                if (summary is Ok<CrawlSummary> { Value.ScopesFailed: 0 }) await deltas.ProcessJobAsync(syncJobId, cancellationToken);
+                if (summary is Ok<CrawlSummary> { Value: { ScopesFailed: 0 } crawled })
+                {
+                    if (!completedLogged) SyncLog.SyncCompleted(logger, syncJobId.Value, crawled.ScopesCompleted);
+
+                    completedLogged = true;
+                    await deltas.ProcessJobAsync(syncJobId, cancellationToken);
+                }
 
                 await Task.Delay(options.Interval > TimeSpan.Zero ? options.Interval : TimeSpan.FromSeconds(1), timeProvider, cancellationToken);
             }

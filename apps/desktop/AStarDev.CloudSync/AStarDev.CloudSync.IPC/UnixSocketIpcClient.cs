@@ -4,19 +4,23 @@ using System.Diagnostics;
 using System.Net.Sockets;
 using System.Text.Json;
 using AStarDev.FunctionalParadigm;
+using Microsoft.Extensions.Logging;
+using Microsoft.Extensions.Logging.Abstractions;
 
 namespace AStarDev.CloudSync.IPC;
 
 /// <summary>Talks to a <see cref="UnixSocketIpcServer"/>. One instance is one connection; create a new one to reconnect.</summary>
 /// <param name="socketPath">The server's socket file.</param>
 /// <param name="onError">Told about failures nobody else can receive: a failing event handler, a broken frame.</param>
-internal sealed class UnixSocketIpcClient(string socketPath, Action<IpcError>? onError = null) : IIpcClient
+/// <param name="logger">Receives connection and failed-request logs; omit to log nothing.</param>
+internal sealed class UnixSocketIpcClient(string socketPath, Action<IpcError>? onError = null, ILogger? logger = null) : IIpcClient
 {
     private readonly ConcurrentDictionary<long, TaskCompletionSource<Result<JsonElement, IpcError>>> pending = new();
     private readonly ConcurrentDictionary<string, ImmutableList<Func<JsonElement, Result<Unit, IpcError>>>> eventHandlers = new();
     private readonly TaskCompletionSource disconnected = new(TaskCreationOptions.RunContinuationsAsynchronously);
     private readonly CancellationTokenSource closing = new();
     private readonly Action<IpcError> report = onError ?? (_ => { });
+    private readonly ILogger log = logger ?? NullLogger.Instance;
     private EnvelopeChannel? channel;
     private Task readLoop = Task.CompletedTask;
     private long lastId;
@@ -112,6 +116,7 @@ internal sealed class UnixSocketIpcClient(string socketPath, Action<IpcError>? o
     {
         channel = new EnvelopeChannel(new NetworkStream(socket, ownsSocket: true));
         IpcTelemetry.ConnectionOpened(ApplicationConstants.ClientSide);
+        IpcLog.ConnectionOpened(log, ApplicationConstants.ClientSide);
         readLoop = ReadLoopAsync(channel, closing.Token);
 
         return new Ok<Unit>(default);
@@ -133,6 +138,7 @@ internal sealed class UnixSocketIpcClient(string socketPath, Action<IpcError>? o
             Fail<IpcError> encodeFailure => encodeFailure
         };
         IpcTelemetry.CompleteRequest(activity, ApplicationConstants.ClientSide, kind, type, started, result);
+        if (result is Fail<IpcError> failed) IpcLog.RequestFailed(log, ApplicationConstants.ClientSide, kind, type, failed.Error.Describe());
 
         return result;
     }
@@ -184,6 +190,7 @@ internal sealed class UnixSocketIpcClient(string socketPath, Action<IpcError>? o
         finally
         {
             IpcTelemetry.ConnectionClosed(ApplicationConstants.ClientSide);
+            IpcLog.ConnectionClosed(log, ApplicationConstants.ClientSide);
             disconnected.TrySetResult();
             foreach (var id in pending.Keys)
             {

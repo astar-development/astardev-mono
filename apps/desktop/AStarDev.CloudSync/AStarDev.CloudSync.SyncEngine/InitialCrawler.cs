@@ -1,4 +1,5 @@
 using AStarDev.CloudSync.Domain;
+using AStarDev.CloudSync.Observability;
 using AStarDev.CloudSync.Ports;
 using AStarDev.FunctionalParadigm;
 using Microsoft.Extensions.Logging;
@@ -45,6 +46,7 @@ internal sealed class InitialCrawler(ICloudProvider provider, IItemIndexStore in
     private async Task<bool> CrawlScopeAsync(SyncScope scope, CrawlProgressThrottle throttle, CancellationToken cancellationToken)
     {
         using var span = SyncEngineTelemetry.StartScope(scope.RemoteRootId.Value);
+        using var correlation = CorrelationScope.Begin(logger, syncJobId: scope.SyncJobId.Value.ToString(), remoteItemId: scope.RemoteRootId.Value);
         var started = timeProvider.GetTimestamp();
         var succeeded = await index.GetCheckpointAsync(scope, cancellationToken) switch
         {

@@ -1,5 +1,6 @@
 using System.Text.Json;
 using AStarDev.CloudSync.Domain;
+using AStarDev.CloudSync.Observability;
 using AStarDev.CloudSync.Ports;
 using AStarDev.FunctionalParadigm;
 using Microsoft.Extensions.Logging;
@@ -56,6 +57,7 @@ public sealed class SyncPlanner
     public async Task<Result<PlanSummary, StoreError>> PlanAsync(SyncJobId jobId, CancellationToken cancellationToken)
     {
         var reconcileStarted = timeProvider.GetTimestamp();
+        using var scope = CorrelationScope.Begin(logger, syncJobId: jobId.Value.ToString());
         var outcome = await ThenAsync(jobStore.GetAsync(jobId, cancellationToken), job =>
             ThenAsync(itemStore.ListAsync(jobId, cancellationToken), rows =>
                 ThenAsync(knownStore.ListAsync(jobId, cancellationToken), known =>
@@ -130,6 +132,8 @@ public sealed class SyncPlanner
         {
             var enqueued = await operationStore.EnqueueAsync(operation, cancellationToken);
             if (enqueued.Value is Fail<StoreError> enqueueFailure) return enqueueFailure;
+
+            OperationLog.Queued(logger, operation.Id.Value, operation.Type.ToString(), operation.ItemId.Value, jobId.Value);
         }
 
         busy.Add(state.ItemId);
@@ -156,6 +160,7 @@ public sealed class SyncPlanner
         if (await journal.AppendAsync(entry, cancellationToken) is Fail<StoreError> failure) return failure;
 
         SyncMetrics.Shared.ConflictOpened();
+        SyncLog.ConflictDetected(logger, conflict.Id.Value, conflict.ItemId.Value, conflict.SyncJobId.Value, conflict.Type.ToString());
         await conflictEvents.DetectedAsync(conflict, cancellationToken);
 
         return new Ok<PlanSummary>(new PlanSummary(0, 1));

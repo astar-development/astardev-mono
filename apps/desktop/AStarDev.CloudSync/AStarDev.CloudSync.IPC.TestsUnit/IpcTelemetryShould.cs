@@ -5,6 +5,7 @@ using AStarDev.FunctionalParadigm;
 
 namespace AStarDev.CloudSync.IPC.TestsUnit;
 
+[Collection("IPC metrics")]
 public sealed class IpcTelemetryShould : IAsyncLifetime
 {
     private const string TelemetryName = "AStarDev.CloudSync.IPC";

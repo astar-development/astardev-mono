@@ -6,6 +6,7 @@ using AStarDev.CloudSync.Persistence;
 using AStarDev.CloudSync.Ports;
 using AStarDev.CloudSync.SyncEngine;
 using Microsoft.Extensions.DependencyInjection;
+using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
 
 namespace AStarDev.CloudSync.Daemon;
@@ -39,7 +40,7 @@ internal static class DaemonServiceCollectionExtensions
         services.AddStartupStages();
         services.AddHostedService<StartupHostedService>();
         services.AddSingleton(TimeProvider.System);
-        services.AddSingleton(provider => UnixSocketIpc.CreateServer(provider.GetRequiredService<IOptions<IpcOptions>>().Value.SocketPath));
+        services.AddSingleton(provider => UnixSocketIpc.CreateServer(provider.GetRequiredService<IOptions<IpcOptions>>().Value.SocketPath, logger: provider.GetRequiredService<ILoggerFactory>().CreateLogger("AStarDev.CloudSync.IPC")));
         services.AddSingleton<ConnectAccountHandler>();
         services.AddSingleton<RootSummaryQuery>();
         services.AddSingleton<RemoteFoldersQuery>();
