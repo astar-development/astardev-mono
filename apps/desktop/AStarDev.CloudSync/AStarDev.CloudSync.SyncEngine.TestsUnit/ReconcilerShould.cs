@@ -26,8 +26,8 @@ public sealed class ReconcilerShould
         { Modified, Modified, "", "", false, "Conflict:ModifyModify" },
         { Renamed, Renamed, Same, Same, false, "NoOp" },
         { Renamed, Renamed, "", "", false, "Conflict:RenameRename" },
-        { Renamed, Modified, "", "", false, "RenameRemote+UpdateLocal" },
-        { Modified, Renamed, "", "", false, "RenameLocal+UpdateRemote" },
+        { Renamed, Modified, "", "", false, "Merge" },
+        { Modified, Renamed, "", "", false, "Merge" },
         { Renamed, Deleted, "", "", false, "Conflict:KeepDelete" },
         { Deleted, Renamed, "", "", false, "Conflict:KeepDelete" },
         { Modified, Deleted, "", "", false, "Conflict:KeepDelete" },
@@ -48,6 +48,34 @@ public sealed class ReconcilerShould
         var state = ReconcilerStates.Build((ChangeSet)local, (ChangeSet)remote, localPath, remotePath, sameContent);
 
         Describe(new Reconciler().Reconcile(state)).ShouldBe(expected);
+    }
+
+    [Fact]
+    public void merge_a_rename_with_a_content_change()
+    {
+        var deleted = new DeletedItem(ReconcilerStates.ItemId, new RenameEvidence(new RelativePath(ReconcilerStates.KnownPath), 10, ReconcilerStates.Stamp, null, "inode-1"));
+        var created = new RenameEvidence(new RelativePath("/Archive/Q1.xlsx"), 10, ReconcilerStates.Stamp, null, "inode-1");
+        var rename = RenameDetector.DetectLocal([deleted], [created]).ShouldHaveSingleItem();
+        var local = ReconcilerStates.Local(rename.To.Value);
+        var remote = ReconcilerStates.Remote(size: 222, etag: "e2");
+
+        var decision = new Reconciler().Reconcile(ReconcilerStates.State(ReconcilerStates.Known(), local, remote));
+
+        Describe(decision).ShouldBe("Merge");
+    }
+
+    [Fact]
+    public void merge_a_detected_remote_rename_with_a_local_edit()
+    {
+        var deleted = new DeletedItem(ReconcilerStates.ItemId, new RenameEvidence(new RelativePath(ReconcilerStates.KnownPath), 10, ReconcilerStates.Stamp, null, "r1"));
+        var created = new RenameEvidence(new RelativePath("/Archive/Q1.xlsx"), 10, ReconcilerStates.Stamp, null, "r1");
+        var rename = RenameDetector.DetectRemote([deleted], [created]).ShouldHaveSingleItem();
+        var remote = ReconcilerStates.Remote(rename.To.Value);
+        var local = ReconcilerStates.Local(size: 111);
+
+        var decision = new Reconciler().Reconcile(ReconcilerStates.State(ReconcilerStates.Known(), local, remote));
+
+        Describe(decision).ShouldBe("Merge");
     }
 
     [Fact]
@@ -114,6 +142,30 @@ public sealed class ReconcilerShould
     [Fact]
     public void report_nothing_to_do_for_an_item_missing_everywhere()
         => Describe(new Reconciler().Reconcile(ReconcilerStates.State(null, null, null))).ShouldBe("NoOp");
+
+    [Fact]
+    public void treat_creations_with_equal_path_size_and_time_but_no_proof_as_a_conflict()
+    {
+        var state = ReconcilerStates.State(null, ReconcilerStates.Local("/A.txt"), ReconcilerStates.Remote("/A.txt"));
+
+        Describe(new Reconciler().Reconcile(state)).ShouldBe("Conflict:CreateCreate");
+    }
+
+    [Fact]
+    public void treat_creations_with_equal_fingerprints_as_the_same_item()
+    {
+        var state = ReconcilerStates.State(null, ReconcilerStates.Local("/A.txt", fingerprint: new ContentFingerprint("h")), ReconcilerStates.Remote("/A.txt", fingerprint: new ContentFingerprint("h")));
+
+        Describe(new Reconciler().Reconcile(state)).ShouldBe("NoOp");
+    }
+
+    [Fact]
+    public void treat_creations_with_different_fingerprints_as_a_conflict()
+    {
+        var state = ReconcilerStates.State(null, ReconcilerStates.Local("/A.txt", fingerprint: new ContentFingerprint("h")), ReconcilerStates.Remote("/A.txt", fingerprint: new ContentFingerprint("g")));
+
+        Describe(new Reconciler().Reconcile(state)).ShouldBe("Conflict:CreateCreate");
+    }
 
     [Fact]
     public void treat_creations_at_different_paths_as_a_conflict()

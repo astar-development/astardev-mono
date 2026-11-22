@@ -174,6 +174,8 @@ public enum SyncDecisionType
     DeleteLocal,
     DeleteRemote,
 
+    Merge,
+
     Conflict
 }
 ```

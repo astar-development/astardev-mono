@@ -30,6 +30,9 @@ internal enum SyncDecisionType
     /// <summary>Remove the remote item because the local one is gone.</summary>
     DeleteRemote,
 
+    /// <summary>One side renamed the item and the other side changed its content. The planner recovers the rename and the content update from the <see cref="AStarDev.CloudSync.Domain.CanonicalItemState"/> and the per-side change sets.</summary>
+    Merge,
+
     /// <summary>No single safe outcome exists; the user must choose.</summary>
     Conflict
 }
