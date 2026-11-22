@@ -7,9 +7,10 @@ using Microsoft.Extensions.Options;
 namespace AStarDev.CloudSync.SyncEngine;
 
 /// <summary>Runs queued operations through <see cref="IOperationExecutor"/> on a configurable number of workers, retrying failures with exponential back-off and dead-lettering the ones that run out of attempts.</summary>
-internal sealed class OperationScheduler(IOperationStore store, IOperationExecutor executor, IOptions<OperationSchedulerOptions> options, TimeProvider timeProvider, ILogger<OperationScheduler> logger) : IAsyncDisposable
+public sealed class OperationScheduler(IOperationStore store, IOperationExecutor executor, IOptions<OperationSchedulerOptions> options, TimeProvider timeProvider, ILogger<OperationScheduler> logger) : IAsyncDisposable
 {
     private readonly object gate = new();
+    private readonly QueueMetrics metrics = new();
     private CancellationTokenSource? cancellation;
     private Task[] workers = [];
 
@@ -48,12 +49,24 @@ internal sealed class OperationScheduler(IOperationStore store, IOperationExecut
     }
 
 /// <inheritdoc/>
-    public async ValueTask DisposeAsync() => await StopAsync(CancellationToken.None);
+    public async ValueTask DisposeAsync()
+    {
+        await StopAsync(CancellationToken.None);
+        metrics.Dispose();
+    }
 
 /// <summary>Claims one due operation, executes it and records the outcome.</summary>
     /// <param name="cancellationToken">Cancelling surfaces as <see cref="OperationCanceledException"/>; a claimed operation is then left running.</param>
     /// <returns><see langword="true"/> when an operation was processed, <see langword="false"/> when none was due, or the <see cref="StoreError"/> that stopped the queue.</returns>
     public async Task<Result<bool, StoreError>> RunOnceAsync(CancellationToken cancellationToken)
+    {
+        var outcome = await ProcessAsync(cancellationToken);
+        if (await store.CountByStatusAsync(cancellationToken) is Ok<IReadOnlyDictionary<OperationStatus, int>> counts) metrics.UpdateDepth(counts.Value);
+
+        return outcome;
+    }
+
+    private async Task<Result<bool, StoreError>> ProcessAsync(CancellationToken cancellationToken)
     {
         var claimed = await store.ClaimNextAsync(timeProvider.GetUtcNow(), 1, cancellationToken);
 
@@ -79,7 +92,9 @@ internal sealed class OperationScheduler(IOperationStore store, IOperationExecut
 
     private async Task<Result<bool, StoreError>> ExecuteAsync(Operation operation, CancellationToken cancellationToken)
     {
+        var started = timeProvider.GetTimestamp();
         var result = await executor.ExecuteAsync(operation, cancellationToken);
+        metrics.RecordDuration(timeProvider.GetElapsedTime(started));
         var settled = result switch
         {
             Ok<Unit> => await store.CompleteAsync(operation.Id, cancellationToken),

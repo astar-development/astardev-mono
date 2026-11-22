@@ -135,6 +135,34 @@ internal sealed class OperationStore(IDbContextFactory<CloudSyncDbContext> conte
     }
 
     /// <inheritdoc/>
+    public async Task<Result<int, StoreError>> RequeueRunningAsync(string reason, CancellationToken cancellationToken)
+    {
+        var outcome = await Try.RunAsync(async token =>
+        {
+            await using var context = await contextFactory.CreateDbContextAsync(token).ConfigureAwait(false);
+
+            return await context.Operations.Where(row => row.Status == OperationStatus.Running)
+                .ExecuteUpdateAsync(setters => setters.SetProperty(row => row.Status, OperationStatus.Pending).SetProperty(row => row.LastError, reason), token).ConfigureAwait(false);
+        }, cancellationToken).ConfigureAwait(false);
+
+        return outcome.ToResult(ToStorageFailure);
+    }
+
+    /// <inheritdoc/>
+    public async Task<Result<IReadOnlyDictionary<OperationStatus, int>, StoreError>> CountByStatusAsync(CancellationToken cancellationToken)
+    {
+        var outcome = await Try.RunAsync<IReadOnlyDictionary<OperationStatus, int>>(async token =>
+        {
+            await using var context = await contextFactory.CreateDbContextAsync(token).ConfigureAwait(false);
+            var rows = await context.Operations.AsNoTracking().GroupBy(row => row.Status).Select(group => new { Status = group.Key, Count = group.Count() }).ToListAsync(token).ConfigureAwait(false);
+
+            return rows.ToDictionary(row => row.Status, row => row.Count);
+        }, cancellationToken).ConfigureAwait(false);
+
+        return outcome.ToResult(ToStorageFailure);
+    }
+
+    /// <inheritdoc/>
     public async Task<Result<IReadOnlyList<Operation>, StoreError>> ListAsync(CancellationToken cancellationToken)
     {
         var outcome = await Try.RunAsync<IReadOnlyList<Operation>>(async token =>

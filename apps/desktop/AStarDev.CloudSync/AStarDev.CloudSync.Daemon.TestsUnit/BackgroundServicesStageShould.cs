@@ -42,6 +42,27 @@ public sealed class BackgroundServicesStageShould : IDisposable
         result.Value.ShouldBeOfType<Ok<Unit>>();
     }
 
+    [Fact]
+    public async Task start_the_operation_scheduler()
+    {
+        await using var host = DaemonTestHost.CreateWith(new StubCloudProvider());
+        var account = await host.AddAccountAsync("id", AccountStatus.Connected, Token);
+        var job = await host.AddJobAsync(account, localRoot, Token);
+        var operation = await host.AddOperationAsync(job, OperationStatus.Pending, Token);
+        var store = host.Services.GetRequiredService<IOperationStore>();
+
+        await host.Services.GetServices<IStartupStage>().OfType<BackgroundServicesStage>().Single().ExecuteAsync(Token);
+        var deadline = DateTimeOffset.UtcNow.AddSeconds(10);
+        var status = OperationStatus.Pending;
+        while (status == OperationStatus.Pending && DateTimeOffset.UtcNow < deadline)
+        {
+            await Task.Delay(20, Token);
+            status = (await store.ListAsync(Token)).Value.ShouldBeOfType<Ok<IReadOnlyList<Operation>>>().Value.Single(row => row.Id == operation.Id).Status;
+        }
+
+        status.ShouldNotBe(OperationStatus.Pending);
+    }
+
     private static async Task<CrawlCheckpoint> CompletedAsync(DaemonTestHost host, SyncScope scope)
     {
         var store = host.Services.GetRequiredService<IItemIndexStore>();

@@ -32,4 +32,8 @@ internal static class ApplicationConstants
     public static string OneDriveProviderType => "OneDrive";
 
     public static string ProviderHealthCheckName => "provider";
+
+    public static string QueueHealthCheckName => "queue";
+
+    public static string InterruptedOperationReason => "Interrupted by a daemon restart.";
 }
