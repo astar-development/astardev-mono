@@ -1,3 +1,5 @@
+using AStarDev.CloudSync.IPC;
+using AStarDev.FunctionalParadigm;
 using AStarDev.CloudSync.UI.ViewModels;
 
 namespace AStarDev.CloudSync.UI.TestsUnit;
@@ -39,6 +41,26 @@ public sealed class ConnectionViewModelShould
     }
 
     [Fact]
+    public async Task load_the_activities_on_connect_and_follow_changes()
+    {
+        var started = new DateTimeOffset(2026, 11, 22, 9, 0, 0, TimeSpan.Zero);
+        var job = Guid.NewGuid();
+        var first = new ActivityView(job, "OneDrive", ActivityState.InitialIndexing, 10, 100, 10, null, started, started, null, false);
+        var client = new FakeIpcClient([], available: true) { ActivitiesReply = new Ok<ActivitiesView>(new ActivitiesView([first])) };
+        var viewModel = Create(client);
+        using var source = CancellationTokenSource.CreateLinkedTokenSource(Token);
+
+        var run = viewModel.RunAsync(source.Token);
+        await WaitForAsync(() => viewModel.Activities.Count == 1);
+        client.Raise(new ActivityChanged(first with { ItemsDone = 50, Percent = 50 }));
+        client.Raise(new ActivityChanged(first with { SyncJobId = Guid.NewGuid(), Name = "Other" }));
+        await source.CancelAsync();
+        await Should.ThrowAsync<OperationCanceledException>(() => run);
+
+        viewModel.Activities.Select(activity => (activity.Name, activity.ItemsDone)).ShouldBe([("OneDrive", 50L), ("Other", 10L)]);
+    }
+
+    [Fact]
     public async Task reconnect_when_the_daemon_returns()
     {
         var first = new FakeIpcClient([], available: true);
@@ -67,7 +89,7 @@ public sealed class ConnectionViewModelShould
         await source.CancelAsync();
         await Should.ThrowAsync<OperationCanceledException>(() => run);
 
-        calls.ShouldBe(["connect", "query", "subscribe"]);
+        calls.ShouldBe(["connect", "query", "query", "subscribe"]);
         viewModel.DaemonStatus.ShouldBe(FakeIpcClient.Status);
     }
 

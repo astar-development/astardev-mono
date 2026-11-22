@@ -1,4 +1,16 @@
 {
   "Activity.Title": "Activity",
-  "Activity.Glyph": "📈"
+  "Activity.Glyph": "📈",
+  "Activity.Daemon.Heading": "Sync activity",
+  "Activity.Daemon.Row": "{state}: {name}",
+  "Activity.Daemon.State.InitialIndexing": "Initial indexing",
+  "Activity.Daemon.State.Working": "Synchronising",
+  "Activity.Daemon.State.Waiting": "Waiting for the provider",
+  "Activity.Daemon.State.Healthy": "Up to date",
+  "Activity.Daemon.Progress": "{done} / {total} items indexed ({percent}%)",
+  "Activity.Daemon.ProgressNoTotal": "{done} items indexed",
+  "Activity.Daemon.Eta": "Estimated time left: {minutes} minutes",
+  "Activity.Daemon.EtaSoon": "Estimated time left: less than a minute",
+  "Activity.Daemon.Retry": "Retrying in {seconds} seconds",
+  "Activity.Daemon.ActionRequired": "Needs your attention: a folder stopped on an error. Start the sync again."
 }

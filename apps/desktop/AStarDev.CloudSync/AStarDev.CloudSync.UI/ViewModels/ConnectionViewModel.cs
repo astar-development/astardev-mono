@@ -1,3 +1,4 @@
+using System.Collections.ObjectModel;
 using AStarDev.CloudSync.IPC;
 using AStarDev.FunctionalParadigm;
 using CommunityToolkit.Mvvm.ComponentModel;
@@ -24,6 +25,12 @@ public sealed partial class ConnectionViewModel(Func<IIpcClient> createClient, T
     /// </summary>
     [ObservableProperty]
     public partial DaemonStatusView? DaemonStatus { get; set; }
+
+    /// <summary>
+    /// What the daemon is doing for each job, as it reported: read once on each connect, then kept current by <see cref="ActivityChanged"/> events. Shown as received, never recalculated.
+    /// Not cleared when the link drops, so a reconnect replaces it rather than flashing empty.
+    /// </summary>
+    public ObservableCollection<ActivityView> Activities { get; } = [];
 
     /// <summary>Banner text for <see cref="State"/>, so the view binds a ready-made label instead of converting the enum.</summary>
     public string StatusText => State switch
@@ -68,6 +75,7 @@ public sealed partial class ConnectionViewModel(Func<IIpcClient> createClient, T
     private async Task<Result<Unit, IpcError>> ConnectAsync(IIpcClient client, CancellationToken cancellationToken)
     {
         client.OnEvent<DaemonStatusChanged>(changed => postToUi(() => DaemonStatus = changed.Status));
+        client.OnEvent<ActivityChanged>(changed => postToUi(() => Upsert(changed.Activity)));
 
         var connected = await client.ConnectAsync(cancellationToken);
         if (connected is Fail<IpcError>)
@@ -85,8 +93,22 @@ public sealed partial class ConnectionViewModel(Func<IIpcClient> createClient, T
     private async Task<Result<Unit, IpcError>> SubscribeAsync(IIpcClient client, DaemonStatusView status, CancellationToken cancellationToken)
     {
         postToUi(() => DaemonStatus = status);
+        if (await client.QueryAsync(new GetActivities(), cancellationToken) is Ok<ActivitiesView> activities) postToUi(() => Replace(activities.Value.Activities));
 
         return await client.SubscribeAsync(cancellationToken);
+    }
+
+    private void Upsert(ActivityView activity)
+    {
+        var index = Activities.ToList().FindIndex(existing => existing.SyncJobId == activity.SyncJobId);
+        if (index < 0) Activities.Add(activity);
+        else Activities[index] = activity;
+    }
+
+    private void Replace(IReadOnlyList<ActivityView> activities)
+    {
+        Activities.Clear();
+        foreach (var activity in activities) Activities.Add(activity);
     }
 
     private void SetState(ConnectionState state) => postToUi(() => State = state);

@@ -31,6 +31,7 @@ internal static class DaemonServiceCollectionExtensions
         services.AddHealthChecks(); // checks are added by the slices that own database, provider, queue and IPC
         services.AddCloudSyncPersistence();
         services.AddOneDriveProvider();
+        services.AddSingleton<ActivityTracker>();
         services.AddSingleton<ICrawlProgressSink, IpcCrawlProgressSink>();
         services.AddSyncEngine();
         services.AddStartupStages();
@@ -49,6 +50,7 @@ internal static class DaemonServiceCollectionExtensions
         services.AddSingleton<SyncScopesQuery>();
         services.AddSingleton<StartSyncHandler>();
         services.AddSingleton<StopSyncHandler>();
+        services.AddSingleton<ActivitiesQuery>();
         services.AddHealthChecks().AddCheck<ProviderHealthCheck>(ApplicationConstants.ProviderHealthCheckName);
         services.AddHostedService<IpcHostedService>();
 

@@ -45,6 +45,7 @@ internal sealed class InitialCrawler(ICloudProvider provider, IItemIndexStore in
             Fail<StoreError> fail => Failed(scope, fail.Error.ToString()!)
         };
         SyncEngineTelemetry.RecordDuration(timeProvider.GetElapsedTime(started));
+        if (!succeeded) await progress.ReportAsync(new CrawlProgress(scope.SyncJobId, scope.RemoteRootId, 0, false, Failed: true), cancellationToken);
 
         return succeeded;
     }
@@ -66,7 +67,7 @@ internal sealed class InitialCrawler(ICloudProvider provider, IItemIndexStore in
     private async Task<Result<CrawlCheckpoint, string>> CrawlPageAsync(SyncScope scope, CrawlCheckpoint current, CrawlProgressThrottle throttle, CancellationToken cancellationToken)
     {
         using var span = SyncEngineTelemetry.StartPage();
-        Result<CrawlCheckpoint, string> stored = await FetchPageAsync(scope.RemoteRootId, current.ResumeToken, cancellationToken) switch
+        Result<CrawlCheckpoint, string> stored = await FetchPageAsync(scope, current, cancellationToken) switch
         {
             Ok<ProviderSnapshotPage> ok => await StorePageAsync(scope, current, ok.Value, throttle, cancellationToken),
             Fail<ProviderError> fail => new Fail<string>(fail.Error.Value.ToString()!)
@@ -85,19 +86,22 @@ internal sealed class InitialCrawler(ICloudProvider provider, IItemIndexStore in
         if (await index.SavePageAsync(scope, page.Items, next, timeProvider.GetUtcNow(), cancellationToken) is Fail<StoreError> fail) return new Fail<string>(fail.Error.ToString()!);
 
         SyncEngineTelemetry.RecordIndexed(page.Items.Count);
-        if (last || throttle.TryAdmit()) await progress.ReportAsync(new CrawlProgress(scope.SyncJobId, scope.RemoteRootId, next.ItemsIndexed, last), cancellationToken);
+        if (last || throttle.TryAdmit()) await progress.ReportAsync(new CrawlProgress(scope.SyncJobId, scope.RemoteRootId, next.ItemsIndexed, last, page.TotalItems), cancellationToken);
 
         return new Ok<CrawlCheckpoint>(next);
     }
 
-    private async Task<Result<ProviderSnapshotPage, ProviderError>> FetchPageAsync(RemoteItemId root, string? resumeToken, CancellationToken cancellationToken)
+    private async Task<Result<ProviderSnapshotPage, ProviderError>> FetchPageAsync(SyncScope scope, CrawlCheckpoint current, CancellationToken cancellationToken)
     {
+        var root = scope.RemoteRootId;
+
         for (var attempt = 1; ; attempt++)
         {
-            var page = await provider.GetSnapshotAsync(root, resumeToken, cancellationToken);
+            var page = await provider.GetSnapshotAsync(root, current.ResumeToken, cancellationToken);
             if (page is not Fail<ProviderError> fail || attempt == ApplicationConstants.MaxPageAttempts || RetryDelay(fail.Error, attempt) is not { } delay) return page;
 
             logger.LogWarning("Listing {Root} failed, retrying in {Delay} (attempt {Attempt}): {Error}", root.Value, delay, attempt, fail.Error.Value);
+            await progress.ReportAsync(new CrawlProgress(scope.SyncJobId, root, current.ItemsIndexed, false, RetryIn: delay), cancellationToken);
             await Task.Delay(delay, timeProvider, cancellationToken);
         }
     }
