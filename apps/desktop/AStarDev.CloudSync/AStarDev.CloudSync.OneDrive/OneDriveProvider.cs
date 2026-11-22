@@ -5,8 +5,8 @@ using Microsoft.Extensions.Options;
 
 namespace AStarDev.CloudSync.OneDrive;
 
-/// <summary>OneDrive behind the <see cref="ICloudProvider"/> port: browser sign-in with a keyring token cache, and root enumeration through Graph.</summary>
-internal sealed class OneDriveProvider(IOptions<OneDriveSettings> settings, ITokenCacheStore store, AccessTokenHolder holder, RootEnumerator enumerator) : ICloudProvider
+/// <summary>OneDrive behind the <see cref="ICloudProvider"/> port: browser sign-in with a keyring token cache, root enumeration and item transfer through Graph.</summary>
+internal sealed class OneDriveProvider(IOptions<OneDriveSettings> settings, ITokenCacheStore store, AccessTokenHolder holder, RootEnumerator enumerator, ItemTransfer transfer) : ICloudProvider
 {
     /// <inheritdoc/>
     /// <remarks>The client id is read from the <c>OneDrive:ClientId</c> setting on every call; a missing one is an <see cref="AuthenticationFailed"/> value that says so. A successful sign-in lets later calls carry its access token.</remarks>
@@ -51,4 +51,24 @@ internal sealed class OneDriveProvider(IOptions<OneDriveSettings> settings, ITok
     /// <remarks>Without a successful <see cref="ConnectAsync"/> first, Graph refuses the request and the result is <see cref="AuthenticationFailed"/>.</remarks>
     public Task<Result<IReadOnlyList<ProviderItem>, ProviderError>> ListChildrenAsync(RemoteItemId parent, CancellationToken cancellationToken)
         => enumerator.ListChildrenAsync(parent, cancellationToken);
+
+    /// <inheritdoc/>
+    /// <remarks>Reads through Graph's content endpoint, which redirects to a pre-authenticated URL. A missing or forbidden item is <see cref="Permanent"/>.</remarks>
+    public Task<Result<Stream, ProviderError>> DownloadAsync(RemoteItemId itemId, CancellationToken cancellationToken)
+        => transfer.DownloadAsync(itemId, cancellationToken);
+
+    /// <inheritdoc/>
+    /// <remarks>Files up to 4 MiB go in one request followed by a request that sets the modified time; larger ones use an upload session with 10 MiB chunks, which sets it when the session opens. A failed chunk abandons the session, so repeating starts again from the beginning.</remarks>
+    public Task<Result<Unit, ProviderError>> UploadAsync(UploadRequest request, CancellationToken cancellationToken)
+        => transfer.UploadAsync(request, cancellationToken);
+
+    /// <inheritdoc/>
+    /// <remarks>Sends the new name and the new parent folder path in one request. Graph answers 404, so <see cref="Permanent"/>, when the parent folder does not exist.</remarks>
+    public Task<Result<Unit, ProviderError>> RenameAsync(RemoteItemId itemId, RelativePath path, CancellationToken cancellationToken)
+        => transfer.RenameAsync(itemId, path, cancellationToken);
+
+    /// <inheritdoc/>
+    /// <remarks>A 404 from Graph counts as success. Graph moves the item to the OneDrive recycle bin.</remarks>
+    public Task<Result<Unit, ProviderError>> DeleteAsync(RemoteItemId itemId, CancellationToken cancellationToken)
+        => transfer.DeleteAsync(itemId, cancellationToken);
 }

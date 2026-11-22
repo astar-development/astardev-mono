@@ -62,7 +62,7 @@ internal sealed class KnownSnapshotStore(IDbContextFactory<CloudSyncDbContext> c
 
     private static StagedKnownEntity ToStaged(SyncJobId jobId, OperationId operationId, ItemId itemId, KnownSnapshot? target)
         => target is null
-            ? new StagedKnownEntity { OperationId = operationId, SyncJobId = jobId, ItemId = itemId, Remove = true }
+            ? new StagedKnownEntity { OperationId = operationId, SyncJobId = jobId, ItemId = itemId, Remove = true, Path = new RelativePath(string.Empty) }
             : new StagedKnownEntity { OperationId = operationId, SyncJobId = jobId, ItemId = itemId, Path = target.Path, Size = target.Size, ModifiedUtc = target.ModifiedUtc, ETag = target.ETag, Hash = target.Fingerprint?.Value };
 
     private static StoreError ToStorageFailure(Exception exception) => new StorageFailed(exception.Message);
