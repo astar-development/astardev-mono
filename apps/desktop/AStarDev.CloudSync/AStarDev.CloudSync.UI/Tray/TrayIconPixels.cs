@@ -10,11 +10,17 @@ internal static class TrayIconPixels
 
     private const double Centre = (Size - 1) / 2.0;
     private const double Radius = 14;
+    private const double BadgeX = Size - 8;
+    private const double BadgeY = 7;
+    private const double BadgeRadius = 6;
+    private const double BadgeRing = 1.5;
+    private static readonly (byte Blue, byte Green, byte Red) BadgeColour = (0x36, 0x43, 0xF4);
 
-    /// <summary>Healthy is a solid disc, Active a ring, Degraded a diamond, Attention a triangle and Critical a cross.</summary>
+    /// <summary>Healthy is a solid disc, Active a ring, Degraded a diamond, Attention a triangle and Critical a cross. A badge is a solid dot with a white ring in the top right corner.</summary>
     /// <param name="level">The level to draw.</param>
+    /// <param name="badge">Whether to draw the conflict badge on top of the shape.</param>
     /// <returns>Premultiplied BGRA pixels, row by row, <see cref="Size"/> by <see cref="Size"/>. Pixels outside the shape are fully transparent.</returns>
-    public static byte[] Render(TrustLevel level)
+    public static byte[] Render(TrustLevel level, bool badge = false)
     {
         var pixels = new byte[Size * Size * 4];
         var colour = ColourOf(level);
@@ -30,7 +36,26 @@ internal static class TrayIconPixels
                 pixels[offset + 3] = 255;
             }
 
+        if (badge) DrawBadge(pixels);
+
         return pixels;
+    }
+
+    private static void DrawBadge(byte[] pixels)
+    {
+        for (var y = 0; y < Size; y++)
+            for (var x = 0; x < Size; x++)
+            {
+                var distance = Math.Sqrt(Math.Pow(x - BadgeX, 2) + Math.Pow(y - BadgeY, 2));
+                if (distance > BadgeRadius + BadgeRing) continue;
+
+                var (blue, green, red) = distance <= BadgeRadius ? BadgeColour : (byte.MaxValue, byte.MaxValue, byte.MaxValue);
+                var offset = ((y * Size) + x) * 4;
+                pixels[offset] = blue;
+                pixels[offset + 1] = green;
+                pixels[offset + 2] = red;
+                pixels[offset + 3] = 255;
+            }
     }
 
     private static bool Covers(TrustLevel level, double dx, double dy) => level switch

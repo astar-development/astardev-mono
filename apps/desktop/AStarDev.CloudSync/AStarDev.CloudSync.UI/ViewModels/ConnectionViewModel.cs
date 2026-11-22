@@ -44,6 +44,12 @@ public sealed partial class ConnectionViewModel(Func<IIpcClient> createClient, T
     /// </summary>
     public ObservableCollection<ConflictView> Conflicts { get; } = [];
 
+    /// <summary>
+    /// Raised on the UI thread for each daemon event pushed while connected, before the event changes <see cref="DaemonStatus"/>, <see cref="Activities"/> or <see cref="Conflicts"/>, so a listener can still read the previous value.
+    /// The reads done on each connect do not raise it.
+    /// </summary>
+    internal event Action<IEvent>? EventReceived;
+
     /// <summary>Banner text for <see cref="State"/>, so the view binds a ready-made label instead of converting the enum.</summary>
     public string StatusText => State switch
     {
@@ -86,10 +92,27 @@ public sealed partial class ConnectionViewModel(Func<IIpcClient> createClient, T
 
     private async Task<Result<Unit, IpcError>> ConnectAsync(IIpcClient client, CancellationToken cancellationToken)
     {
-        client.OnEvent<DaemonStatusChanged>(changed => postToUi(() => DaemonStatus = changed.Status));
-        client.OnEvent<ActivityChanged>(changed => postToUi(() => Upsert(changed.Activity)));
-        client.OnEvent<ConflictDetected>(detected => postToUi(() => Upsert(detected.Conflict)));
-        client.OnEvent<ConflictResolved>(resolved => postToUi(() => Remove(resolved.ConflictId)));
+        client.OnEvent<DaemonStatusChanged>(changed => postToUi(() =>
+        {
+            EventReceived?.Invoke(changed);
+            DaemonStatus = changed.Status;
+        }));
+        client.OnEvent<ActivityChanged>(changed => postToUi(() =>
+        {
+            EventReceived?.Invoke(changed);
+            Upsert(changed.Activity);
+        }));
+        client.OnEvent<ConflictDetected>(detected => postToUi(() =>
+        {
+            EventReceived?.Invoke(detected);
+            Upsert(detected.Conflict);
+        }));
+        client.OnEvent<ConflictResolved>(resolved => postToUi(() =>
+        {
+            EventReceived?.Invoke(resolved);
+            Remove(resolved.ConflictId);
+        }));
+        client.OnEvent<CrawlProgressChanged>(progress => postToUi(() => EventReceived?.Invoke(progress)));
 
         var connected = await client.ConnectAsync(cancellationToken);
         if (connected is Fail<IpcError>)

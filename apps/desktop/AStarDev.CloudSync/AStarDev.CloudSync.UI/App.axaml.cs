@@ -3,6 +3,7 @@ using Avalonia.Controls;
 using Avalonia.Controls.ApplicationLifetimes;
 using Avalonia.Markup.Xaml;
 using AStarDev.CloudSync.UI.Localisation;
+using AStarDev.CloudSync.UI.Notifications;
 using AStarDev.CloudSync.UI.Theming;
 using AStarDev.CloudSync.UI.Tray;
 using AStarDev.CloudSync.UI.ViewModels;
@@ -48,6 +49,8 @@ public partial class App : Application
 
             var window = new MainWindow { DataContext = host.Services.GetRequiredService<MainViewModel>() };
             var tray = host.Services.GetRequiredService<TrayLifecycle>();
+            _ = host.Services.GetRequiredService<TrayConflictBadge>();
+            _ = host.Services.GetRequiredService<DaemonNotificationBridge>();
             host.Services.GetRequiredService<AvaloniaShell>().Attach(window, desktop);
             window.Closing += (_, args) =>
             {

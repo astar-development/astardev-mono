@@ -22,5 +22,17 @@ internal enum NotificationEventKind
     ItemFailed,
 
     /// <summary>Data may be at risk or sync has stopped.</summary>
-    DataAtRisk
+    DataAtRisk,
+
+    /// <summary>The provider refused an account's stored sign-in, so the account is paused until the user signs in again.</summary>
+    AuthenticationExpired,
+
+    /// <summary>The first listing of a sync job's folders finished and the job moved on.</summary>
+    InitialCrawlComplete,
+
+    /// <summary>The first listing of one selected folder finished.</summary>
+    SyncScopeComplete,
+
+    /// <summary>The daemon says a job needs the user to start it again.</summary>
+    UserActionRequired
 }

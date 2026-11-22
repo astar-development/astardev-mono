@@ -66,8 +66,11 @@ internal static class UiServiceCollectionExtensions
         services.AddSingleton(provider => new MainViewModel(provider.GetRequiredService<INavigationService>(), provider.GetServices<IScreen>(), provider.GetRequiredService<StatusBarViewModel>(), provider.GetRequiredService<OnboardingViewModel>()));
         services.AddSingleton<TrayLifecycle>();
         services.AddSingleton<PlaceholderNotificationPresenter>();
-        services.AddSingleton<INotificationPresenter>(provider => provider.GetRequiredService<PlaceholderNotificationPresenter>());
+        services.AddSingleton<IDesktopNotifier, NotifySendNotifier>();
+        services.AddSingleton<INotificationPresenter, DesktopNotificationPresenter>();
         services.AddSingleton<INotificationService>(provider => new NotificationService(provider.GetRequiredService<INotificationPresenter>(), provider.GetRequiredService<TrayLifecycle>(), provider.GetRequiredService<ILocalisationService>(), TimeProvider.System, NotificationAggregationWindow));
+        services.AddSingleton<DaemonNotificationBridge>();
+        services.AddSingleton<TrayConflictBadge>();
 
         return services;
     }
