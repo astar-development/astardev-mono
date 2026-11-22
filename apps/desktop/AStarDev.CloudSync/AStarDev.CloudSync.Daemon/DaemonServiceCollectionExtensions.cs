@@ -5,6 +5,7 @@ using AStarDev.CloudSync.OneDrive;
 using AStarDev.CloudSync.Persistence;
 using AStarDev.CloudSync.Ports;
 using AStarDev.CloudSync.SyncEngine;
+using AStarDev.SingleInstance;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
@@ -15,7 +16,7 @@ namespace AStarDev.CloudSync.Daemon;
 internal static class DaemonServiceCollectionExtensions
 {
     /// <summary>
-    /// Registers telemetry first, so everything after it is observed, then options, health checks, persistence, the cloud provider, the sync engine, the startup stages, the IPC handlers and the hosted services. <see cref="StartupHostedService"/> is registered
+    /// Registers telemetry first, so everything after it is observed, then options, health checks, persistence, the cloud provider, the sync engine, the single-instance guard, the startup stages, the IPC handlers and the hosted services. <see cref="StartupHostedService"/> is registered
     /// before <see cref="IpcHostedService"/>, so the IPC server only listens once every startup stage has finished.
     /// </summary>
     /// <example>
@@ -37,6 +38,8 @@ internal static class DaemonServiceCollectionExtensions
         services.AddSingleton<ConflictViewFactory>();
         services.AddSingleton<IConflictEventSink, IpcConflictEventSink>();
         services.AddSyncEngine();
+        services.AddSingleInstance();
+        services.AddSingleton(provider => DaemonInstance.OptionsFor(provider.GetRequiredService<IOptions<IpcOptions>>().Value.SocketPath));
         services.AddStartupStages();
         services.AddHostedService<StartupHostedService>();
         services.AddSingleton(TimeProvider.System);

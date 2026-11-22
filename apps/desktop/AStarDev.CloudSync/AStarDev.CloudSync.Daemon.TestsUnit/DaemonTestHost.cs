@@ -76,6 +76,7 @@ internal sealed class DaemonTestHost(IHost host, string socketPath, string datab
         else host.Dispose();
 
         Microsoft.Data.Sqlite.SqliteConnection.ClearAllPools();
+        File.Delete($"{socketPath}{ApplicationConstants.InstanceNameSuffix}.lock");
         var directory = Path.GetDirectoryName(databasePath)!;
         if (Directory.Exists(directory)) Directory.Delete(directory, recursive: true);
     }

@@ -36,6 +36,23 @@ public sealed class DaemonServiceCollectionExtensionsShould
     }
 
     [Fact]
+    public async Task refuse_to_start_a_second_daemon_on_the_same_socket_and_leave_the_first_serving()
+    {
+        await using var first = DaemonTestHost.Create();
+        await first.StartAsync(Token);
+        await using var second = DaemonTestHost.Create(configuration: new Dictionary<string, string?> { ["Ipc:SocketPath"] = first.SocketPath });
+        await using var client = UnixSocketIpc.CreateClient(first.SocketPath);
+
+        var failure = await Should.ThrowAsync<StartupFailedException>(() => second.StartAsync(Token));
+        (await client.ConnectAsync(Token)).Value.ShouldBeOfType<Ok<Unit>>();
+        var status = (await client.QueryAsync(new GetDaemonStatus(), Token)).Value.ShouldBeOfType<Ok<DaemonStatusView>>().Value;
+        await first.StopAsync(Token);
+
+        failure.Error.StageName.ShouldBe("Process start");
+        status.State.ShouldBe(DaemonState.Running);
+    }
+
+    [Fact]
     public async Task register_onedrive_as_the_cloud_provider()
     {
         await using var host = DaemonTestHost.Create();

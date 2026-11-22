@@ -77,7 +77,11 @@ Host Starts
 Configuration Loaded
      ↓
 Logging Initialised
+     ↓
+Single-Instance Lock Claimed
 ```
+
+The lock lives beside the IPC socket and is held until the host stops. A second daemon for the same socket fails here, before it touches the database or the running daemon's socket.
 
 Failure here is fatal.
 

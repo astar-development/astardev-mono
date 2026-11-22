@@ -159,6 +159,16 @@ public sealed class SingleInstanceGuardShould : IDisposable
     }
 
     [Fact]
+    [System.Runtime.Versioning.UnsupportedOSPlatform("windows")]
+    public async Task create_a_new_data_folder_for_its_owner_only()
+    {
+        Assert.SkipWhen(OperatingSystem.IsWindows(), "Unix permissions only.");
+        await using var primary = (await Guard.ClaimAsync(data.Options(), CancellationToken)).ShouldBeOfType<InstanceClaim.Primary>().Instance;
+
+        File.GetUnixFileMode(data.Folder.FullName).ShouldBe(UnixFileMode.UserRead | UnixFileMode.UserWrite | UnixFileMode.UserExecute);
+    }
+
+    [Fact]
     public async Task stop_listening_and_log_an_error_when_accepting_keeps_failing()
     {
         var broken = HandOffProtocol.CreateSocket();

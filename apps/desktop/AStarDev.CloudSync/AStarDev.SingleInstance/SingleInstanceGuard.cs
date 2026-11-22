@@ -37,7 +37,10 @@ internal sealed class SingleInstanceGuard(ILogger<SingleInstanceGuard> logger) :
 
     private static Unit CreateFolder(IDirectoryInfo folder)
     {
-        folder.Create();
+        if (OperatingSystem.IsWindows())
+            folder.Create();
+        else
+            Directory.CreateDirectory(folder.FullName, UnixFileMode.UserRead | UnixFileMode.UserWrite | UnixFileMode.UserExecute);
 
         return default;
     }
