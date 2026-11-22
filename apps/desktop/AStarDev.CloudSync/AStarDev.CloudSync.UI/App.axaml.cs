@@ -11,6 +11,7 @@ using AStarDev.CloudSync.UI.Views;
 using AStarDev.FunctionalParadigm;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting;
+using Microsoft.Extensions.Logging;
 
 namespace AStarDev.CloudSync.UI;
 
@@ -38,7 +39,8 @@ public partial class App : Application
             LocalisationHost.Service = localisation;
             var connection = host.Services.GetRequiredService<ConnectionViewModel>();
             _ = host.Services.GetRequiredService<RefreshCoordinator>();
-            _ = host.Services.GetRequiredService<IThemeService>().Apply(DefaultTheme);
+            if (host.Services.GetRequiredService<IThemeService>().Apply(DefaultTheme).Value is Fail<ThemeError> themeFailure)
+                UiLog.ThemeFailed(host.Services.GetRequiredService<ILogger<App>>(), DefaultTheme, themeFailure.Error.Value.GetType().Name);
             var shutdown = new CancellationTokenSource();
             desktop.Exit += (_, _) =>
             {

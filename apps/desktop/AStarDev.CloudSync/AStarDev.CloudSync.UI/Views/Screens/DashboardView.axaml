@@ -12,22 +12,30 @@
 
             <Border Classes="card" Padding="0">
                 <UniformGrid Rows="1" Columns="4">
-                    <StackPanel Margin="20,14" Spacing="2">
-                        <TextBlock Text="{Binding Providers.Count}" FontSize="22" FontWeight="SemiBold" Foreground="{DynamicResource Text.Primary.Brush}" />
-                        <TextBlock Text="{Binding ProvidersHeading}" Foreground="{DynamicResource Text.Secondary.Brush}" />
-                    </StackPanel>
-                    <StackPanel Margin="20,14" Spacing="2">
-                        <TextBlock Text="{Binding RunningText}" FontSize="14" FontWeight="SemiBold" Foreground="{DynamicResource Text.Primary.Brush}" />
-                        <TextBlock Text="{Binding QueueHeading}" Foreground="{DynamicResource Text.Secondary.Brush}" />
-                    </StackPanel>
-                    <StackPanel Margin="20,14" Spacing="2">
-                        <TextBlock Text="{Binding ConflictsText}" FontSize="14" FontWeight="SemiBold" Foreground="{DynamicResource Text.Primary.Brush}" />
-                        <TextBlock Text="{Binding AttentionHeading}" Foreground="{DynamicResource Text.Secondary.Brush}" />
-                    </StackPanel>
-                    <StackPanel Margin="20,14" Spacing="2" DataContext="{Binding Health}" x:DataType="vm:SyncHealthPresentation">
-                        <TextBlock Text="{Binding Headline}" FontSize="22" FontWeight="SemiBold" Foreground="{DynamicResource Accent.Brush}" TextWrapping="Wrap" />
-                        <TextBlock Text="{Binding Summary}" Foreground="{DynamicResource Text.Secondary.Brush}" TextWrapping="Wrap" />
-                    </StackPanel>
+                    <Border Classes="tile">
+                        <StackPanel Spacing="2">
+                            <TextBlock Classes="stat" Text="{Binding Providers.Count}" />
+                            <TextBlock Classes="label" Text="{Binding ProvidersHeading}" />
+                        </StackPanel>
+                    </Border>
+                    <Border Classes="tile">
+                        <StackPanel Spacing="2">
+                            <TextBlock Classes="stat" Text="{Binding RunningText}" />
+                            <TextBlock Classes="label" Text="{Binding QueueHeading}" />
+                        </StackPanel>
+                    </Border>
+                    <Border Classes="tile">
+                        <StackPanel Spacing="2">
+                            <TextBlock Classes="stat" Text="{Binding ConflictsText}" />
+                            <TextBlock Classes="label" Text="{Binding AttentionHeading}" />
+                        </StackPanel>
+                    </Border>
+                    <Border Classes="tile" BorderThickness="0" DataContext="{Binding Health}" x:DataType="vm:SyncHealthPresentation">
+                        <StackPanel Spacing="2">
+                            <TextBlock Classes="stat" Text="{Binding Headline}" Foreground="{DynamicResource Accent.Brush}" TextWrapping="Wrap" />
+                            <TextBlock Classes="label" Text="{Binding Summary}" TextWrapping="Wrap" />
+                        </StackPanel>
+                    </Border>
                 </UniformGrid>
             </Border>
 
@@ -102,7 +110,7 @@
             <Border Classes="card" Padding="0">
                 <StackPanel>
                     <Grid ColumnDefinitions="*,Auto" Margin="16,12">
-                        <TextBlock Text="{Binding QueueHeading}" FontSize="16" FontWeight="SemiBold" VerticalAlignment="Center" Foreground="{DynamicResource Text.Primary.Brush}" />
+                        <TextBlock Text="{Binding QueueHeading}" Classes="heading" VerticalAlignment="Center" />
                         <Button Grid.Column="1" Classes="action" Content="{Binding OpenConflictsText}" Command="{Binding OpenConflictsCommand}" />
                     </Grid>
                     <Border Height="1" Background="{DynamicResource Border.Brush}" />
@@ -127,7 +135,7 @@
             <Border Classes="card" Padding="0">
                 <StackPanel>
                     <Grid ColumnDefinitions="*,Auto" Margin="16,12">
-                        <TextBlock Text="{Binding ProvidersHeading}" FontSize="16" FontWeight="SemiBold" VerticalAlignment="Center" Foreground="{DynamicResource Text.Primary.Brush}" />
+                        <TextBlock Text="{Binding ProvidersHeading}" Classes="heading" VerticalAlignment="Center" />
                         <Button Grid.Column="1" Classes="action" Content="{Binding OpenProvidersText}" Command="{Binding OpenProvidersCommand}" />
                     </Grid>
                     <Border Height="1" Background="{DynamicResource Border.Brush}" />
