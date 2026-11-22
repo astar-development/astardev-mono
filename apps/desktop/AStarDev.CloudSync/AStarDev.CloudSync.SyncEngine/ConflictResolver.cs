@@ -139,12 +139,12 @@ public sealed class ConflictResolver
         var state = CanonicalStateBuilder.Build(items, ((Ok<IReadOnlyList<KnownEntry>>)known.Value).Value).FirstOrDefault(candidate => candidate.ItemId == conflict.ItemId);
         if (state is null) return Refusal(new ConflictItemGone(conflict.Id));
 
-        return ConflictDetected(conflict, operations)
+        return IsBusy(conflict, operations)
             ? Refusal(new ConflictItemBusy(conflict.Id))
             : new Ok<Loaded>(new Loaded(((Ok<SyncJob>)job.Value).Value, state, items));
     }
 
-    private static bool ConflictDetected(Conflict conflict, Result<IReadOnlyList<Operation>, StoreError> operations) =>
+    private static bool IsBusy(Conflict conflict, Result<IReadOnlyList<Operation>, StoreError> operations) =>
         SyncPlanner.BusyItems(((Ok<IReadOnlyList<Operation>>)operations.Value).Value).Contains(conflict.ItemId);
 
     private async Task<Result<RelativePath, ResolutionError>> CopyLocalAsync(Conflict conflict, Loaded context, CancellationToken cancellationToken)

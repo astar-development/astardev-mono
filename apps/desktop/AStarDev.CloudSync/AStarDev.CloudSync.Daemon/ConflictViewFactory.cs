@@ -42,16 +42,16 @@ internal sealed class ConflictViewFactory(CanonicalStateReader states)
         conflict.Type.ToString(),
         conflict.CreatedUtc,
         conflict.Status.ToString(),
-        SetRemotePath(state),
-        SetLocalConflictDetails(state),
-        SetRemoveConflictDetails(state));
+        ItemPath(state),
+        LocalSide(state),
+        RemoteSide(state));
 
-    private static ConflictSideView? SetRemoveConflictDetails(CanonicalItemState? state) =>
+    private static ConflictSideView? RemoteSide(CanonicalItemState? state) =>
         state?.Remote is { } remote ? new ConflictSideView(remote.Path.Value, remote.ModifiedUtc, remote.Size) : null;
 
-    private static ConflictSideView? SetLocalConflictDetails(CanonicalItemState? state) =>
+    private static ConflictSideView? LocalSide(CanonicalItemState? state) =>
         state?.Local is { } local ? new ConflictSideView(local.Path.Value, local.ModifiedUtc, local.Size) : null;
 
-    private static string SetRemotePath(CanonicalItemState? state) =>
+    private static string ItemPath(CanonicalItemState? state) =>
         state?.Remote?.Path.Value ?? state?.Local?.Path.Value ?? state?.Known?.Path.Value ?? string.Empty;
 }
