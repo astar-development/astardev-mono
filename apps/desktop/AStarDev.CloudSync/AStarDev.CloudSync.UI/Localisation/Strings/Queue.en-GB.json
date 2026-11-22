@@ -1,5 +1,17 @@
 {
   "Queue.Title": "Queue",
   "Queue.Glyph": "⏳",
-  "Queue.ConflictsNote": "Conflicts are resolved on the Conflicts screen, never from the queue."
+  "Queue.ConflictsNote": "Conflicts are resolved on the Conflicts screen, never from the queue.",
+  "Queue.DeadLetters.Heading": "Needs your decision",
+  "Queue.DeadLetters.Retry": "Retry",
+  "Queue.DeadLetters.Ignore": "Ignore",
+  "Queue.DeadLetters.Item": "Item: {id}",
+  "Queue.DeadLetters.Attempts": "Attempts: {count}",
+  "Queue.DeadLetters.NoError": "No reason was recorded.",
+  "Queue.DeadLetters.Type.UploadFile": "Upload file",
+  "Queue.DeadLetters.Type.DownloadFile": "Download file",
+  "Queue.DeadLetters.Type.RenameRemote": "Rename remote item",
+  "Queue.DeadLetters.Type.RenameLocal": "Rename local item",
+  "Queue.DeadLetters.Type.DeleteRemote": "Delete remote item",
+  "Queue.DeadLetters.Type.DeleteLocal": "Delete local item"
 }

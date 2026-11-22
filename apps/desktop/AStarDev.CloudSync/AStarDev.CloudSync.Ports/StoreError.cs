@@ -34,5 +34,9 @@ public sealed record SyncScopeNotFound(SyncScope Scope);
 /// <param name="Id">The identity that was looked up.</param>
 public sealed record OperationNotRunning(OperationId Id);
 
+/// <summary>No dead-lettered operation has the identity: it is missing, or is in another status, for example because it was already requeued or dropped. Nothing was changed.</summary>
+/// <param name="Id">The identity that was looked up.</param>
+public sealed record OperationNotDeadLettered(OperationId Id);
+
 /// <summary>Closed set of failures that cross the state store boundary.</summary>
-public union StoreError(AccountNotFound, AccountAlreadyExists, StorageFailed, SyncJobNotFound, SyncJobAlreadyExists, SyncScopeAlreadyExists, SyncScopeNotFound, OperationNotRunning);
+public union StoreError(AccountNotFound, AccountAlreadyExists, StorageFailed, SyncJobNotFound, SyncJobAlreadyExists, SyncScopeAlreadyExists, SyncScopeNotFound, OperationNotRunning, OperationNotDeadLettered);

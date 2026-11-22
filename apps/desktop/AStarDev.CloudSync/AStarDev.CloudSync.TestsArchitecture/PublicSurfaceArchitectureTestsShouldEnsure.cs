@@ -16,7 +16,7 @@ public sealed class PublicSurfaceArchitectureTestsShouldEnsure
     [Fact]
     public void the_ports_expose_only_their_approved_public_types()
         => ShouldExposeExactly(typeof(ICloudProvider).Assembly,
-            "AccountAlreadyExists", "AccountNotFound", "AuthenticationFailed", "ChangeKind", "CrawlCheckpoint", "IAccountStore", "ICloudProvider", "IItemIndexStore", "InvalidDeltaToken", "IOperationStore", "ISyncJobStore", "ISyncScopeStore", "OperationNotRunning", "Permanent", "ProviderAccount",
+            "AccountAlreadyExists", "AccountNotFound", "AuthenticationFailed", "ChangeKind", "CrawlCheckpoint", "IAccountStore", "ICloudProvider", "IItemIndexStore", "InvalidDeltaToken", "IOperationStore", "ISyncJobStore", "ISyncScopeStore", "OperationNotDeadLettered", "OperationNotRunning", "Permanent", "ProviderAccount",
             "ProviderChange", "ProviderDeltaPage", "ProviderError", "ProviderItem", "ProviderSnapshotPage", "RateLimited", "StorageFailed", "StoreError", "SyncJobAlreadyExists", "SyncJobNotFound",
             "SyncScopeAlreadyExists", "SyncScopeNotFound", "Transient");
 
@@ -25,10 +25,10 @@ public sealed class PublicSurfaceArchitectureTestsShouldEnsure
         => ShouldExposeExactly(typeof(IPC.IIpcServer).Assembly,
             [
              "AccountConnected", "AccountDisconnected", "AccountState", "AccountView", "AccountsView", "ActivitiesView", "ActivityChanged", "ActivityState", "ActivityView", "AddSyncScope", "CommandOutcome", "CommandResult", "ConnectAccount",
-             "ConnectionFailed", "ConnectionLost", "CrawlProgressChanged", "CreateSyncJob", "DaemonState", "DaemonStatusChanged", "DaemonStatusView", "DisconnectAccount", "FrameTooLarge",
-             "GetAccounts", "GetActivities", "GetDaemonStatus", "GetRemoteFolders", "GetRemoteRootSummary", "GetSyncJobs", "GetSyncScopes", "HandlerFailed", "ICommand",
-             "IEvent", "IIpcClient", "IIpcServer", "IpcError", "IQuery`1", "ListenFailed", "MalformedFrame", "NotConnected", "RemoteFolderView", "RemoteFoldersView", "RemoteRootSummaryView",
-             "RemoveSyncScope", "StartSync", "StopSync", "SyncBootstrapMode", "SyncJobView", "SyncJobsView", "SyncScopeView", "SyncScopesView", "UnixSocketIpc"]);
+             "ConnectionFailed", "ConnectionLost", "CrawlProgressChanged", "CreateSyncJob", "DaemonState", "DaemonStatusChanged", "DaemonStatusView", "DeadLetterView", "DeadLettersView", "DisconnectAccount", "FrameTooLarge",
+             "GetAccounts", "GetActivities", "GetDaemonStatus", "GetDeadLetters", "GetRemoteFolders", "GetRemoteRootSummary", "GetSyncJobs", "GetSyncScopes", "HandlerFailed", "ICommand",
+             "IEvent", "IgnoreOperation", "IIpcClient", "IIpcServer", "IpcError", "IQuery`1", "ListenFailed", "MalformedFrame", "NotConnected", "RemoteFolderView", "RemoteFoldersView", "RemoteRootSummaryView",
+             "RemoveSyncScope", "RetryOperation", "StartSync", "StopSync", "SyncBootstrapMode", "SyncJobView", "SyncJobsView", "SyncScopeView", "SyncScopesView", "UnixSocketIpc"]);
 
     [Fact]
     public void the_daemon_exposes_no_public_types()
