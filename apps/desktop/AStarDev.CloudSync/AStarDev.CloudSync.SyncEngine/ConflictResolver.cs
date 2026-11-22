@@ -84,6 +84,15 @@ public sealed class ConflictResolver
 
     private async Task<Result<Unit, ResolutionError>> ApplyAsync(Conflict conflict, ConflictResolution choice, CancellationToken cancellationToken)
     {
+        using var span = WorkflowTelemetry.StartConflictResolution(conflict, choice);
+        var outcome = await ApplyCoreAsync(conflict, choice, cancellationToken);
+        if (outcome.Value is Fail<ResolutionError> fail) WorkflowTelemetry.Fail(span, fail.Error.Value?.GetType().Name ?? "unknown", "The conflict could not be resolved.");
+
+        return outcome;
+    }
+
+    private async Task<Result<Unit, ResolutionError>> ApplyCoreAsync(Conflict conflict, ConflictResolution choice, CancellationToken cancellationToken)
+    {
         if (choice == ConflictResolution.Defer) return await DeferAsync(conflict, cancellationToken);
 
         var loaded = await LoadAsync(conflict, cancellationToken);

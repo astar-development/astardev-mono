@@ -93,6 +93,7 @@ public sealed class OperationScheduler(IOperationStore store, IOperationExecutor
 
     private async Task<Result<bool, StoreError>> ExecuteAsync(Operation operation, CancellationToken cancellationToken)
     {
+        using var span = WorkflowTelemetry.StartExecute(operation);
         using var scope = CorrelationScope.Begin(logger, operation.Id.Value.ToString(), operation.ItemId.Value.ToString(), operation.SyncJobId.Value.ToString());
         OperationLog.Started(logger, operation.Type.ToString(), operation.Attempts);
         var started = timeProvider.GetTimestamp();
@@ -100,6 +101,8 @@ public sealed class OperationScheduler(IOperationStore store, IOperationExecutor
         var result = await executor.ExecuteAsync(operation, cancellationToken);
         metrics.RecordDuration(timeProvider.GetElapsedTime(started));
         RecordOutcome(operation, result);
+        if (result is Fail<ProviderError> failed) WorkflowTelemetry.Fail(span, failed.Error.Value?.GetType().Name ?? "unknown", failed.Error.Value?.ToString() ?? string.Empty);
+
         var settled = result switch
         {
             Ok<Unit> => await CompleteAsync(operation, cancellationToken),

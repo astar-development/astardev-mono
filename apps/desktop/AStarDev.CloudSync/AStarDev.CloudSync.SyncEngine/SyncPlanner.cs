@@ -57,12 +57,15 @@ public sealed class SyncPlanner
     public async Task<Result<PlanSummary, StoreError>> PlanAsync(SyncJobId jobId, CancellationToken cancellationToken)
     {
         var reconcileStarted = timeProvider.GetTimestamp();
+        using var span = WorkflowTelemetry.StartPlan(jobId);
         using var scope = CorrelationScope.Begin(logger, syncJobId: jobId.Value.ToString());
         var outcome = await ThenAsync(jobStore.GetAsync(jobId, cancellationToken), job =>
             ThenAsync(itemStore.ListAsync(jobId, cancellationToken), rows =>
                 ThenAsync(knownStore.ListAsync(jobId, cancellationToken), known =>
                     ThenAsync(operationStore.ListAsync(cancellationToken), existing => PlanAllAsync(jobId, BootstrapModeFor(job, known, existing), CanonicalStateBuilder.Build(rows, known), BusyItems(existing), cancellationToken)))));
         PerformanceMetrics.Shared.RecordReconciliation(timeProvider.GetElapsedTime(reconcileStarted));
+        if (outcome.Value is Fail<StoreError> failed) WorkflowTelemetry.Fail(span, failed.Error.Value?.GetType().Name ?? "unknown", "Planning stopped on a store error.");
+
         if (outcome.Value is Ok<PlanSummary> ok) logger.LogInformation("Planned job {Job}: {Queued} operations queued, {Conflicts} conflicts stored", jobId.Value, ok.Value.Queued, ok.Value.Conflicts);
 
         return outcome;
@@ -90,13 +93,20 @@ public sealed class SyncPlanner
         foreach (var state in states)
         {
             cancellationToken.ThrowIfCancellationRequested();
+            using var item = WorkflowTelemetry.StartItemPlan(jobId, state.ItemId);
             var outcome = IsGone(state, busy) ? await RemoveKnownAsync(jobId, state, cancellationToken) : Decide(mode, state) switch
             {
                 Resolved resolved => await QueueAsync(jobId, state, resolved, busy, null, cancellationToken),
                 Conflicted when busy.Contains(state.ItemId) => new Ok<PlanSummary>(new PlanSummary(0, 0)),
                 Conflicted conflicted => await RecordConflictAsync(jobId, state, conflicted, cancellationToken)
             };
-            if (outcome.Value is Fail<StoreError> failure) return failure;
+            if (outcome.Value is Fail<StoreError> failure)
+            {
+                WorkflowTelemetry.Fail(item, failure.Error.Value?.GetType().Name ?? "unknown", "Planning the item stopped on a store error.");
+
+                return failure;
+            }
+
             if (outcome.Value is Ok<PlanSummary> ok) total = new PlanSummary(total.Queued + ok.Value.Queued, total.Conflicts + ok.Value.Conflicts);
         }
 
@@ -113,16 +123,21 @@ public sealed class SyncPlanner
         };
 
     private SyncDecision Decide(BootstrapMode mode, CanonicalItemState state)
-        => mode != BootstrapMode.Merge && state.Known is null ? BootstrapResolver.Resolve(mode, state) : reconciler.Reconcile(state);
+    {
+        using var span = WorkflowTelemetry.StartReconcile();
+
+        return mode != BootstrapMode.Merge && state.Known is null ? BootstrapResolver.Resolve(mode, state) : reconciler.Reconcile(state);
+    }
 
     internal async Task<Result<PlanSummary, StoreError>> QueueAsync(SyncJobId jobId, CanonicalItemState state, Resolved decision, HashSet<ItemId> busy, OperationPriority? priority, CancellationToken cancellationToken)
     {
         var plan = OperationPlanner.Plan(state, decision);
         if (plan.Operations.Count == 0 || busy.Contains(state.ItemId)) return new Ok<PlanSummary>(new PlanSummary(0, 0));
 
+        using var planning = WorkflowTelemetry.StartOperationPlan(jobId, state.ItemId);
         var now = timeProvider.GetUtcNow();
         var operations = plan.Operations
-            .Select((planned, index) => new Operation(new OperationId(Guid.NewGuid()), jobId, state.ItemId, planned.Type, priority ?? planned.Priority, OperationStatus.Pending, 0, now, null, now.AddTicks(index)))
+            .Select((planned, index) => new Operation(new OperationId(Guid.NewGuid()), jobId, state.ItemId, planned.Type, priority ?? planned.Priority, OperationStatus.Pending, 0, now, null, now.AddTicks(index), planning?.Id))
             .ToList();
 
         var staged = await knownStore.StageAsync(jobId, operations[^1].Id, state.ItemId, plan.Known, cancellationToken);
@@ -130,8 +145,14 @@ public sealed class SyncPlanner
 
         foreach (var operation in operations)
         {
+            using var publish = WorkflowTelemetry.StartPublish(operation);
             var enqueued = await operationStore.EnqueueAsync(operation, cancellationToken);
-            if (enqueued.Value is Fail<StoreError> enqueueFailure) return enqueueFailure;
+            if (enqueued.Value is Fail<StoreError> enqueueFailure)
+            {
+                WorkflowTelemetry.Fail(publish, enqueueFailure.Error.Value?.GetType().Name ?? "unknown", "The operation could not be queued.");
+
+                return enqueueFailure;
+            }
 
             OperationLog.Queued(logger, operation.Id.Value, operation.Type.ToString(), operation.ItemId.Value, jobId.Value);
         }

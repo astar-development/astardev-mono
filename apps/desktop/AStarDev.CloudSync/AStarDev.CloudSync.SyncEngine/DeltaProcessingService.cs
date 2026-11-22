@@ -39,6 +39,7 @@ internal sealed class DeltaProcessingService(ICloudProvider provider, IItemIndex
     {
         await progress.ReportAsync(new CrawlProgress(scope.SyncJobId, scope.RemoteRootId, checkpoint.ItemsIndexed, false, Delta: true), cancellationToken);
         var started = timeProvider.GetTimestamp();
+        using var span = WorkflowTelemetry.StartDeltaScope(scope.SyncJobId, scope.RemoteRootId);
         using var correlation = CorrelationScope.Begin(logger, syncJobId: scope.SyncJobId.Value.ToString(), remoteItemId: scope.RemoteRootId.Value);
         var outcome = await ApplyPagesAsync(scope, token, cancellationToken);
         if (IsInvalidToken(outcome))
@@ -47,7 +48,12 @@ internal sealed class DeltaProcessingService(ICloudProvider provider, IItemIndex
             if (outcome is Ok<int>) SyncLog.DeltaTokenRefreshed(logger, scope.RemoteRootId.Value, scope.SyncJobId.Value);
         }
 
-        if (outcome is Ok<int> applied) SyncLog.DeltaProcessingFinished(logger, scope.RemoteRootId.Value, scope.SyncJobId.Value, applied.Value);
+        if (outcome is Ok<int> applied)
+        {
+            SyncLog.DeltaProcessingFinished(logger, scope.RemoteRootId.Value, scope.SyncJobId.Value, applied.Value);
+            span?.SetTag("cloudsync.delta.changes", applied.Value);
+        }
+        else if (outcome is Fail<DeltaError> failed) WorkflowTelemetry.Fail(span, failed.Error.Value?.GetType().Name ?? "unknown", "Delta processing stopped; the token is kept.");
 
         PerformanceMetrics.Shared.RecordDelta(timeProvider.GetElapsedTime(started));
 
@@ -107,11 +113,17 @@ internal sealed class DeltaProcessingService(ICloudProvider provider, IItemIndex
     }
 
     private async Task<Result<(int Applied, string? Resume), DeltaError>> ApplyPageAsync(SyncScope scope, DeltaToken token, string? resume, CancellationToken cancellationToken)
-        => await provider.GetDeltasAsync(scope.RemoteRootId, token, resume, cancellationToken) switch
+    {
+        using var span = WorkflowTelemetry.StartDeltaPage(scope.SyncJobId);
+        var outcome = await provider.GetDeltasAsync(scope.RemoteRootId, token, resume, cancellationToken) switch
         {
             Ok<ProviderDeltaPage> ok => await StorePageAsync(scope, ok.Value, cancellationToken),
             Fail<ProviderError> fail => new Fail<DeltaError>(new DeltaProviderFailed(fail.Error))
         };
+        if (outcome is Fail<DeltaError> failed) WorkflowTelemetry.Fail(span, failed.Error.Value?.GetType().Name ?? "unknown", "The delta page could not be fetched or stored.");
+
+        return outcome;
+    }
 
     private async Task<Result<(int Applied, string? Resume), DeltaError>> StorePageAsync(SyncScope scope, ProviderDeltaPage page, CancellationToken cancellationToken)
         => await index.ApplyDeltaPageAsync(scope, page.Changes, page.DeltaToken, timeProvider.GetUtcNow(), cancellationToken) switch

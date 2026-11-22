@@ -35,13 +35,16 @@ internal sealed class OperationEntity
     /// <summary>When the operation was enqueued; always stored in UTC so stored values compare by time.</summary>
     public DateTimeOffset CreatedUtc { get; set; }
 
+    /// <summary>The W3C <c>traceparent</c> of the planning span; <see langword="null"/> when none was recorded.</summary>
+    public string? TraceParent { get; set; }
+
     /// <summary>Copies the domain operation into its stored form, converting times to UTC.</summary>
     /// <param name="operation">The operation to store.</param>
     /// <returns>A new, untracked entity.</returns>
     public static OperationEntity From(Operation operation)
-        => new() { Id = operation.Id, SyncJobId = operation.SyncJobId, ItemId = operation.ItemId, Type = operation.Type, Priority = operation.Priority, Status = operation.Status, Attempts = operation.Attempts, NextAttemptUtc = operation.NextAttemptUtc.ToUniversalTime(), LastError = operation.LastError, CreatedUtc = operation.CreatedUtc.ToUniversalTime() };
+        => new() { Id = operation.Id, SyncJobId = operation.SyncJobId, ItemId = operation.ItemId, Type = operation.Type, Priority = operation.Priority, Status = operation.Status, Attempts = operation.Attempts, NextAttemptUtc = operation.NextAttemptUtc.ToUniversalTime(), LastError = operation.LastError, CreatedUtc = operation.CreatedUtc.ToUniversalTime(), TraceParent = operation.TraceParent };
 
     /// <summary>Builds the domain operation from the stored row.</summary>
     /// <returns>An immutable operation with the same values.</returns>
-    public Operation ToOperation() => new(Id, SyncJobId, ItemId, Type, Priority, Status, Attempts, NextAttemptUtc, LastError, CreatedUtc);
+    public Operation ToOperation() => new(Id, SyncJobId, ItemId, Type, Priority, Status, Attempts, NextAttemptUtc, LastError, CreatedUtc, TraceParent);
 }
