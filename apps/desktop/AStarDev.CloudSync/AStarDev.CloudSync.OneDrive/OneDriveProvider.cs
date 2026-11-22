@@ -40,6 +40,14 @@ internal sealed class OneDriveProvider(IOptions<OneDriveSettings> settings, ITok
         => enumerator.GetSnapshotAsync(root, cancellationToken);
 
     /// <inheritdoc/>
+    /// <remarks>
+    /// The token is a Graph delta link and the resume token a Graph next link, both used as the request URL. HTTP 410 is <see cref="InvalidDeltaToken"/>.
+    /// Graph does not report renames, so a renamed or moved item arrives as <see cref="ChangeKind.Modified"/> with its new path.
+    /// </remarks>
+    public Task<Result<ProviderDeltaPage, ProviderError>> GetDeltasAsync(RemoteItemId root, DeltaToken token, string? resumeToken, CancellationToken cancellationToken)
+        => enumerator.GetDeltasAsync(root, token, resumeToken, cancellationToken);
+
+    /// <inheritdoc/>
     /// <remarks>Without a successful <see cref="ConnectAsync"/> first, Graph refuses the request and the result is <see cref="AuthenticationFailed"/>.</remarks>
     public Task<Result<IReadOnlyList<ProviderItem>, ProviderError>> ListChildrenAsync(RemoteItemId parent, CancellationToken cancellationToken)
         => enumerator.ListChildrenAsync(parent, cancellationToken);

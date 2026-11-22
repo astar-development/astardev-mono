@@ -11,7 +11,7 @@ internal static class GraphErrors
 
     /// <summary>
     /// 429 is <see cref="RateLimited"/> carrying the Retry-After delay (or <see cref="DefaultRetryAfter"/> when absent),
-    /// 5xx and 408 are <see cref="Transient"/>, 401 is <see cref="AuthenticationFailed"/>, everything else including 403 and 404 is <see cref="Permanent"/>.
+    /// 5xx and 408 are <see cref="Transient"/>, 401 is <see cref="AuthenticationFailed"/>, 410 is <see cref="InvalidDeltaToken"/> (Graph's answer to a spent delta link), everything else including 403 and 404 is <see cref="Permanent"/>.
     /// </summary>
     public static ProviderError From(HttpResponseMessage response)
     {
@@ -23,6 +23,7 @@ internal static class GraphErrors
             HttpStatusCode.RequestTimeout => new Transient(message),
             >= HttpStatusCode.InternalServerError => new Transient(message),
             HttpStatusCode.Unauthorized => new AuthenticationFailed(message),
+            HttpStatusCode.Gone => new InvalidDeltaToken(message),
             _ => new Permanent(message)
         };
     }

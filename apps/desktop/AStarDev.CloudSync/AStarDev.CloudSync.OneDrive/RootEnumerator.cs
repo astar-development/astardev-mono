@@ -5,7 +5,7 @@ using AStarDev.FunctionalParadigm;
 
 namespace AStarDev.CloudSync.OneDrive;
 
-/// <summary>Lists the children of a drive folder through Graph, following next links until the last page.</summary>
+/// <summary>Lists the children of a drive folder, or the changes since a delta link, through Graph.</summary>
 /// <param name="client">Authorised client whose base address is the Graph root, such as <c>https://graph.microsoft.com/v1.0/</c>.</param>
 /// <param name="telemetry">Receives a span and a request count per page.</param>
 internal sealed class RootEnumerator(HttpClient client, OneDriveTelemetry telemetry)
@@ -16,6 +16,15 @@ internal sealed class RootEnumerator(HttpClient client, OneDriveTelemetry teleme
         => await ListChildrenAsync(root, cancellationToken).ConfigureAwait(false) switch
         {
             Ok<IReadOnlyList<ProviderItem>> ok => new Ok<ProviderSnapshotPage>(new ProviderSnapshotPage(ok.Value)),
+            Fail<ProviderError> fail => fail
+        };
+
+    /// <summary>Fetches one page of changes. Graph's delta links and next links are absolute URLs, so the delta token and resume token are used as the request URL.</summary>
+    /// <returns>The page, or the <see cref="ProviderError"/> met; a 410 is <see cref="InvalidDeltaToken"/>. Cancellation propagates as <see cref="OperationCanceledException"/>.</returns>
+    public async Task<Result<ProviderDeltaPage, ProviderError>> GetDeltasAsync(RemoteItemId root, DeltaToken token, string? resumeToken, CancellationToken cancellationToken)
+        => await GetPageAsync(resumeToken ?? token.Value, cancellationToken).ConfigureAwait(false) switch
+        {
+            Ok<GraphChildrenPage> ok => new Ok<ProviderDeltaPage>(DeltaMapping.ToDeltaPage(ok.Value)),
             Fail<ProviderError> fail => fail
         };
 

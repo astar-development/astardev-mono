@@ -19,4 +19,8 @@ public sealed class ProviderErrorMessagesShould
     [Fact]
     public void include_the_reason_for_a_permanent_failure()
         => ProviderErrorMessages.Describe(new Permanent("forbidden")).ShouldContain("forbidden");
+
+    [Fact]
+    public void say_the_folder_must_be_listed_again_for_an_invalid_delta_token()
+        => ProviderErrorMessages.Describe(new InvalidDeltaToken("gone")).ShouldContain("listed again");
 }

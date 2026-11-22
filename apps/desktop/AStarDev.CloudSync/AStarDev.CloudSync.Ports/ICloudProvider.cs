@@ -6,7 +6,7 @@ namespace AStarDev.CloudSync.Ports;
 /// <summary>
 /// The only way the sync engine talks to a cloud provider. Failure is a <see cref="ProviderError"/> value, never an exception;
 /// cancellation is not a failure and propagates as <see cref="OperationCanceledException"/>.
-/// Later slices add the remaining members of doc 09 (deltas, download, upload, rename, delete).
+/// Later slices add the remaining members of doc 09 (download, upload, rename, delete).
 /// </summary>
 public interface ICloudProvider
 {
@@ -48,4 +48,12 @@ public interface ICloudProvider
     /// </code>
     /// </example>
     Task<Result<ProviderSnapshotPage, ProviderError>> GetSnapshotAsync(RemoteItemId root, string? resumeToken, CancellationToken cancellationToken);
+
+    /// <summary>Lists what changed under one remote root since a delta token was issued, one page at a time.</summary>
+    /// <param name="root">The remote folder the token was issued for.</param>
+    /// <param name="token">The bookmark from <see cref="ProviderSnapshotPage.DeltaToken"/> or the last <see cref="ProviderDeltaPage.DeltaToken"/>.</param>
+    /// <param name="resumeToken"><see langword="null"/> to start at the first page, or the <see cref="ProviderDeltaPage.ResumeToken"/> of the previous page to continue after it.</param>
+    /// <param name="cancellationToken">Cancelling abandons the call and surfaces as <see cref="OperationCanceledException"/>, never as a <see cref="ProviderError"/>.</param>
+    /// <returns>One page of changes, or the reason it failed. The last page carries the new <see cref="ProviderDeltaPage.DeltaToken"/>. <see cref="InvalidDeltaToken"/> means the token is spent: do not retry, list the root again. The same call can be repeated after other failures.</returns>
+    Task<Result<ProviderDeltaPage, ProviderError>> GetDeltasAsync(RemoteItemId root, DeltaToken token, string? resumeToken, CancellationToken cancellationToken);
 }
