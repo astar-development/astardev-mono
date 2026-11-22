@@ -4,8 +4,11 @@ namespace AStarDev.CloudSync.UI;
 internal static class DaemonSocketPath
 {
     public static string Resolve(string? xdgRuntimeDir)
-        => Path.Combine(
-            string.IsNullOrWhiteSpace(xdgRuntimeDir) ? Path.Combine(Path.GetTempPath(), Environment.UserName) : xdgRuntimeDir,
-            ApplicationConstants.SocketDirectoryName,
-            ApplicationConstants.SocketFileName);
+        => Path.Combine(RuntimeFolder(xdgRuntimeDir), ApplicationConstants.SocketDirectoryName, ApplicationConstants.SocketFileName);
+
+    public static string InstanceFolder(string? xdgRuntimeDir)
+        => Path.Combine(RuntimeFolder(xdgRuntimeDir), ApplicationConstants.InstanceDirectoryName);
+
+    private static string RuntimeFolder(string? xdgRuntimeDir)
+        => string.IsNullOrWhiteSpace(xdgRuntimeDir) ? Path.Combine(Path.GetTempPath(), Environment.UserName) : xdgRuntimeDir;
 }

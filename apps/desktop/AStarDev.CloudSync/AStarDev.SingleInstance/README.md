@@ -18,6 +18,9 @@ switch (claim)
     case InstanceClaim.HandedOff or InstanceClaim.NotAnswered:
         Shutdown(0);
         break;
+    case InstanceClaim.LockUnavailable:
+        Shutdown(1);
+        break;
 }
 ```
 

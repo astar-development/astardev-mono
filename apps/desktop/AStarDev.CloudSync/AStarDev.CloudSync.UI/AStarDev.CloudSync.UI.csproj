@@ -10,6 +10,7 @@
   <ItemGroup>
     <ProjectReference Include="..\AStarDev.CloudSync.IPC\AStarDev.CloudSync.IPC.csproj" />
     <ProjectReference Include="..\AStarDev.CloudSync.Observability\AStarDev.CloudSync.Observability.csproj" />
+    <ProjectReference Include="..\AStarDev.SingleInstance\AStarDev.SingleInstance.csproj" />
     <ProjectReference Include="..\..\..\..\nuget-packages\AStarDev.FunctionalParadigm\AStarDev.FunctionalParadigm.csproj" />
   </ItemGroup>
 
