@@ -22,6 +22,7 @@ internal sealed class TelemetryRun : IAsyncDisposable
     private static readonly RemoteItemId Downloaded = new("a");
     private static readonly RemoteItemId Failing = new("b");
     private static readonly RemoteItemId Conflicting = new("c");
+    private static readonly RemoteItemId Flaky = new("d");
 
     private readonly string directory = Path.Combine(Path.GetTempPath(), $"cloudsync-telemetry-{Guid.NewGuid():N}");
     private readonly FakeCloudProvider provider = new(pageSize: 100);
@@ -114,6 +115,8 @@ internal sealed class TelemetryRun : IAsyncDisposable
         AddRemote(Downloaded, "a.txt", "remote-a");
         AddRemote(Failing, "b.txt", null);
         AddRemote(Conflicting, "c.txt", "remote-c");
+        AddRemote(Flaky, "d.txt", null);
+        provider.TransientDownloads.Add(Flaky);
     }
 
     private void AddRemote(RemoteItemId id, string path, string? content)

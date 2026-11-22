@@ -8,7 +8,7 @@ using Microsoft.Extensions.Logging;
 namespace AStarDev.CloudSync.Daemon.Startup;
 
 /// <summary>Stage 5: start the background work. Today that is the crawl of every enabled job, which continues from its checkpoints, and the observation of its local root; the operation scheduler, workers and delta processing arrive in later slices.</summary>
-internal sealed class BackgroundServicesStage(ISyncJobStore jobs, SyncRunner runner, LocalObservationRunner observation, OperationScheduler scheduler, IDatabaseState databaseState, ILogger<BackgroundServicesStage> logger) : IStartupStage
+internal sealed class BackgroundServicesStage(ISyncJobStore jobs, SyncRunner runner, LocalObservationRunner observation, OperationScheduler scheduler, ConflictResolver conflictResolver, IDatabaseState databaseState, ILogger<BackgroundServicesStage> logger) : IStartupStage
 {
     /// <inheritdoc/>
     public string Name => ApplicationConstants.BackgroundServicesStageName;
@@ -23,6 +23,7 @@ internal sealed class BackgroundServicesStage(ISyncJobStore jobs, SyncRunner run
         if (databaseState.Mode == DatabaseMode.Recovery) return new Ok<Unit>(default);
 
         scheduler.Start();
+        if (await conflictResolver.RefreshOpenConflictCountAsync(cancellationToken) is Fail<StoreError> countFail) logger.LogWarning("The open conflict count could not be read: {Message}", StoreErrorMessages.Describe(countFail.Error, "count", "conflict"));
 
         return await jobs.ListAsync(cancellationToken) switch
         {

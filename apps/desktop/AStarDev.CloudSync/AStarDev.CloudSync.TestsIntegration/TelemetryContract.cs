@@ -13,6 +13,7 @@ internal static class TelemetryContract
         "cloudsync.queue.operation.latency",
         "cloudsync.queue.operation.completed",
         "cloudsync.queue.operation.failed",
+        "cloudsync.queue.operation.retries",
         "cloudsync.sync.jobs.active",
         "cloudsync.sync.items_synchronised",
         "cloudsync.sync.conflicts.open",

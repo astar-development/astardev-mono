@@ -1,5 +1,7 @@
 using System.Diagnostics.Metrics;
 using AStarDev.CloudSync.Domain;
+using AStarDev.CloudSync.Ports;
+using AStarDev.FunctionalParadigm;
 
 namespace AStarDev.CloudSync.SyncEngine.TestsUnit;
 
@@ -14,6 +16,19 @@ public sealed class SyncMetricsShould
         };
         listener.SetMeasurementEventCallback<long>((instrument, value, tags, _) => onLong(instrument, value, tags.ToArray()));
         listener.Start();
+    }
+
+    private static long ReadOpen(SyncMetrics metrics)
+    {
+        long open = -1;
+        Listen(metrics.Meter, (instrument, value, _) =>
+        {
+            if (instrument.Name == "cloudsync.sync.conflicts.open") open = value;
+        }, out var listener);
+        using var _ = listener;
+        listener.RecordObservableInstruments();
+
+        return open;
     }
 
     [Fact]
@@ -35,39 +50,37 @@ public sealed class SyncMetricsShould
     }
 
     [Fact]
-    public void report_open_conflicts()
+    public async Task report_stored_open_conflicts_after_a_restart()
     {
         using var metrics = new SyncMetrics();
-        long open = -1;
-        Listen(metrics.Meter, (instrument, value, _) =>
-        {
-            if (instrument.Name == "cloudsync.sync.conflicts.open") open = value;
-        }, out var listener);
-        using var _ = listener;
+        var store = new FakeConflictStore(new Ok<int>(3));
 
-        metrics.ConflictOpened();
-        metrics.ConflictOpened();
-        metrics.ConflictResolved("KeepLocal");
-        listener.RecordObservableInstruments();
+        var refreshed = await metrics.RefreshOpenConflictsAsync(store, TestContext.Current.CancellationToken);
 
-        open.ShouldBe(1);
+        refreshed.Value.ShouldBeOfType<Ok<Unit>>();
+        ReadOpen(metrics).ShouldBe(3);
     }
 
     [Fact]
-    public void never_report_fewer_than_zero_open_conflicts()
+    public async Task keep_the_last_open_conflict_count_when_the_store_fails()
     {
         using var metrics = new SyncMetrics();
-        long open = -1;
-        Listen(metrics.Meter, (instrument, value, _) =>
-        {
-            if (instrument.Name == "cloudsync.sync.conflicts.open") open = value;
-        }, out var listener);
-        using var _ = listener;
+        await metrics.RefreshOpenConflictsAsync(new FakeConflictStore(new Ok<int>(2)), TestContext.Current.CancellationToken);
 
-        metrics.ConflictResolved("KeepRemote");
-        listener.RecordObservableInstruments();
+        var refreshed = await metrics.RefreshOpenConflictsAsync(new FakeConflictStore(new Fail<StoreError>(new StorageFailed("disk"))), TestContext.Current.CancellationToken);
 
-        open.ShouldBe(0);
+        refreshed.Value.ShouldBeOfType<Fail<StoreError>>();
+        ReadOpen(metrics).ShouldBe(2);
+    }
+
+    [Fact]
+    public async Task honour_cancellation_when_refreshing_open_conflicts()
+    {
+        using var metrics = new SyncMetrics();
+        using var source = new CancellationTokenSource();
+        await source.CancelAsync();
+
+        await Should.ThrowAsync<OperationCanceledException>(async () => await metrics.RefreshOpenConflictsAsync(new FakeConflictStore(new Ok<int>(1)), source.Token));
     }
 
     [Fact]

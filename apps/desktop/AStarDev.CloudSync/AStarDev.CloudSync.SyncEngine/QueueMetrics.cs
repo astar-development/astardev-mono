@@ -10,6 +10,7 @@ internal sealed class QueueMetrics : IDisposable
     private readonly Histogram<double> latency;
     private readonly Counter<long> completed;
     private readonly Counter<long> failed;
+    private readonly Counter<long> retries;
     private long pending;
     private long running;
     private long deadLettered;
@@ -24,6 +25,7 @@ internal sealed class QueueMetrics : IDisposable
         latency = Meter.CreateHistogram<double>("cloudsync.queue.operation.latency", "s", "How long an operation waited between being enqueued and its first attempt starting.");
         completed = Meter.CreateCounter<long>("cloudsync.queue.operation.completed", "{operation}", "Operations that succeeded, by operation type.");
         failed = Meter.CreateCounter<long>("cloudsync.queue.operation.failed", "{operation}", "Operation attempts that failed, by operation type and error type; a retried operation counts once per failed attempt.");
+        retries = Meter.CreateCounter<long>("cloudsync.queue.operation.retries", "{operation}", "Operations rescheduled for another attempt after a failure, by operation type and error type.");
     }
 
     public Meter Meter { get; }
@@ -45,6 +47,8 @@ internal sealed class QueueMetrics : IDisposable
     public void RecordCompleted(OperationType type) => completed.Add(1, new KeyValuePair<string, object?>("cloudsync.operation.type", type.ToString()));
 
     public void RecordFailed(OperationType type, string errorType) => failed.Add(1, new KeyValuePair<string, object?>("cloudsync.operation.type", type.ToString()), new KeyValuePair<string, object?>("error.type", errorType));
+
+    public void RecordRetry(OperationType type, string errorType) => retries.Add(1, new KeyValuePair<string, object?>("cloudsync.operation.type", type.ToString()), new KeyValuePair<string, object?>("error.type", errorType));
 
     public void Dispose() => Meter.Dispose();
 }

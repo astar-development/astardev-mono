@@ -21,6 +21,8 @@ internal sealed class FakeCloudProvider(int pageSize) : ICloudProvider
 
     public Dictionary<RemoteItemId, byte[]> Contents { get; } = [];
 
+    public HashSet<RemoteItemId> TransientDownloads { get; } = [];
+
     public List<(RelativePath Path, byte[] Content, DateTimeOffset ModifiedUtc)> Uploads { get; } = [];
 
     public List<(RemoteItemId ItemId, RelativePath Path)> Renames { get; } = [];
@@ -152,9 +154,11 @@ internal sealed class FakeCloudProvider(int pageSize) : ICloudProvider
     {
         cancellationToken.ThrowIfCancellationRequested();
 
-        Result<Stream, ProviderError> result = Contents.TryGetValue(itemId, out var bytes)
-            ? new Ok<Stream>(new MemoryStream(bytes))
-            : new Fail<ProviderError>(new Permanent($"No content for {itemId.Value}"));
+        Result<Stream, ProviderError> result = TransientDownloads.Contains(itemId)
+            ? new Fail<ProviderError>(new Transient($"Try again for {itemId.Value}"))
+            : Contents.TryGetValue(itemId, out var bytes)
+                ? new Ok<Stream>(new MemoryStream(bytes))
+                : new Fail<ProviderError>(new Permanent($"No content for {itemId.Value}"));
 
         return Task.FromResult(result);
     }
