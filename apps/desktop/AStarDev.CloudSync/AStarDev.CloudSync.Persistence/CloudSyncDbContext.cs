@@ -28,6 +28,9 @@ internal sealed class CloudSyncDbContext(DbContextOptions<CloudSyncDbContext> op
     /// <summary>How far the initial crawl of each scope has got.</summary>
     public DbSet<CrawlCheckpointEntity> CrawlCheckpoints => Set<CrawlCheckpointEntity>();
 
+    /// <summary>The durable operation queue.</summary>
+    public DbSet<OperationEntity> Operations => Set<OperationEntity>();
+
     /// <summary>Saves inside a <c>persistence.save</c> span; see <see cref="PersistenceTelemetry"/>.</summary>
     public override int SaveChanges(bool acceptAllChangesOnSuccess)
     {
@@ -73,6 +76,16 @@ internal sealed class CloudSyncDbContext(DbContextOptions<CloudSyncDbContext> op
         {
             checkpoint.ToTable("CrawlCheckpoints").HasKey(entity => new { entity.SyncJobId, entity.RemoteRootId });
             checkpoint.HasOne<SyncScopeEntity>().WithOne().HasForeignKey<CrawlCheckpointEntity>(entity => new { entity.SyncJobId, entity.RemoteRootId }).OnDelete(DeleteBehavior.Cascade);
+        });
+
+        modelBuilder.Entity<OperationEntity>(operation =>
+        {
+            operation.ToTable("Operations").HasKey(entity => entity.Id);
+            operation.Property(entity => entity.Type).HasConversion<string>();
+            operation.Property(entity => entity.Status).HasConversion<string>();
+            operation.HasOne<SyncJobEntity>().WithMany().HasForeignKey(entity => entity.SyncJobId).OnDelete(DeleteBehavior.Cascade);
+            operation.HasIndex(entity => new { entity.Status, entity.Priority, entity.CreatedUtc });
+            operation.HasIndex(entity => new { entity.ItemId, entity.Status });
         });
 
         modelBuilder.Entity<ItemEntity>(item =>

@@ -11,12 +11,12 @@ public sealed class PublicSurfaceArchitectureTestsShouldEnsure
     [Fact]
     public void the_domain_exposes_only_its_approved_public_types()
         => ShouldExposeExactly(typeof(ItemId).Assembly,
-            "Account", "AccountId", "AccountStatus", "BootstrapMode", "DeltaToken", "ETag", "ItemId", "ItemType", "RelativePath", "RemoteItemId", "SnapshotId", "SyncJob", "SyncJobId", "SyncScope");
+            "Account", "AccountId", "AccountStatus", "BootstrapMode", "DeltaToken", "ETag", "ItemId", "ItemType", "Operation", "OperationId", "OperationPriority", "OperationStatus", "OperationType", "RelativePath", "RemoteItemId", "SnapshotId", "SyncJob", "SyncJobId", "SyncScope");
 
     [Fact]
     public void the_ports_expose_only_their_approved_public_types()
         => ShouldExposeExactly(typeof(ICloudProvider).Assembly,
-            "AccountAlreadyExists", "AccountNotFound", "AuthenticationFailed", "ChangeKind", "CrawlCheckpoint", "IAccountStore", "ICloudProvider", "IItemIndexStore", "InvalidDeltaToken", "ISyncJobStore", "ISyncScopeStore", "Permanent", "ProviderAccount",
+            "AccountAlreadyExists", "AccountNotFound", "AuthenticationFailed", "ChangeKind", "CrawlCheckpoint", "IAccountStore", "ICloudProvider", "IItemIndexStore", "InvalidDeltaToken", "IOperationStore", "ISyncJobStore", "ISyncScopeStore", "OperationNotRunning", "Permanent", "ProviderAccount",
             "ProviderChange", "ProviderDeltaPage", "ProviderError", "ProviderItem", "ProviderSnapshotPage", "RateLimited", "StorageFailed", "StoreError", "SyncJobAlreadyExists", "SyncJobNotFound",
             "SyncScopeAlreadyExists", "SyncScopeNotFound", "Transient");
 

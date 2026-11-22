@@ -30,5 +30,9 @@ public sealed record SyncScopeAlreadyExists(SyncScope Scope);
 /// <param name="Scope">The scope that was being removed.</param>
 public sealed record SyncScopeNotFound(SyncScope Scope);
 
+/// <summary>No running operation has the identity: it is missing, was never claimed, or has already finished. Nothing was changed.</summary>
+/// <param name="Id">The identity that was looked up.</param>
+public sealed record OperationNotRunning(OperationId Id);
+
 /// <summary>Closed set of failures that cross the state store boundary.</summary>
-public union StoreError(AccountNotFound, AccountAlreadyExists, StorageFailed, SyncJobNotFound, SyncJobAlreadyExists, SyncScopeAlreadyExists, SyncScopeNotFound);
+public union StoreError(AccountNotFound, AccountAlreadyExists, StorageFailed, SyncJobNotFound, SyncJobAlreadyExists, SyncScopeAlreadyExists, SyncScopeNotFound, OperationNotRunning);
