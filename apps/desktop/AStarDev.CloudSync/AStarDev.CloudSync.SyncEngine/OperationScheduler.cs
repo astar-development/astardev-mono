@@ -93,8 +93,10 @@ public sealed class OperationScheduler(IOperationStore store, IOperationExecutor
     private async Task<Result<bool, StoreError>> ExecuteAsync(Operation operation, CancellationToken cancellationToken)
     {
         var started = timeProvider.GetTimestamp();
+        metrics.RecordStarted(operation, timeProvider.GetUtcNow());
         var result = await executor.ExecuteAsync(operation, cancellationToken);
         metrics.RecordDuration(timeProvider.GetElapsedTime(started));
+        RecordOutcome(operation, result);
         var settled = result switch
         {
             Ok<Unit> => await store.CompleteAsync(operation.Id, cancellationToken),
@@ -106,6 +108,18 @@ public sealed class OperationScheduler(IOperationStore store, IOperationExecutor
             Ok<Unit> => new Ok<bool>(true),
             Fail<StoreError> fail => fail
         };
+    }
+
+    private void RecordOutcome(Operation operation, Result<Unit, ProviderError> result)
+    {
+        if (result is Fail<ProviderError> fail)
+        {
+            metrics.RecordFailed(operation.Type, fail.Error.Value?.GetType().Name ?? "unknown");
+            return;
+        }
+
+        metrics.RecordCompleted(operation.Type);
+        SyncMetrics.Shared.ItemsSynchronised(operation.Type);
     }
 
     private async Task<Result<Unit, StoreError>> FailAsync(Operation operation, ProviderError error, CancellationToken cancellationToken)

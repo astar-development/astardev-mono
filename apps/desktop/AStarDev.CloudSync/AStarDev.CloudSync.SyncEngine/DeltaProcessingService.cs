@@ -37,8 +37,11 @@ internal sealed class DeltaProcessingService(ICloudProvider provider, IItemIndex
     private async Task<Result<int, DeltaError>> ApplyReportingAsync(SyncScope scope, CrawlCheckpoint checkpoint, DeltaToken token, CancellationToken cancellationToken)
     {
         await progress.ReportAsync(new CrawlProgress(scope.SyncJobId, scope.RemoteRootId, checkpoint.ItemsIndexed, false, Delta: true), cancellationToken);
+        var started = timeProvider.GetTimestamp();
         var outcome = await ApplyPagesAsync(scope, token, cancellationToken);
         if (IsInvalidToken(outcome)) outcome = await ReindexAsync(scope, cancellationToken);
+
+        PerformanceMetrics.Shared.RecordDelta(timeProvider.GetElapsedTime(started));
 
         var succeeded = outcome is Ok<int>;
         await progress.ReportAsync(new CrawlProgress(scope.SyncJobId, scope.RemoteRootId, checkpoint.ItemsIndexed, succeeded, Failed: !succeeded, Delta: true), cancellationToken);

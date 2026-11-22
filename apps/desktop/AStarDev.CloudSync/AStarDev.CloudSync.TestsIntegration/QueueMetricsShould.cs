@@ -43,7 +43,10 @@ public sealed class QueueMetricsShould
             if (instrument.Meter.Name.StartsWith("AStarDev.CloudSync.", StringComparison.Ordinal)) meterListener.EnableMeasurementEvents(instrument);
         };
         listener.SetMeasurementEventCallback<long>((instrument, value, _, _) => gauges[instrument.Name] = value);
-        listener.SetMeasurementEventCallback<double>((_, value, _, _) => durations.Add(value));
+        listener.SetMeasurementEventCallback<double>((instrument, value, _, _) =>
+        {
+            if (instrument.Name == "cloudsync.queue.operation.duration") durations.Add(value);
+        });
         listener.Start();
 
         (await scheduler.RunOnceAsync(Token)).Value.ShouldBeOfType<Ok<bool>>();

@@ -55,10 +55,12 @@ public sealed class SyncPlanner
     /// <returns>How many operations were queued and conflicts stored, or the <see cref="StoreError"/> that stopped planning, including <see cref="SyncJobNotFound"/> when the job does not exist.</returns>
     public async Task<Result<PlanSummary, StoreError>> PlanAsync(SyncJobId jobId, CancellationToken cancellationToken)
     {
+        var reconcileStarted = timeProvider.GetTimestamp();
         var outcome = await ThenAsync(jobStore.GetAsync(jobId, cancellationToken), job =>
             ThenAsync(itemStore.ListAsync(jobId, cancellationToken), rows =>
                 ThenAsync(knownStore.ListAsync(jobId, cancellationToken), known =>
                     ThenAsync(operationStore.ListAsync(cancellationToken), existing => PlanAllAsync(jobId, BootstrapModeFor(job, known, existing), CanonicalStateBuilder.Build(rows, known), BusyItems(existing), cancellationToken)))));
+        PerformanceMetrics.Shared.RecordReconciliation(timeProvider.GetElapsedTime(reconcileStarted));
         if (outcome.Value is Ok<PlanSummary> ok) logger.LogInformation("Planned job {Job}: {Queued} operations queued, {Conflicts} conflicts stored", jobId.Value, ok.Value.Queued, ok.Value.Conflicts);
 
         return outcome;
@@ -153,6 +155,7 @@ public sealed class SyncPlanner
         var entry = new JournalEntry(Guid.NewGuid(), conflict.CreatedUtc, ConflictDetectedEvent,conflict.Id.Value, payload);
         if (await journal.AppendAsync(entry, cancellationToken) is Fail<StoreError> failure) return failure;
 
+        SyncMetrics.Shared.ConflictOpened();
         await conflictEvents.DetectedAsync(conflict, cancellationToken);
 
         return new Ok<PlanSummary>(new PlanSummary(0, 1));

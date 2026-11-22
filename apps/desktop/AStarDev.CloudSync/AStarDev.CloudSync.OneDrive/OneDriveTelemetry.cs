@@ -30,7 +30,11 @@ internal sealed class OneDriveTelemetry : IDisposable
         requests = Meter.CreateCounter<long>(RequestsName, "{request}", "Graph requests sent");
         failures = Meter.CreateCounter<long>(FailuresName, "{request}", "Graph requests that failed");
         rateLimits = Meter.CreateCounter<long>(RateLimitsName, "{event}", "Graph rate limit responses");
+        Provider = new ProviderMetrics(Meter);
     }
+
+    /// <summary>Counters of delta, upload and download requests.</summary>
+    public ProviderMetrics Provider { get; }
 
     /// <summary>Source of the spans, one per page fetched.</summary>
     public ActivitySource ActivitySource { get; }

@@ -11,7 +11,8 @@ namespace AStarDev.CloudSync.OneDrive;
 /// <param name="graph">Authorised client whose base address is the Graph root, such as <c>https://graph.microsoft.com/v1.0/</c>.</param>
 /// <param name="uploads">Client for the pre-authenticated upload session URLs, which must not carry the bearer token.</param>
 /// <param name="chunkSize">Bytes per upload session request. Graph needs a multiple of 320 KiB.</param>
-internal sealed class ItemTransfer(HttpClient graph, HttpClient uploads, int chunkSize = ItemTransfer.DefaultChunkSize)
+/// <param name="metrics">Counts downloads and uploads; <see langword="null"/> counts nothing.</param>
+internal sealed class ItemTransfer(HttpClient graph, HttpClient uploads, int chunkSize = ItemTransfer.DefaultChunkSize, ProviderMetrics? metrics = null)
 {
     /// <summary>Files up to this many bytes go in a single request; larger ones use an upload session.</summary>
     public const int SimpleUploadLimit = 4 * 1024 * 1024;
@@ -70,6 +71,7 @@ internal sealed class ItemTransfer(HttpClient graph, HttpClient uploads, int chu
 
     private async Task<Result<Stream, ProviderError>> OpenAsync(RemoteItemId itemId, CancellationToken cancellationToken)
     {
+        metrics?.CountDownload();
         var response = await graph.GetAsync($"{ItemUrl(itemId)}/content", HttpCompletionOption.ResponseHeadersRead, cancellationToken).ConfigureAwait(false);
 
         if (response.IsSuccessStatusCode) return new Ok<Stream>(await response.Content.ReadAsStreamAsync(cancellationToken).ConfigureAwait(false));
@@ -79,6 +81,7 @@ internal sealed class ItemTransfer(HttpClient graph, HttpClient uploads, int chu
 
     private async Task<Result<Unit, ProviderError>> PutAsync(UploadRequest request, CancellationToken cancellationToken)
     {
+        metrics?.CountUpload();
         using var content = new StreamContent(request.Content);
         using var response = await graph.PutAsync($"{PathUrl(request.Path)}:/content?@microsoft.graph.conflictBehavior={ReplaceExisting}", content, cancellationToken).ConfigureAwait(false);
 
@@ -93,6 +96,7 @@ internal sealed class ItemTransfer(HttpClient graph, HttpClient uploads, int chu
 
     private async Task<Result<Unit, ProviderError>> PutInChunksAsync(UploadRequest request, CancellationToken cancellationToken)
     {
+        metrics?.CountUpload();
         var item = new Dictionary<string, object>
         {
             ["@microsoft.graph.conflictBehavior"] = ReplaceExisting,

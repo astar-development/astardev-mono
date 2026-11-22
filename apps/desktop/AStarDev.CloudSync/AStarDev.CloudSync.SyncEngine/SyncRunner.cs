@@ -80,6 +80,7 @@ public sealed class SyncRunner : IAsyncDisposable
 
     private async Task RunAsync(SyncJobId syncJobId, CancellationToken cancellationToken)
     {
+        SyncMetrics.Shared.JobStarted();
         try
         {
             while (true)
@@ -93,6 +94,7 @@ public sealed class SyncRunner : IAsyncDisposable
         }
         finally
         {
+            SyncMetrics.Shared.JobStopped();
             lock (running) running.Remove(syncJobId);
         }
     }
