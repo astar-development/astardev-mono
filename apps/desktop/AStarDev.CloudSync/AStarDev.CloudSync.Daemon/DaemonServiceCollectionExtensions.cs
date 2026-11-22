@@ -33,6 +33,7 @@ internal static class DaemonServiceCollectionExtensions
         services.AddOneDriveProvider();
         services.AddSingleton<ActivityTracker>();
         services.AddSingleton<ICrawlProgressSink, IpcCrawlProgressSink>();
+        services.AddSingleton<IConflictEventSink, IpcConflictEventSink>();
         services.AddSyncEngine();
         services.AddStartupStages();
         services.AddHostedService<StartupHostedService>();
@@ -51,6 +52,7 @@ internal static class DaemonServiceCollectionExtensions
         services.AddSingleton<StartSyncHandler>();
         services.AddSingleton<StopSyncHandler>();
         services.AddSingleton<ActivitiesQuery>();
+        services.AddSingleton<ConflictsQuery>();
         services.AddSingleton<DeadLettersQuery>();
         services.AddSingleton<RetryOperationHandler>();
         services.AddSingleton<IgnoreOperationHandler>();

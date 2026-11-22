@@ -1,3 +1,4 @@
+using System.Text.Json;
 using AStarDev.CloudSync.Domain;
 using AStarDev.CloudSync.Ports;
 using AStarDev.FunctionalParadigm;
@@ -11,6 +12,8 @@ namespace AStarDev.CloudSync.SyncEngine;
 /// </summary>
 public sealed class SyncPlanner
 {
+    private const string ConflictDetectedEvent = "ConflictDetected";
+
     private static readonly Dictionary<ConflictReason, ConflictType> ConflictTypes = new()
     {
         [ConflictReason.CreateCreate] = ConflictType.CreateCreate,
@@ -24,12 +27,16 @@ public sealed class SyncPlanner
     private readonly IKnownSnapshotStore knownStore;
     private readonly IOperationStore operationStore;
     private readonly IConflictStore conflictStore;
+    private readonly IEventJournal journal;
+    private readonly IConflictEventSink conflictEvents;
     private readonly IReconciler reconciler = new Reconciler();
     private readonly TimeProvider timeProvider;
     private readonly ILogger<SyncPlanner> logger;
 
-    internal SyncPlanner(ISyncJobStore jobStore, IItemStateStore itemStore, IKnownSnapshotStore knownStore, IOperationStore operationStore, IConflictStore conflictStore, TimeProvider timeProvider, ILogger<SyncPlanner> logger)
+    internal SyncPlanner(ISyncJobStore jobStore, IItemStateStore itemStore, IKnownSnapshotStore knownStore, IOperationStore operationStore, IConflictStore conflictStore, IEventJournal journal, IConflictEventSink conflictEvents, TimeProvider timeProvider, ILogger<SyncPlanner> logger)
     {
+        this.journal = journal;
+        this.conflictEvents = conflictEvents;
         this.jobStore = jobStore;
         this.itemStore = itemStore;
         this.knownStore = knownStore;
@@ -41,7 +48,7 @@ public sealed class SyncPlanner
 
     /// <summary>
     /// Plans the work for every item of the job. An item that already has a pending, running or dead-lettered operation is left alone, so planning again never queues the same work twice;
-    /// an item in conflict gets one open conflict per reason however often it is planned.
+    /// an item in conflict gets one open conflict per reason however often it is planned. A newly stored conflict is journaled as <c>ConflictDetected</c> and then announced to the <see cref="IConflictEventSink"/>.
     /// </summary>
     /// <param name="jobId">The job to plan. Its stored bootstrap mode governs only the first plan, while the job has no baseline and no operation: Download copies remote content over local, Upload copies local over remote, and neither deletes the other side's extra items. Merge, and every later plan, use the normal rules, so differing content on both sides is a conflict.</param>
     /// <param name="cancellationToken">Cancelling stops planning and surfaces as <see cref="OperationCanceledException"/>; what was already queued stays queued.</param>
@@ -124,8 +131,20 @@ public sealed class SyncPlanner
 
         return await conflictStore.AddAsync(conflict, cancellationToken) switch
         {
-            Ok<bool> ok => new Ok<PlanSummary>(new PlanSummary(0, ok.Value ? 1 : 0)),
+            Ok<bool> { Value: true } => await JournalAndAnnounceAsync(conflict, cancellationToken),
+            Ok<bool> => new Ok<PlanSummary>(new PlanSummary(0, 0)),
             Fail<StoreError> fail => fail
         };
+    }
+
+    private async Task<Result<PlanSummary, StoreError>> JournalAndAnnounceAsync(Conflict conflict, CancellationToken cancellationToken)
+    {
+        var payload = JsonSerializer.Serialize(new { conflictId = conflict.Id.Value, syncJobId = conflict.SyncJobId.Value, itemId = conflict.ItemId.Value, type = conflict.Type.ToString() });
+        var entry = new JournalEntry(Guid.NewGuid(), conflict.CreatedUtc, ConflictDetectedEvent,conflict.Id.Value, payload);
+        if (await journal.AppendAsync(entry, cancellationToken) is Fail<StoreError> failure) return failure;
+
+        await conflictEvents.DetectedAsync(conflict, cancellationToken);
+
+        return new Ok<PlanSummary>(new PlanSummary(0, 1));
     }
 }
