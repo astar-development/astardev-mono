@@ -14,5 +14,12 @@ internal sealed class RecordingConflictEventSink : IConflictEventSink
         return Task.CompletedTask;
     }
 
-    public Task ResolvedAsync(Conflict conflict, string resolution, DateTimeOffset resolvedUtc, CancellationToken cancellationToken) => Task.CompletedTask;
+    public List<(Conflict Conflict, string Resolution)> Resolved { get; } = [];
+
+    public Task ResolvedAsync(Conflict conflict, string resolution, DateTimeOffset resolvedUtc, CancellationToken cancellationToken)
+    {
+        lock (Resolved) Resolved.Add((conflict, resolution));
+
+        return Task.CompletedTask;
+    }
 }

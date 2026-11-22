@@ -10,7 +10,7 @@ namespace AStarDev.CloudSync.SyncEngine;
 public static class SyncEngineServiceCollectionExtensions
 {
     /// <summary>
-    /// Registers <see cref="SyncRunner"/>, <see cref="SyncPlanner"/> and <see cref="OperationScheduler"/>, whose executor performs downloads, uploads, renames and deletes and commits baselines only on success. A host that registers its own <see cref="IOperationExecutor"/> or <see cref="IConflictEventSink"/> before calling this replaces the built-in one; without a sink, conflict announcements go nowhere. It needs <see cref="ICloudProvider"/>, <see cref="IItemIndexStore"/>, <see cref="ISyncScopeStore"/>, <see cref="ISyncJobStore"/>, <see cref="IEventJournal"/>, <see cref="ICrawlProgressSink"/> and <see cref="TimeProvider"/>
+    /// Registers <see cref="SyncRunner"/>, <see cref="SyncPlanner"/>, <see cref="ConflictResolver"/> and <see cref="OperationScheduler"/>, whose executor performs downloads, uploads, renames and deletes and commits baselines only on success. A host that registers its own <see cref="IOperationExecutor"/> or <see cref="IConflictEventSink"/> before calling this replaces the built-in one; without a sink, conflict announcements go nowhere. It needs <see cref="ICloudProvider"/>, <see cref="IItemIndexStore"/>, <see cref="ISyncScopeStore"/>, <see cref="ISyncJobStore"/>, <see cref="IEventJournal"/>, <see cref="ICrawlProgressSink"/> and <see cref="TimeProvider"/>
     /// to be registered by the host; nothing runs until <see cref="SyncRunner.StartAsync"/> is called.
     /// </summary>
     /// <param name="services">The collection to add the engine to.</param>
@@ -69,6 +69,19 @@ public static class SyncEngineServiceCollectionExtensions
             provider.GetRequiredService<IConflictEventSink>(),
             provider.GetRequiredService<TimeProvider>(),
             provider.GetRequiredService<ILogger<SyncPlanner>>()));
+        services.AddSingleton(provider => new ConflictResolver(
+            provider.GetRequiredService<IConflictStore>(),
+            provider.GetRequiredService<ISyncJobStore>(),
+            provider.GetRequiredService<IItemStateStore>(),
+            provider.GetRequiredService<IKnownSnapshotStore>(),
+            provider.GetRequiredService<IOperationStore>(),
+            provider.GetRequiredService<ILocalObservationStore>(),
+            provider.GetRequiredService<ILocalFileStore>(),
+            provider.GetRequiredService<IEventJournal>(),
+            provider.GetRequiredService<IConflictEventSink>(),
+            provider.GetRequiredService<SyncPlanner>(),
+            provider.GetRequiredService<TimeProvider>(),
+            provider.GetRequiredService<ILogger<ConflictResolver>>()));
 
         return services;
     }

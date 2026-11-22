@@ -20,4 +20,17 @@ public interface IConflictStore
     /// <param name="cancellationToken">Cancelling abandons the read.</param>
     /// <returns>The <see cref="ConflictStatus.Open"/> conflicts, oldest first; empty when none; or <see cref="StorageFailed"/>.</returns>
     Task<Result<IReadOnlyList<Conflict>, StoreError>> ListOpenAsync(SyncJobId jobId, CancellationToken cancellationToken);
+
+    /// <summary>Reads one conflict whatever its status.</summary>
+    /// <param name="id">The conflict to read.</param>
+    /// <param name="cancellationToken">Cancelling abandons the read.</param>
+    /// <returns>The conflict, <see cref="ConflictNotFound"/> when none has the identity, or <see cref="StorageFailed"/>.</returns>
+    Task<Result<Conflict, StoreError>> GetAsync(ConflictId id, CancellationToken cancellationToken);
+
+    /// <summary>Moves a conflict to a new status. A conflict that is no longer <see cref="ConflictStatus.Open"/> no longer appears in <see cref="ListOpenAsync"/>.</summary>
+    /// <param name="id">The conflict to change.</param>
+    /// <param name="status">The status it takes. Setting the status it already has is not an error.</param>
+    /// <param name="cancellationToken">Cancelling before the write completes changes nothing.</param>
+    /// <returns>Success, <see cref="ConflictNotFound"/> when none has the identity, or <see cref="StorageFailed"/>.</returns>
+    Task<Result<Unit, StoreError>> UpdateStatusAsync(ConflictId id, ConflictStatus status, CancellationToken cancellationToken);
 }

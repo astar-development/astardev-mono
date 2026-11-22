@@ -16,7 +16,7 @@ public sealed class PublicSurfaceArchitectureTestsShouldEnsure
     [Fact]
     public void the_ports_expose_only_their_approved_public_types()
         => ShouldExposeExactly(typeof(ICloudProvider).Assembly,
-            "AccountAlreadyExists", "AccountNotFound", "AuthenticationFailed", "ChangeKind", "CrawlCheckpoint", "IAccountStore", "ICloudProvider", "IConflictStore", "IEventJournal", "IItemIndexStore", "IItemStateStore", "IKnownSnapshotStore", "ILocalObservationStore", "InvalidDeltaToken", "IOperationStore", "JournalEntry", "KnownEntry", "ISyncJobStore", "ISyncScopeStore", "OperationNotDeadLettered", "OperationNotRunning", "Permanent", "ProviderAccount",
+            "AccountAlreadyExists", "AccountNotFound", "AuthenticationFailed", "ChangeKind", "ConflictNotFound", "CrawlCheckpoint", "IAccountStore", "ICloudProvider", "IConflictStore", "IEventJournal", "IItemIndexStore", "IItemStateStore", "IKnownSnapshotStore", "ILocalObservationStore", "InvalidDeltaToken", "IOperationStore", "JournalEntry", "KnownEntry", "ISyncJobStore", "ISyncScopeStore", "OperationNotDeadLettered", "OperationNotRunning", "Permanent", "ProviderAccount",
             "ProviderChange", "ProviderDeltaPage", "ProviderError", "ProviderItem", "ProviderSnapshotPage", "RateLimited", "StorageFailed", "StoredItem", "StoreError", "SyncJobAlreadyExists", "SyncJobNotFound", "UploadRequest",
             "SyncScopeAlreadyExists", "SyncScopeNotFound", "Transient");
 
@@ -24,11 +24,11 @@ public sealed class PublicSurfaceArchitectureTestsShouldEnsure
     public void ipc_exposes_only_its_approved_public_types_and_no_transport()
         => ShouldExposeExactly(typeof(IPC.IIpcServer).Assembly,
             [
-             "AccountConnected", "AccountDisconnected", "AccountState", "AccountView", "AccountsView", "ActivitiesView", "ActivityChanged", "ActivityState", "ActivityView", "AddSyncScope", "CommandOutcome", "CommandResult", "ConflictDetected", "ConflictResolved", "ConflictView", "ConflictsView", "ConnectAccount",
+             "AccountConnected", "AccountDisconnected", "AccountState", "AccountView", "AccountsView", "ActivitiesView", "ActivityChanged", "ActivityState", "ActivityView", "AddSyncScope", "CommandOutcome", "CommandResult", "ConflictChoice", "ConflictDetected", "ConflictResolved", "ConflictView", "ConflictsView", "ConnectAccount",
              "ConnectionFailed", "ConnectionLost", "CrawlProgressChanged", "CreateSyncJob", "DaemonState", "DaemonStatusChanged", "DaemonStatusView", "DeadLetterView", "DeadLettersView", "DisconnectAccount", "FrameTooLarge",
              "GetAccounts", "GetActivities", "GetConflicts", "GetDaemonStatus", "GetDeadLetters", "GetRemoteFolders", "GetRemoteRootSummary", "GetSyncJobs", "GetSyncScopes", "HandlerFailed", "ICommand",
              "IEvent", "IgnoreOperation", "IIpcClient", "IIpcServer", "IpcError", "IQuery`1", "ListenFailed", "MalformedFrame", "NotConnected", "RemoteFolderView", "RemoteFoldersView", "RemoteRootSummaryView",
-             "RemoveSyncScope", "RetryOperation", "StartSync", "StopSync", "SyncBootstrapMode", "SyncJobView", "SyncJobsView", "SyncScopeView", "SyncScopesView", "UnixSocketIpc"]);
+             "RemoveSyncScope", "ResolveConflict", "RetryOperation", "StartSync", "StopSync", "SyncBootstrapMode", "SyncJobView", "SyncJobsView", "SyncScopeView", "SyncScopesView", "UnixSocketIpc"]);
 
     [Fact]
     public void the_daemon_exposes_no_public_types()
@@ -50,7 +50,7 @@ public sealed class PublicSurfaceArchitectureTestsShouldEnsure
 
     [Fact]
     public void the_sync_engine_exposes_only_its_approved_public_types()
-        => ShouldExposeExactly(typeof(SyncEngine.SyncRunner).Assembly, "IConflictEventSink", "ICrawlProgressSink", "CrawlProgress", "DeltaPollingOptions", "IOperationExecutor", "LocalObservationOptions", "LocalObservationRunner", "OperationScheduler", "OperationSchedulerOptions", "PlanSummary", "SyncEngineServiceCollectionExtensions", "SyncPlanner", "SyncRunner");
+        => ShouldExposeExactly(typeof(SyncEngine.SyncRunner).Assembly, "ConflictItemBusy", "ConflictItemGone", "ConflictNotOpen", "ConflictResolution", "ConflictResolver", "IConflictEventSink", "ICrawlProgressSink", "CrawlProgress", "DeltaPollingOptions", "IOperationExecutor", "KeepBothCopyFailed", "LocalObservationOptions", "LocalObservationRunner", "OperationScheduler", "OperationSchedulerOptions", "PlanSummary", "ResolutionError", "ResolutionStoreFailed", "SyncEngineServiceCollectionExtensions", "SyncPlanner", "SyncRunner");
 
     [Fact]
     public void the_functional_paradigm_library_exposes_only_its_approved_public_types()

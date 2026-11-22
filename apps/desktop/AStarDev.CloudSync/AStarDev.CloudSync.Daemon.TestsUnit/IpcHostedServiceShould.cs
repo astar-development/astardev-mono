@@ -33,6 +33,7 @@ public sealed class IpcHostedServiceShould
             services.GetRequiredService<DeadLettersQuery>(),
             services.GetRequiredService<RetryOperationHandler>(),
             services.GetRequiredService<IgnoreOperationHandler>(),
+            services.GetRequiredService<ResolveConflictHandler>(),
             TimeProvider.System,
             NullLogger<IpcHostedService>.Instance);
     }
