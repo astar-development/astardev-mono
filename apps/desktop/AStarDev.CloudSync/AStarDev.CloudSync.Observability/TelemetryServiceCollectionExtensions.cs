@@ -20,7 +20,7 @@ public static class TelemetryServiceCollectionExtensions
     /// <c>OpenTelemetry:OtlpEndpoint</c> setting; when it is empty nothing is exported. A malformed endpoint makes the host fail when the options are first read.
     /// </summary>
     /// <param name="services">The collection to add the telemetry services to.</param>
-    /// <param name="serviceName">The <c>service.name</c> resource attribute that identifies the process in the dashboard.</param>
+    /// <param name="serviceName">The <c>service.name</c> resource attribute that identifies the process in the dashboard. The <c>OTEL_SERVICE_NAME</c> and <c>OTEL_RESOURCE_ATTRIBUTES</c> settings override it and the generated instance id, which is how AppHost makes the dashboard show the process under its resource name.</param>
     /// <returns>The same collection, for chaining.</returns>
     /// <example>
     /// <code>
@@ -38,7 +38,7 @@ public static class TelemetryServiceCollectionExtensions
         });
 
         services.AddOpenTelemetry()
-            .ConfigureResource(resource => resource.AddService(serviceName, serviceVersion: Version(), serviceInstanceId: Guid.NewGuid().ToString()))
+            .ConfigureResource(resource => resource.AddService(serviceName, serviceVersion: Version(), serviceInstanceId: Guid.NewGuid().ToString()).AddEnvironmentVariableDetector())
             .WithLogging()
             .WithMetrics(metrics => metrics.AddMeter(TelemetryNames.SourcePattern))
             .WithTracing(tracing => tracing.AddSource(TelemetryNames.SourcePattern));

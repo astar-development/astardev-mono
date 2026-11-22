@@ -46,6 +46,21 @@ public sealed class AppHostShould
         uiPath.ShouldBe(daemonPath);
     }
 
+    [Fact]
+    public async Task send_the_daemon_and_ui_telemetry_to_the_dashboard()
+    {
+        var cancellationToken = TestContext.Current.CancellationToken;
+        var builder = await DistributedApplicationTestingBuilder.CreateAsync<Projects.AStarDev_AppHost>(["ASPIRE_DASHBOARD_OTLP_ENDPOINT_URL=http://localhost:19213"], cancellationToken);
+
+        await using var app = await builder.BuildAsync(cancellationToken);
+
+        foreach (var name in new[] { "CloudSyncDaemon", "CloudSync" })
+        {
+            var resource = builder.Resources.Single(candidate => candidate.Name == name);
+            (await EnvironmentValue(builder.ExecutionContext, resource, "OpenTelemetry__OtlpEndpoint", cancellationToken)).ShouldBe("http://localhost:19213");
+        }
+    }
+
     private static async Task<string?> EnvironmentValue(DistributedApplicationExecutionContext executionContext, IResource resource, string name, CancellationToken cancellationToken)
     {
         var configuration = await ExecutionConfigurationBuilder
