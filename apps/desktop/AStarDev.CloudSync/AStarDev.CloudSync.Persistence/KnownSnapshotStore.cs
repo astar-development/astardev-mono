@@ -47,9 +47,8 @@ internal sealed class KnownSnapshotStore(IDbContextFactory<CloudSyncDbContext> c
             var staged = await context.StagedKnownSnapshots.SingleOrDefaultAsync(row => row.OperationId == operationId, token).ConfigureAwait(false);
             if (staged is null) return default;
 
-            var current = await context.KnownSnapshots.SingleOrDefaultAsync(row => row.ItemId == staged.ItemId, token).ConfigureAwait(false);
-            if (current is not null) context.KnownSnapshots.Remove(current);
-            if (!staged.Remove) context.KnownSnapshots.Add(new KnownSnapshotEntity { ItemId = staged.ItemId, SyncJobId = staged.SyncJobId, Path = staged.Path, Size = staged.Size, ModifiedUtc = staged.ModifiedUtc, ETag = staged.ETag, Hash = staged.Hash });
+            if (staged.Remove) await RemoveBaselineAndRowsAsync(context, staged.SyncJobId, staged.ItemId, token).ConfigureAwait(false);
+            else await ReplaceBaselineAsync(context, staged, token).ConfigureAwait(false);
 
             context.StagedKnownSnapshots.Remove(staged);
             await context.SaveChangesAsync(token).ConfigureAwait(false);
@@ -58,6 +57,41 @@ internal sealed class KnownSnapshotStore(IDbContextFactory<CloudSyncDbContext> c
         }, cancellationToken).ConfigureAwait(false);
 
         return outcome.ToResult(ToStorageFailure);
+    }
+
+    private static async Task ReplaceBaselineAsync(CloudSyncDbContext context, StagedKnownEntity staged, CancellationToken cancellationToken)
+    {
+        var current = await context.KnownSnapshots.SingleOrDefaultAsync(row => row.ItemId == staged.ItemId, cancellationToken).ConfigureAwait(false);
+        if (current is not null) context.KnownSnapshots.Remove(current);
+        context.KnownSnapshots.Add(new KnownSnapshotEntity { ItemId = staged.ItemId, SyncJobId = staged.SyncJobId, Path = staged.Path, Size = staged.Size, ModifiedUtc = staged.ModifiedUtc, ETag = staged.ETag, Hash = staged.Hash });
+    }
+
+    /// <inheritdoc/>
+    public async Task<Result<Unit, StoreError>> RemoveAsync(SyncJobId jobId, ItemId itemId, CancellationToken cancellationToken)
+    {
+        var outcome = await Try.RunAsync<Unit>(async token =>
+        {
+            await using var context = await contextFactory.CreateDbContextAsync(token).ConfigureAwait(false);
+            await RemoveBaselineAndRowsAsync(context, jobId, itemId, token).ConfigureAwait(false);
+            await context.SaveChangesAsync(token).ConfigureAwait(false);
+
+            return default;
+        }, cancellationToken).ConfigureAwait(false);
+
+        return outcome.ToResult(ToStorageFailure);
+    }
+
+    private static async Task RemoveBaselineAndRowsAsync(CloudSyncDbContext context, SyncJobId jobId, ItemId itemId, CancellationToken cancellationToken)
+    {
+        var current = await context.KnownSnapshots.SingleOrDefaultAsync(row => row.ItemId == itemId, cancellationToken).ConfigureAwait(false);
+        var localOnly = new RemoteItemId(string.Empty);
+        var path = current?.Path ?? new RelativePath(string.Empty);
+        var rows = await context.Items
+            .Where(row => row.Id == itemId || (current != null && row.SyncJobId == jobId && row.RemoteItemId == localOnly && row.LocalPath == path))
+            .ToListAsync(cancellationToken).ConfigureAwait(false);
+
+        if (current is not null) context.KnownSnapshots.Remove(current);
+        context.Items.RemoveRange(rows);
     }
 
     private static StagedKnownEntity ToStaged(SyncJobId jobId, OperationId operationId, ItemId itemId, KnownSnapshot? target)

@@ -29,4 +29,11 @@ public interface IKnownSnapshotStore
     /// <param name="cancellationToken">Cancelling before the write completes applies nothing.</param>
     /// <returns>Success, also when nothing was staged for the operation or it was already applied, so calling twice is safe; or <see cref="StorageFailed"/>.</returns>
     Task<Result<Unit, StoreError>> CommitAsync(OperationId operationId, CancellationToken cancellationToken);
+
+    /// <summary>Removes the baseline of an item that is gone from both sides, together with the item rows that identity left behind, so the item is treated as new if it ever reappears.</summary>
+    /// <param name="jobId">The job the item belongs to.</param>
+    /// <param name="itemId">The item whose baseline and rows to remove.</param>
+    /// <param name="cancellationToken">Cancelling before the write completes removes nothing.</param>
+    /// <returns>Success, also when the item has no baseline or rows left, so calling twice is safe; or <see cref="StorageFailed"/>.</returns>
+    Task<Result<Unit, StoreError>> RemoveAsync(SyncJobId jobId, ItemId itemId, CancellationToken cancellationToken);
 }
