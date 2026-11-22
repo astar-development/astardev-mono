@@ -10,12 +10,12 @@ namespace AStarDev.CloudSync.OneDrive;
 /// <param name="telemetry">Receives a span and a request count per page.</param>
 internal sealed class RootEnumerator(HttpClient client, OneDriveTelemetry telemetry)
 {
-    /// <summary>Fetches every page under one remote root and returns the items as a single <see cref="ProviderSnapshotPage"/>.</summary>
-    /// <returns>All items, or the first <see cref="ProviderError"/> met; items from earlier pages are dropped on failure. Cancellation propagates as <see cref="OperationCanceledException"/>.</returns>
-    public async Task<Result<ProviderSnapshotPage, ProviderError>> GetSnapshotAsync(RemoteItemId root, CancellationToken cancellationToken)
-        => await ListChildrenAsync(root, cancellationToken).ConfigureAwait(false) switch
+    /// <summary>Fetches one page of the whole tree under a remote root through Graph's delta endpoint, which lists every descendant flat. The resume token is Graph's next link, used as the request URL.</summary>
+    /// <returns>The page, with the final page carrying Graph's delta link as the delta token, or the <see cref="ProviderError"/> met. Cancellation propagates as <see cref="OperationCanceledException"/>.</returns>
+    public async Task<Result<ProviderSnapshotPage, ProviderError>> GetSnapshotAsync(RemoteItemId root, string? resumeToken, CancellationToken cancellationToken)
+        => await GetPageAsync(resumeToken ?? $"me/drive/items/{Uri.EscapeDataString(root.Value)}/delta", cancellationToken).ConfigureAwait(false) switch
         {
-            Ok<IReadOnlyList<ProviderItem>> ok => new Ok<ProviderSnapshotPage>(new ProviderSnapshotPage(ok.Value)),
+            Ok<GraphChildrenPage> ok => new Ok<ProviderSnapshotPage>(DeltaMapping.ToSnapshotPage(root, ok.Value)),
             Fail<ProviderError> fail => fail
         };
 
