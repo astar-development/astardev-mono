@@ -55,14 +55,14 @@ internal sealed class StateRecoveryStage(IAccountStore store, ICloudProvider pro
 
     private async Task<Result<Unit, StoreError>> RequireReauthenticationAsync(Account account, AuthenticationFailed refused, CancellationToken cancellationToken)
     {
-        logger.LogWarning("Account {Account} must sign in again: {Reason}", account.DisplayName, refused.Message);
+        logger.LogWarning("Account {AccountId} must sign in again: {Reason}", account.Id.Value, refused.Message);
 
         return await MarkAsync(account, AccountStatus.ReauthenticationRequired, cancellationToken);
     }
 
     private Ok<Unit> Unreachable(Account account, ProviderError error)
     {
-        logger.LogWarning("Account {Account} could not be reconnected now and keeps its status: {Message}", account.DisplayName, ProviderErrorMessages.Describe(error));
+        logger.LogWarning("Account {AccountId} could not be reconnected now and keeps its status: {Message}", account.Id.Value, ProviderErrorMessages.Describe(error));
 
         return new Ok<Unit>(default);
     }
