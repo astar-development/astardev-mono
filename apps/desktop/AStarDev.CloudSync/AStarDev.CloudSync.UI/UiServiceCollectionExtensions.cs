@@ -38,6 +38,7 @@ internal static class UiServiceCollectionExtensions
     public static IServiceCollection AddCloudSyncUi(this IServiceCollection services)
     {
         services.AddCloudSyncTelemetry(ApplicationConstants.ServiceName);
+        services.AddSingleton(TimeProvider.System);
         services.AddSingleton<ICultureService>(new CultureService(LocalisationService.DefaultLanguage));
         services.AddSingleton<ILocalisationService>(provider => CreateLocalisation(provider.GetRequiredService<ICultureService>()));
         services.AddSingleton<IThemeService, ThemeService>();

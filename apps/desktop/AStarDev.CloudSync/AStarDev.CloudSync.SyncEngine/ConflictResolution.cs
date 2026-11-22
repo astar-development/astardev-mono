@@ -12,6 +12,6 @@ public enum ConflictResolution
     /// <summary>Nothing is discarded: the local file is first copied to a conflict-named file that syncs as a new item, then the remote version is applied. When only one side still has the file, that side is kept.</summary>
     KeepBoth,
 
-    /// <summary>The user is not deciding yet: the conflict stays open and nothing about the item changes.</summary>
+    /// <summary>The user is not deciding yet: the conflict is marked deferred, stays listed and can still be resolved later; nothing about the item changes.</summary>
     Defer
 }

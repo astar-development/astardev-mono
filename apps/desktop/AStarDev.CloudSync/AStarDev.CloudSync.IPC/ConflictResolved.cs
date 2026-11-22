@@ -1,6 +1,6 @@
 namespace AStarDev.CloudSync.IPC;
 
-/// <summary>Published when a conflict leaves the open list because it was resolved; the conflict no longer appears in <see cref="GetConflicts"/>. Delivered only to subscribed clients.</summary>
+/// <summary>Published when a conflict leaves the list because it was resolved; the conflict no longer appears in <see cref="GetConflicts"/>. Not published when the user only defers a conflict. Delivered only to subscribed clients.</summary>
 /// <param name="ConflictId">The <see cref="ConflictView.ConflictId"/> that was resolved.</param>
 /// <param name="SyncJobId">The job the conflict belonged to.</param>
 /// <param name="ItemId">The file that was in dispute.</param>

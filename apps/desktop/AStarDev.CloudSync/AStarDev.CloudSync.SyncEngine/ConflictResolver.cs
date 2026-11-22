@@ -47,12 +47,12 @@ public sealed class ConflictResolver
     /// <summary>
     /// Applies one choice to each conflict, in order; one that cannot be resolved does not stop the rest. Keep local, keep remote and keep both queue operations at <see cref="OperationPriority.UserInitiated"/>, mark the conflict
     /// <see cref="ConflictStatus.Resolved"/>, journal <c>ConflictResolved</c> and announce it. Keep both first copies the local file to <c>&lt;name&gt; (Conflict - yyyy-MM-dd HHmmss)&lt;ext&gt;</c>, with a numeric suffix on a clash,
-    /// and records the copy as a new local item that the planner uploads. Defer changes nothing, journals <c>ConflictDeferred</c> and announces nothing, because the conflict stays open.
+    /// and records the copy as a new local item that the planner uploads. Defer marks the conflict <see cref="ConflictStatus.Deferred"/> and changes nothing about the item, journals <c>ConflictDeferred</c> and announces nothing, because the conflict stays listed and can still be resolved.
     /// </summary>
     /// <param name="conflictIds">The conflicts to resolve. Empty resolves nothing.</param>
     /// <param name="choice">The one choice applied to every conflict.</param>
     /// <param name="cancellationToken">Cancelling stops before the next conflict and surfaces as <see cref="OperationCanceledException"/>; conflicts already resolved stay resolved.</param>
-    /// <returns>One result per id, in the order given: success, or why that conflict was not resolved, for example <see cref="ConflictNotOpen"/> for one that was already resolved.</returns>
+    /// <returns>One result per id, in the order given: success, or why that conflict was not resolved, for example <see cref="ConflictNotOpen"/> for one that was already resolved. An open or a deferred conflict can be resolved.</returns>
     public async Task<IReadOnlyList<Result<Unit, ResolutionError>>> ResolveAsync(IReadOnlyList<ConflictId> conflictIds, ConflictResolution choice, CancellationToken cancellationToken)
     {
         var outcomes = new List<Result<Unit, ResolutionError>>(conflictIds.Count);
@@ -76,7 +76,7 @@ public sealed class ConflictResolver
 
         return await conflictStore.GetAsync(id, cancellationToken) switch
         {
-            Ok<Conflict> { Value.Status: ConflictStatus.Open } open => await ApplyAsync(open.Value, choice, cancellationToken),
+            Ok<Conflict> { Value.Status: ConflictStatus.Open or ConflictStatus.Deferred } open => await ApplyAsync(open.Value, choice, cancellationToken),
             Ok<Conflict> => new Fail<ResolutionError>(new ConflictNotOpen(id)),
             Fail<StoreError> fail => Stored(fail.Error)
         };
@@ -84,7 +84,7 @@ public sealed class ConflictResolver
 
     private async Task<Result<Unit, ResolutionError>> ApplyAsync(Conflict conflict, ConflictResolution choice, CancellationToken cancellationToken)
     {
-        if (choice == ConflictResolution.Defer) return await RecordAsync(conflict, choice, null, cancellationToken);
+        if (choice == ConflictResolution.Defer) return await DeferAsync(conflict, cancellationToken);
 
         var loaded = await LoadAsync(conflict, cancellationToken);
         if (loaded.Value is Fail<ResolutionError> failure) return failure;
@@ -112,6 +112,15 @@ public sealed class ConflictResolver
         return recorded;
     }
 
+    private async Task<Result<Unit, ResolutionError>> DeferAsync(Conflict conflict, CancellationToken cancellationToken)
+    {
+        var status = await conflictStore.UpdateStatusAsync(conflict.Id, ConflictStatus.Deferred, cancellationToken);
+
+        return (status.Value is Fail<StoreError> statusFailure)
+            ? Stored(statusFailure.Error)
+            : await RecordAsync(conflict with { Status = ConflictStatus.Deferred }, ConflictResolution.Defer, null, cancellationToken);
+    }
+
     private async Task<Result<Loaded, ResolutionError>> LoadAsync(Conflict conflict, CancellationToken cancellationToken)
     {
         var job = await jobStore.GetAsync(conflict.SyncJobId, cancellationToken);
@@ -129,10 +138,14 @@ public sealed class ConflictResolver
         var items = ((Ok<IReadOnlyList<StoredItem>>)rows.Value).Value;
         var state = CanonicalStateBuilder.Build(items, ((Ok<IReadOnlyList<KnownEntry>>)known.Value).Value).FirstOrDefault(candidate => candidate.ItemId == conflict.ItemId);
         if (state is null) return Refusal(new ConflictItemGone(conflict.Id));
-        if (SyncPlanner.BusyItems(((Ok<IReadOnlyList<Operation>>)operations.Value).Value).Contains(conflict.ItemId)) return Refusal(new ConflictItemBusy(conflict.Id));
 
-        return new Ok<Loaded>(new Loaded(((Ok<SyncJob>)job.Value).Value, state, items));
+        return IsBusy(conflict, operations)
+            ? Refusal(new ConflictItemBusy(conflict.Id))
+            : new Ok<Loaded>(new Loaded(((Ok<SyncJob>)job.Value).Value, state, items));
     }
+
+    private static bool IsBusy(Conflict conflict, Result<IReadOnlyList<Operation>, StoreError> operations) =>
+        SyncPlanner.BusyItems(((Ok<IReadOnlyList<Operation>>)operations.Value).Value).Contains(conflict.ItemId);
 
     private async Task<Result<RelativePath, ResolutionError>> CopyLocalAsync(Conflict conflict, Loaded context, CancellationToken cancellationToken)
     {
@@ -156,9 +169,8 @@ public sealed class ConflictResolver
 
         var snapshot = new LocalSnapshot(target, local.Size, local.ModifiedUtc, null, local.Fingerprint);
         var recorded = await observations.RecordAsync(conflict.SyncJobId, [snapshot], [], timeProvider.GetUtcNow(), cancellationToken);
-        if (recorded.Value is Fail<StoreError> recordFailure) return Stored(recordFailure.Error);
 
-        return new Ok<RelativePath>(target);
+        return recorded.Value is Fail<StoreError> recordFailure ? Stored(recordFailure.Error) : new Ok<RelativePath>(target);
     }
 
     private static string Describe(ProviderError error) => error.Value?.ToString() ?? "unknown";

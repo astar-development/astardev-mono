@@ -20,6 +20,12 @@ Architecture docs in `docs/architecture/` = source of truth; start at `00 archit
 - Keep call's argument list on one line, even when long (`new ProviderItem(id, path, type, size, modified)`). Break lines only between calls of fluent chain.
 - Always write access modifier, including `private` on members and helpers (`private static`, never bare `static`).
 - One blank line before `return` that follows other statements. Prefer expression-bodied members for single expressions.
+- Method whose body is one statement, including test methods, is expression-bodied, also when the expression spans several lines (`=> Should.Throw<...>(...)`).
+- Guard followed by `return` (`if (x) return a;` then `return b;`) becomes one conditional return: `return x ? a : b;`. Keep the guard form when several guards stack before the real work.
+- Extract a helper when an expression in a larger member is long or repeated. Name it for what it returns (`LocalSide(state)`, `IsBusy(conflict, operations)`), never `Set...`/`Detected` for a pure read; no typos. Helper is `private static` when it uses no instance state.
+- Continuation lines of an expression-bodied member indent one level (4 spaces) from the member, not aligned to the `=>` or an opening bracket.
+- No redundant parentheses around a condition or `is` pattern in a conditional return.
+- Migration only when the EF model snapshot changes. Never commit an empty migration (a new enum value stored as text needs none). After removing one, restore `CloudSyncDbContextModelSnapshot.cs` `LastMigrationId`.
 - `var` everywhere type apparent or irrelevant.
 - Primary constructors for classes that only capture dependencies; use captured parameters directly.
 - Private/internal fields: camelCase, NO underscore prefix, NO `this.` (`commands`, `lifetime`, not `_commands`). Constants: PascalCase. Interfaces: `I` prefix.

@@ -7,7 +7,7 @@ internal sealed class FakeIpcClient(List<string> calls, bool available) : IIpcCl
 {
     private readonly TaskCompletionSource disconnected = new(TaskCreationOptions.RunContinuationsAsynchronously);
 
-    public Result<CommandResult, IpcError> CommandReply { get; init; } = new Ok<CommandResult>(new CommandResult(CommandOutcome.Accepted));
+    public Result<CommandResult, IpcError> CommandReply { get; set; } = new Ok<CommandResult>(new CommandResult(CommandOutcome.Accepted));
 
     public Result<RemoteRootSummaryView, IpcError> SummaryReply { get; init; } = new Ok<RemoteRootSummaryView>(new RemoteRootSummaryView(0));
 
@@ -22,6 +22,8 @@ internal sealed class FakeIpcClient(List<string> calls, bool available) : IIpcCl
     public Result<ActivitiesView, IpcError> ActivitiesReply { get; init; } = new Ok<ActivitiesView>(new ActivitiesView([]));
 
     public Result<DeadLettersView, IpcError> DeadLettersReply { get; set; } = new Ok<DeadLettersView>(new DeadLettersView([]));
+
+    public Func<GetConflicts, Result<ConflictsView, IpcError>> ConflictsReply { get; set; } = _ => new Ok<ConflictsView>(new ConflictsView([]));
 
     public List<GetRemoteFolders> FolderQueries { get; } = [];
 
@@ -69,6 +71,7 @@ internal sealed class FakeIpcClient(List<string> calls, bool available) : IIpcCl
             GetSyncJobs => (Result<TResult, IpcError>)(object)JobsReply,
             GetActivities => (Result<TResult, IpcError>)(object)ActivitiesReply,
             GetDeadLetters => (Result<TResult, IpcError>)(object)DeadLettersReply,
+            GetConflicts conflicts => (Result<TResult, IpcError>)(object)ConflictsReply(conflicts),
             GetSyncScopes scopes => (Result<TResult, IpcError>)(object)ScopesReply(scopes),
             GetRemoteFolders folders => (Result<TResult, IpcError>)(object)Record(folders),
             _ => new Ok<TResult>((TResult)(object)Status)

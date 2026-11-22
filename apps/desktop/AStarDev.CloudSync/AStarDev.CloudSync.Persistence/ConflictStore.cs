@@ -17,7 +17,7 @@ internal sealed class ConflictStore(IDbContextFactory<CloudSyncDbContext> contex
             if (!await context.SyncJobs.AnyAsync(job => job.Id == conflict.SyncJobId, token).ConfigureAwait(false)) return new Fail<StoreError>(new SyncJobNotFound(conflict.SyncJobId));
 
             var type = conflict.Type;
-            var open = await context.Conflicts.AnyAsync(row => row.ItemId == conflict.ItemId && row.Type == type && row.Status == ConflictStatus.Open, token).ConfigureAwait(false);
+            var open = await context.Conflicts.AnyAsync(row => row.ItemId == conflict.ItemId && row.Type == type && (row.Status == ConflictStatus.Open || row.Status == ConflictStatus.Deferred), token).ConfigureAwait(false);
             if (open) return new Ok<bool>(false);
 
             context.Conflicts.Add(ConflictEntity.From(conflict));
@@ -39,7 +39,7 @@ internal sealed class ConflictStore(IDbContextFactory<CloudSyncDbContext> contex
         var outcome = await Try.RunAsync<IReadOnlyList<Conflict>>(async token =>
         {
             await using var context = await contextFactory.CreateDbContextAsync(token).ConfigureAwait(false);
-            var rows = await context.Conflicts.AsNoTracking().Where(row => row.SyncJobId == jobId && row.Status == ConflictStatus.Open).ToListAsync(token).ConfigureAwait(false);
+            var rows = await context.Conflicts.AsNoTracking().Where(row => row.SyncJobId == jobId && (row.Status == ConflictStatus.Open || row.Status == ConflictStatus.Deferred)).ToListAsync(token).ConfigureAwait(false);
 
             return rows.OrderBy(row => row.CreatedUtc).Select(row => row.ToConflict()).ToList();
         }, cancellationToken).ConfigureAwait(false);

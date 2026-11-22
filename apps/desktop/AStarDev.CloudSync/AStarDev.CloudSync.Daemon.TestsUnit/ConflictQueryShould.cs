@@ -38,9 +38,81 @@ public sealed class ConflictQueryShould : IDisposable
 
         view.Conflicts.ShouldBe(
         [
-            new ConflictView(older.Id.Value, job.Id.Value, older.ItemId.Value, "ModifyModify", Stamp),
-            new ConflictView(newer.Id.Value, job.Id.Value, newer.ItemId.Value, "KeepDelete", Stamp.AddMinutes(5))
+            new ConflictView(older.Id.Value, job.Id.Value, older.ItemId.Value, "ModifyModify", Stamp, "Open", string.Empty, null, null),
+            new ConflictView(newer.Id.Value, job.Id.Value, newer.ItemId.Value, "KeepDelete", Stamp.AddMinutes(5), "Open", string.Empty, null, null)
         ]);
+    }
+
+    [Fact]
+    public async Task list_a_deferred_conflict_with_its_status()
+    {
+        await using var host = DaemonTestHost.CreateWith(new StubCloudProvider());
+        var job = await NewJobAsync(host);
+        var deferred = new Conflict(new ConflictId(Guid.NewGuid()), job.Id, new ItemId(Guid.NewGuid()), ConflictType.ModifyModify, ConflictStatus.Deferred, Stamp);
+        await host.Services.GetRequiredService<IConflictStore>().AddAsync(deferred, Token);
+
+        var result = await host.Services.GetRequiredService<ConflictsQuery>().HandleAsync(new GetConflicts(job.Id.Value), Token);
+
+        result.Value.ShouldBeOfType<Ok<ConflictsView>>().Value.Conflicts.ShouldHaveSingleItem().Status.ShouldBe("Deferred");
+    }
+
+    [Fact]
+    public async Task describe_the_item_path_and_both_sides()
+    {
+        await using var host = DaemonTestHost.CreateWith(new StubCloudProvider());
+        var job = await NewJobAsync(host);
+        var conflict = await SeedConflictingItemAsync(host, job);
+
+        var result = await host.Services.GetRequiredService<ConflictsQuery>().HandleAsync(new GetConflicts(job.Id.Value), Token);
+
+        var view = result.Value.ShouldBeOfType<Ok<ConflictsView>>().Value.Conflicts.ShouldHaveSingleItem();
+        view.ConflictId.ShouldBe(conflict.Id.Value);
+        view.Status.ShouldBe("Open");
+        view.Path.ShouldBe("Reports/a.txt");
+        view.Local.ShouldBe(new ConflictSideView("Reports/a.txt", Stamp.AddHours(1), 20));
+        view.Remote.ShouldBe(new ConflictSideView("Reports/a.txt", Stamp, 10));
+    }
+
+    [Fact]
+    public async Task describe_a_deleted_side_as_absent()
+    {
+        await using var host = DaemonTestHost.CreateWith(new StubCloudProvider());
+        var job = await NewJobAsync(host);
+        var known = host.Services.GetRequiredService<IKnownSnapshotStore>();
+        var item = new ItemId(Guid.NewGuid());
+        var operation = new OperationId(Guid.NewGuid());
+        await known.StageAsync(job.Id, operation, item, new KnownSnapshot(new RelativePath("gone.txt"), 5, Stamp, null, null), Token);
+        await known.CommitAsync(operation, Token);
+        await host.Services.GetRequiredService<IConflictStore>().AddAsync(new Conflict(new ConflictId(Guid.NewGuid()), job.Id, item, ConflictType.KeepDelete, ConflictStatus.Open, Stamp), Token);
+
+        var result = await host.Services.GetRequiredService<ConflictsQuery>().HandleAsync(new GetConflicts(job.Id.Value), Token);
+
+        var view = result.Value.ShouldBeOfType<Ok<ConflictsView>>().Value.Conflicts.ShouldHaveSingleItem();
+        view.Path.ShouldBe("gone.txt");
+        view.Local.ShouldBeNull();
+        view.Remote.ShouldBeNull();
+    }
+
+    [Fact]
+    public async Task publish_conflict_detected_with_the_path_and_sides()
+    {
+        await using var host = DaemonTestHost.CreateWith(new StubCloudProvider());
+        var job = await NewJobAsync(host);
+        var conflict = await SeedConflictingItemAsync(host, job);
+        var detected = new TaskCompletionSource<ConflictDetected>(TaskCreationOptions.RunContinuationsAsynchronously);
+        await using var client = UnixSocketIpc.CreateClient(host.SocketPath);
+        client.OnEvent<ConflictDetected>(@event => detected.TrySetResult(@event));
+
+        await host.StartAsync(Token);
+        (await client.ConnectAsync(Token)).Value.ShouldBeOfType<Ok<Unit>>();
+        (await client.SubscribeAsync(Token)).Value.ShouldBeOfType<Ok<Unit>>();
+        await host.Services.GetRequiredService<IConflictEventSink>().DetectedAsync(conflict, Token);
+        var detectedEvent = await detected.Task.WaitAsync(TimeSpan.FromSeconds(10), Token);
+        await host.StopAsync(Token);
+
+        detectedEvent.Conflict.Path.ShouldBe("Reports/a.txt");
+        detectedEvent.Conflict.Local.ShouldBe(new ConflictSideView("Reports/a.txt", Stamp.AddHours(1), 20));
+        detectedEvent.Conflict.Remote.ShouldBe(new ConflictSideView("Reports/a.txt", Stamp, 10));
     }
 
     [Fact]
@@ -76,7 +148,7 @@ public sealed class ConflictQueryShould : IDisposable
         var resolvedEvent = await resolved.Task.WaitAsync(TimeSpan.FromSeconds(10), Token);
         await host.StopAsync(Token);
 
-        detectedEvent.Conflict.ShouldBe(new ConflictView(conflict.Id.Value, job.Id.Value, conflict.ItemId.Value, "CreateCreate", Stamp));
+        detectedEvent.Conflict.ShouldBe(new ConflictView(conflict.Id.Value, job.Id.Value, conflict.ItemId.Value, "CreateCreate", Stamp, "Open", string.Empty, null, null));
         resolvedEvent.ShouldBe(new ConflictResolved(conflict.Id.Value, job.Id.Value, conflict.ItemId.Value, "KeepLocal", Stamp.AddMinutes(2)));
     }
 
@@ -99,6 +171,18 @@ public sealed class ConflictQueryShould : IDisposable
     }
 
     [Fact]
+    public async Task honour_cancellation_when_reading_the_item_state()
+    {
+        await using var host = DaemonTestHost.CreateWith(new StubCloudProvider());
+        using var cancelled = new CancellationTokenSource();
+        await cancelled.CancelAsync();
+        var conflict = new Conflict(new ConflictId(Guid.NewGuid()), new SyncJobId(Guid.NewGuid()), new ItemId(Guid.NewGuid()), ConflictType.CreateCreate, ConflictStatus.Open, Stamp);
+
+        await Should.ThrowAsync<OperationCanceledException>(() => host.Services.GetRequiredService<CanonicalStateReader>().ReadAsync(conflict.SyncJobId, cancelled.Token));
+        await Should.ThrowAsync<OperationCanceledException>(() => host.Services.GetRequiredService<ConflictViewFactory>().CreateAsync(conflict.SyncJobId, [conflict], cancelled.Token));
+    }
+
+    [Fact]
     public async Task honour_cancellation_when_publishing_an_event()
     {
         await using var host = DaemonTestHost.CreateWith(new StubCloudProvider());
@@ -107,6 +191,25 @@ public sealed class ConflictQueryShould : IDisposable
         var conflict = new Conflict(new ConflictId(Guid.NewGuid()), new SyncJobId(Guid.NewGuid()), new ItemId(Guid.NewGuid()), ConflictType.CreateCreate, ConflictStatus.Open, Stamp);
 
         await Should.ThrowAsync<OperationCanceledException>(() => host.Services.GetRequiredService<IConflictEventSink>().DetectedAsync(conflict, cancelled.Token));
+    }
+
+    private static async Task<Conflict> SeedConflictingItemAsync(DaemonTestHost host, SyncJob job)
+    {
+        var scope = new SyncScope(job.Id, new RemoteItemId("root"));
+        await host.Services.GetRequiredService<ISyncScopeStore>().AddAsync(scope, Token);
+        var remote = new ProviderItem(new RemoteItemId("r1"), new RelativePath("Reports/a.txt"), ItemType.File, 10, Stamp);
+        await host.Services.GetRequiredService<IItemIndexStore>().SavePageAsync(scope, [remote], CrawlCheckpoint.None, Stamp, Token);
+        var local = new LocalSnapshot(new RelativePath("Reports/a.txt"), 20, Stamp.AddHours(1), null, new ContentFingerprint("fp20"));
+        await host.Services.GetRequiredService<ILocalObservationStore>().RecordAsync(job.Id, [local], [], Stamp.AddHours(2), Token);
+        var item = (await host.Services.GetRequiredService<IItemStateStore>().ListAsync(job.Id, Token)).Value.ShouldBeOfType<Ok<IReadOnlyList<StoredItem>>>().Value.Single().ItemId;
+        var known = host.Services.GetRequiredService<IKnownSnapshotStore>();
+        var operation = new OperationId(Guid.NewGuid());
+        await known.StageAsync(job.Id, operation, item, new KnownSnapshot(new RelativePath("Reports/a.txt"), 5, Stamp.AddDays(-1), null, null), Token);
+        await known.CommitAsync(operation, Token);
+        var conflict = new Conflict(new ConflictId(Guid.NewGuid()), job.Id, item, ConflictType.ModifyModify, ConflictStatus.Open, Stamp);
+        await host.Services.GetRequiredService<IConflictStore>().AddAsync(conflict, Token);
+
+        return conflict;
     }
 
     private async Task<SyncJob> NewJobAsync(DaemonTestHost host)

@@ -10,5 +10,8 @@ public enum ConflictStatus
     Resolved,
 
     /// <summary>The user chose to leave the item as it is.</summary>
-    Ignored
+    Ignored,
+
+    /// <summary>The user postponed the decision. Still unresolved: it is listed with the open conflicts, can be resolved later and counts as an existing conflict, so planning again does not raise a second one.</summary>
+    Deferred
 }

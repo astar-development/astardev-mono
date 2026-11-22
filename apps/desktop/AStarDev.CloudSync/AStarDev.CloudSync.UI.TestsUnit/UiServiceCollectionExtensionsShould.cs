@@ -93,12 +93,9 @@ public sealed class UiServiceCollectionExtensionsShould
     }
 
     [Fact]
-    public async Task fail_to_start_when_the_otlp_endpoint_is_malformed()
-    {
-        await Should.ThrowAsync<OptionsValidationException>(async () =>
-        {
-            using var host = CreateHost("not a uri");
-            await host.StartAsync(Token);
-        });
-    }
+    public async Task fail_to_start_when_the_otlp_endpoint_is_malformed() => await Should.ThrowAsync<OptionsValidationException>(async () =>
+                                                                                  {
+                                                                                      using var host = CreateHost("not a uri");
+                                                                                      await host.StartAsync(Token);
+                                                                                  });
 }

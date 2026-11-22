@@ -9,9 +9,6 @@
     <ScrollViewer>
         <StackPanel Margin="16" Spacing="12">
             <TextBlock Text="{Binding Title}" FontSize="24" FontWeight="SemiBold" Foreground="{DynamicResource Text.Primary.Brush}" />
-            <Border IsVisible="{Binding IsSampleData}" Background="{DynamicResource Conflicts.Notice.Brush}" Padding="8">
-                <TextBlock Text="{Binding SampleDataNotice}" TextWrapping="Wrap" Foreground="{DynamicResource Text.Primary.Brush}" />
-            </Border>
             <TextBlock Text="{loc:Loc Conflicts.ListHeading}" FontWeight="SemiBold" Foreground="{DynamicResource Text.Primary.Brush}" />
             <StackPanel Orientation="Horizontal" Spacing="8">
                 <Button Content="{loc:Loc Conflicts.SelectAll}" Click="OnSelectAll" />
@@ -22,11 +19,15 @@
             <ListBox ItemsSource="{Binding Rows}" SelectedItem="{Binding SelectedConflict}">
                 <ListBox.ItemTemplate>
                     <DataTemplate x:DataType="vm:ConflictRowViewModel">
-                        <Grid ColumnDefinitions="Auto,*,Auto,Auto" ColumnSpacing="12">
+                        <Grid ColumnDefinitions="Auto,*,Auto,Auto,Auto" ColumnSpacing="12">
                             <CheckBox Grid.Column="0" IsChecked="{Binding IsSelected}" />
-                            <TextBlock Grid.Column="1" Text="{Binding Name}" VerticalAlignment="Center" Foreground="{DynamicResource Text.Primary.Brush}" />
-                            <TextBlock Grid.Column="2" Text="{Binding AgeText}" VerticalAlignment="Center" Foreground="{DynamicResource Text.Secondary.Brush}" />
-                            <views:StatusIndicatorView Grid.Column="3" DataContext="{Binding Status}" />
+                            <StackPanel Grid.Column="1" VerticalAlignment="Center">
+                                <TextBlock Text="{Binding Name}" Foreground="{DynamicResource Text.Primary.Brush}" />
+                                <TextBlock Text="{Binding PathText}" Foreground="{DynamicResource Text.Secondary.Brush}" />
+                            </StackPanel>
+                            <TextBlock Grid.Column="2" Text="{Binding TypeText}" VerticalAlignment="Center" Foreground="{DynamicResource Text.Secondary.Brush}" />
+                            <TextBlock Grid.Column="3" Text="{Binding AgeText}" VerticalAlignment="Center" Foreground="{DynamicResource Text.Secondary.Brush}" />
+                            <views:StatusIndicatorView Grid.Column="4" DataContext="{Binding Status}" />
                         </Grid>
                     </DataTemplate>
                 </ListBox.ItemTemplate>
@@ -36,6 +37,8 @@
                     <TextBlock Text="{loc:Loc Conflicts.NoDetail}" IsVisible="{Binding SelectedConflict, Converter={x:Static ObjectConverters.IsNull}}" Foreground="{DynamicResource Text.Secondary.Brush}" />
                     <ContentControl Content="{Binding SelectedConflict}"><ContentControl.ContentTemplate><DataTemplate x:DataType="vm:ConflictRowViewModel"><StackPanel Spacing="8">
                         <TextBlock Text="{Binding Name}" FontSize="18" FontWeight="SemiBold" Foreground="{DynamicResource Text.Primary.Brush}" />
+                        <TextBlock Text="{Binding TypeText}" FontWeight="SemiBold" Foreground="{DynamicResource Text.Primary.Brush}" />
+                        <TextBlock Text="{Binding DetectedText}" Foreground="{DynamicResource Text.Secondary.Brush}" />
                         <TextBlock Text="{loc:Loc Conflicts.DetailHeading}" FontWeight="SemiBold" Foreground="{DynamicResource Text.Primary.Brush}" />
                         <TextBlock Text="{Binding ReasonText}" TextWrapping="Wrap" Foreground="{DynamicResource Text.Secondary.Brush}" />
                         <Grid ColumnDefinitions="Auto,*,*" RowDefinitions="Auto,Auto,Auto,Auto" ColumnSpacing="16" RowSpacing="4">
@@ -63,16 +66,16 @@
                 </ItemsControl.ItemsPanel>
                 <ItemsControl.ItemTemplate>
                     <DataTemplate x:DataType="vm:ConflictActionViewModel">
-                        <Button Content="{Binding Label}" IsEnabled="{Binding IsEnabled}" Tag="{Binding Resolution}" Click="OnAction" />
+                        <Button Content="{Binding Label}" IsEnabled="{Binding IsEnabled}" Tag="{Binding Choice}" Click="OnAction" />
                     </DataTemplate>
                 </ItemsControl.ItemTemplate>
             </ItemsControl>
-            <TextBlock Text="{Binding ActionsUnavailableText}" TextWrapping="Wrap" Foreground="{DynamicResource Text.Secondary.Brush}" />
             <StackPanel IsVisible="{Binding IsConfirming}" Orientation="Horizontal" Spacing="8">
                 <TextBlock Text="{Binding ConfirmationText}" VerticalAlignment="Center" Foreground="{DynamicResource Text.Primary.Brush}" />
-                <Button Content="{loc:Loc Conflicts.ConfirmYes}" IsEnabled="False" />
+                <Button Content="{loc:Loc Conflicts.ConfirmYes}" Command="{Binding ConfirmCommand}" />
                 <Button Content="{loc:Loc Conflicts.ConfirmNo}" Click="OnCancel" />
             </StackPanel>
+            <TextBlock Text="{Binding ErrorMessage}" IsVisible="{Binding ErrorMessage, Converter={x:Static StringConverters.IsNotNullOrEmpty}}" TextWrapping="Wrap" Foreground="{DynamicResource Trust.Critical.Brush}" />
             <TextBlock Text="{Binding RecoveryText}" TextWrapping="Wrap" Foreground="{DynamicResource Trust.Healthy.Brush}" />
         </StackPanel>
     </ScrollViewer>

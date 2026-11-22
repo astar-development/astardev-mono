@@ -117,6 +117,37 @@ public sealed class DashboardViewModelShould
     }
 
     [Fact]
+    public void show_the_live_conflict_count_and_follow_it_as_conflicts_come_and_go()
+    {
+        var culture = new CultureService("en-GB");
+        var navigation = new NavigationService([new FakeScreen(ScreenId.Dashboard)]);
+        var connection = new ConnectionViewModel(() => new FakeIpcClient([], available: false), TimeSpan.FromSeconds(1), TimeSpan.FromSeconds(1));
+        var dashboard = new DashboardViewModel(RealLocalisation(culture), culture, () => navigation, new FixedSource(Snapshot(SyncHealth.Active, conflicts: 7)), connection);
+        var changed = new List<string?>();
+        dashboard.PropertyChanged += (_, args) => changed.Add(args.PropertyName);
+        dashboard.ConflictsText.ShouldBe("Conflicts : 0");
+
+        var conflict = new IPC.ConflictView(Guid.NewGuid(), Guid.NewGuid(), Guid.NewGuid(), "ModifyModify", Moment, "Open", "a.txt", null, null);
+        connection.Conflicts.Add(conflict);
+        connection.Conflicts.Add(conflict with { ConflictId = Guid.NewGuid(), Status = "Deferred" });
+
+        dashboard.ConflictsText.ShouldBe("Conflicts : 2");
+        changed.ShouldContain(nameof(DashboardViewModel.ConflictsText));
+
+        connection.Conflicts.RemoveAt(0);
+
+        dashboard.ConflictsText.ShouldBe("Conflicts : 1");
+    }
+
+    [Fact]
+    public void word_the_conflicts_link_as_review_conflicts()
+    {
+        var (dashboard, _) = Create();
+
+        dashboard.OpenConflictsText.ShouldBe("Review Conflicts");
+    }
+
+    [Fact]
     public void deep_link_the_queue_providers_and_recent_events()
     {
         var (dashboard, navigation) = Create();
