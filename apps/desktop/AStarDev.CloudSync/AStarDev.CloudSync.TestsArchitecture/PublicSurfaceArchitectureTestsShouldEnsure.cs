@@ -24,7 +24,7 @@ public sealed class PublicSurfaceArchitectureTestsShouldEnsure
     public void ipc_exposes_only_its_approved_public_types_and_no_transport()
         => ShouldExposeExactly(typeof(IPC.IIpcServer).Assembly,
             [
-             "AccountConnected", "AccountDisconnected", "AccountState", "AccountView", "AccountsView", "ActivitiesView", "ActivityChanged", "ActivityState", "ActivityView", "AddSyncScope", "CommandOutcome", "CommandResult", "ConflictChoice", "ConflictDetected", "ConflictResolved", "ConflictView", "ConflictsView", "ConnectAccount",
+             "AccountConnected", "AccountDisconnected", "AccountState", "AccountView", "AccountsView", "ActivitiesView", "ActivityChanged", "ActivityState", "ActivityView", "AddSyncScope", "CommandOutcome", "CommandResult", "ConflictChoice", "ConflictDetected", "ConflictResolved", "ConflictSideView", "ConflictView", "ConflictsView", "ConnectAccount",
              "ConnectionFailed", "ConnectionLost", "CrawlProgressChanged", "CreateSyncJob", "DaemonState", "DaemonStatusChanged", "DaemonStatusView", "DeadLetterView", "DeadLettersView", "DisconnectAccount", "FrameTooLarge",
              "GetAccounts", "GetActivities", "GetConflicts", "GetDaemonStatus", "GetDeadLetters", "GetRemoteFolders", "GetRemoteRootSummary", "GetSyncJobs", "GetSyncScopes", "HandlerFailed", "ICommand",
              "IEvent", "IgnoreOperation", "IIpcClient", "IIpcServer", "IpcError", "IQuery`1", "ListenFailed", "MalformedFrame", "NotConnected", "RemoteFolderView", "RemoteFoldersView", "RemoteRootSummaryView",
@@ -50,7 +50,7 @@ public sealed class PublicSurfaceArchitectureTestsShouldEnsure
 
     [Fact]
     public void the_sync_engine_exposes_only_its_approved_public_types()
-        => ShouldExposeExactly(typeof(SyncEngine.SyncRunner).Assembly, "ConflictItemBusy", "ConflictItemGone", "ConflictNotOpen", "ConflictResolution", "ConflictResolver", "IConflictEventSink", "ICrawlProgressSink", "CrawlProgress", "DeltaPollingOptions", "IOperationExecutor", "KeepBothCopyFailed", "LocalObservationOptions", "LocalObservationRunner", "OperationScheduler", "OperationSchedulerOptions", "PlanSummary", "ResolutionError", "ResolutionStoreFailed", "SyncEngineServiceCollectionExtensions", "SyncPlanner", "SyncRunner");
+        => ShouldExposeExactly(typeof(SyncEngine.SyncRunner).Assembly, "CanonicalStateReader", "ConflictItemBusy", "ConflictItemGone", "ConflictNotOpen", "ConflictResolution", "ConflictResolver", "IConflictEventSink", "ICrawlProgressSink", "CrawlProgress", "DeltaPollingOptions", "IOperationExecutor", "KeepBothCopyFailed", "LocalObservationOptions", "LocalObservationRunner", "OperationScheduler", "OperationSchedulerOptions", "PlanSummary", "ResolutionError", "ResolutionStoreFailed", "SyncEngineServiceCollectionExtensions", "SyncPlanner", "SyncRunner");
 
     [Fact]
     public void the_functional_paradigm_library_exposes_only_its_approved_public_types()

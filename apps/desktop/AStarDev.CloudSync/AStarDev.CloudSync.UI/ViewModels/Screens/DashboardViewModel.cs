@@ -7,15 +7,31 @@ namespace AStarDev.CloudSync.UI.ViewModels.Screens;
 
 /// <summary>
 /// The trust dashboard of doc 17: health, progress, providers, queue, attention, activity and events, in that order. Values come from an <see cref="IDashboardSource"/>;
-/// with none given it shows <see cref="PlaceholderDashboardSource"/> and labels everything as sample data.
+/// with none given it shows <see cref="PlaceholderDashboardSource"/> and labels everything as sample data. The conflict count is the exception: given a connection it is the live number of conflicts waiting for the user.
 /// </summary>
-/// <param name="localisation">Supplies every text.</param>
-/// <param name="culture">Formats numbers and times.</param>
-/// <param name="navigation">Resolves the navigation service on use; a direct dependency would be a DI cycle.</param>
-/// <param name="source">The values to show; <see langword="null"/> means the placeholder sample values.</param>
-internal sealed class DashboardViewModel(ILocalisationService localisation, ICultureService culture, Func<INavigationService> navigation, IDashboardSource? source = null) : ViewModelBase, IScreen
+internal sealed class DashboardViewModel : ViewModelBase, IScreen
 {
-    private readonly DashboardSnapshot snapshot = (source ?? new PlaceholderDashboardSource()).GetSnapshot();
+    private readonly ILocalisationService localisation;
+    private readonly ICultureService culture;
+    private readonly Func<INavigationService> navigation;
+    private readonly ConnectionViewModel? connection;
+    private readonly DashboardSnapshot snapshot;
+
+    /// <summary>Creates the dashboard and, when a connection is given, follows its conflicts.</summary>
+    /// <param name="localisation">Supplies every text.</param>
+    /// <param name="culture">Formats numbers and times.</param>
+    /// <param name="navigation">Resolves the navigation service on use; a direct dependency would be a DI cycle.</param>
+    /// <param name="source">The values to show; <see langword="null"/> means the placeholder sample values.</param>
+    /// <param name="connection">Where the live conflict count comes from; <see langword="null"/> means the count of <paramref name="source"/>.</param>
+    public DashboardViewModel(ILocalisationService localisation, ICultureService culture, Func<INavigationService> navigation, IDashboardSource? source = null, ConnectionViewModel? connection = null)
+    {
+        this.localisation = localisation;
+        this.culture = culture;
+        this.navigation = navigation;
+        this.connection = connection;
+        snapshot = (source ?? new PlaceholderDashboardSource()).GetSnapshot();
+        if (connection is not null) connection.Conflicts.CollectionChanged += (_, _) => OnPropertyChanged(nameof(ConflictsText));
+    }
 
     /// <inheritdoc/>
     public ScreenId Id => ScreenId.Dashboard;
@@ -86,8 +102,8 @@ internal sealed class DashboardViewModel(ILocalisationService localisation, ICul
     /// <summary>Heading of the Attention Required card, which is always shown, even at zero.</summary>
     public string AttentionHeading => localisation.Get("Dashboard.Attention.Heading");
 
-    /// <summary>Conflict count, shown even when zero.</summary>
-    public string ConflictsText => Count("Dashboard.Attention.Conflicts", snapshot.Conflicts);
+    /// <summary>Conflict count, shown even when zero: the conflicts waiting for the user, deferred ones included, kept current as the daemon reports them.</summary>
+    public string ConflictsText => Count("Dashboard.Attention.Conflicts", connection?.Conflicts.Count ?? snapshot.Conflicts);
 
     /// <summary>Error count, shown even when zero.</summary>
     public string ErrorsText => Count("Dashboard.Attention.Errors", snapshot.Errors);

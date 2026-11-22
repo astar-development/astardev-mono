@@ -1,4 +1,4 @@
-using AStarDev.CloudSync.UI.Conflicts;
+using AStarDev.CloudSync.IPC;
 using AStarDev.CloudSync.UI.ViewModels.Screens;
 using Avalonia.Controls;
 using Avalonia.Interactivity;
@@ -24,6 +24,6 @@ public partial class ConflictsView : UserControl
 
     private void OnAction(object? sender, RoutedEventArgs args)
     {
-        if (sender is Button { Tag: ConflictResolution resolution }) Model?.RequestResolution(resolution);
+        if (sender is Button { Tag: ConflictChoice choice }) Model?.RequestResolution(choice);
     }
 }

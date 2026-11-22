@@ -154,6 +154,41 @@ public sealed class ConflictResolutionShould : IDisposable
     }
 
     [Fact]
+    public async Task mark_a_deferred_conflict_as_deferred_keep_it_listed_and_not_raise_it_again()
+    {
+        var sink = new RecordingConflictEventSink();
+        await using var host = CreateRealHost(new FakeCloudProvider(10), sink);
+        var job = await SeedConflictsAsync(host, 1);
+        await PlanAsync(host, job);
+        var conflict = (await OpenAsync(host, job)).Single();
+
+        (await host.Services.GetRequiredService<ConflictResolver>().ResolveAsync([conflict.Id], ConflictResolution.Defer, Token)).Single().Value.ShouldBeOfType<Ok<Unit>>();
+        await PlanAsync(host, job);
+
+        (await StatusAsync(host, conflict.Id)).ShouldBe(ConflictStatus.Deferred);
+        (await OpenAsync(host, job)).ShouldHaveSingleItem().Id.ShouldBe(conflict.Id);
+        sink.Detected.ShouldHaveSingleItem();
+        sink.Resolved.ShouldBeEmpty();
+    }
+
+    [Fact]
+    public async Task resolve_a_deferred_conflict()
+    {
+        var provider = new FakeCloudProvider(10);
+        await using var host = CreateRealHost(provider, new RecordingConflictEventSink());
+        var job = await SeedConflictsAsync(host, 1);
+        await PlanAsync(host, job);
+        var conflict = (await OpenAsync(host, job)).Single();
+        var resolver = host.Services.GetRequiredService<ConflictResolver>();
+        (await resolver.ResolveAsync([conflict.Id], ConflictResolution.Defer, Token)).Single().Value.ShouldBeOfType<Ok<Unit>>();
+
+        (await resolver.ResolveAsync([conflict.Id], ConflictResolution.KeepLocal, Token)).Single().Value.ShouldBeOfType<Ok<Unit>>();
+
+        (await StatusAsync(host, conflict.Id)).ShouldBe(ConflictStatus.Resolved);
+        (await OpenAsync(host, job)).ShouldBeEmpty();
+    }
+
+    [Fact]
     public async Task resolve_many_conflicts_with_one_choice_and_report_each()
     {
         var provider = new FakeCloudProvider(10);

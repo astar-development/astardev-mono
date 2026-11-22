@@ -94,6 +94,34 @@ public sealed class ConnectionViewModelShould
     }
 
     [Fact]
+    public async Task load_the_conflicts_of_every_job_on_connect_oldest_first_and_follow_changes()
+    {
+        var first = new SyncJobView(Guid.NewGuid(), Guid.NewGuid(), "A", "/a", SyncBootstrapMode.Merge);
+        var second = new SyncJobView(Guid.NewGuid(), Guid.NewGuid(), "B", "/b", SyncBootstrapMode.Merge);
+        var stamp = new DateTimeOffset(2026, 11, 22, 9, 0, 0, TimeSpan.Zero);
+        var newer = new ConflictView(Guid.NewGuid(), first.Id, Guid.NewGuid(), "ModifyModify", stamp.AddHours(1), "Open", "a.txt", null, null);
+        var older = new ConflictView(Guid.NewGuid(), second.Id, Guid.NewGuid(), "KeepDelete", stamp, "Open", "b.txt", null, null);
+        var client = new FakeIpcClient([], available: true)
+        {
+            JobsReply = new Ok<SyncJobsView>(new SyncJobsView([first, second])),
+            ConflictsReply = query => new Ok<ConflictsView>(new ConflictsView(query.SyncJobId == first.Id ? [newer] : [older]))
+        };
+        var viewModel = Create(client);
+        using var source = CancellationTokenSource.CreateLinkedTokenSource(Token);
+
+        var run = viewModel.RunAsync(source.Token);
+        await WaitForAsync(() => viewModel.Conflicts.Count == 2);
+        var detected = new ConflictView(Guid.NewGuid(), first.Id, Guid.NewGuid(), "CreateCreate", stamp.AddHours(2), "Open", "c.txt", null, null);
+        client.Raise(new ConflictDetected(detected));
+        client.Raise(new ConflictDetected(newer with { Status = "Deferred" }));
+        client.Raise(new ConflictResolved(older.ConflictId, older.SyncJobId, older.ItemId, "KeepLocal", stamp.AddHours(3)));
+        await source.CancelAsync();
+        await Should.ThrowAsync<OperationCanceledException>(() => run);
+
+        viewModel.Conflicts.Select(conflict => (conflict.Path, conflict.Status)).ShouldBe([("a.txt", "Deferred"), ("c.txt", "Open")]);
+    }
+
+    [Fact]
     public async Task query_state_then_subscribe_on_connect()
     {
         var calls = new List<string>();
@@ -105,7 +133,7 @@ public sealed class ConnectionViewModelShould
         await source.CancelAsync();
         await Should.ThrowAsync<OperationCanceledException>(() => run);
 
-        calls.ShouldBe(["connect", "query", "query", "query", "subscribe"]);
+        calls.ShouldBe(["connect", "query", "query", "query", "query", "subscribe"]);
         viewModel.DaemonStatus.ShouldBe(FakeIpcClient.Status);
     }
 

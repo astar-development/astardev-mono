@@ -12,6 +12,6 @@ public enum ConflictChoice
     /// <summary>Both versions survive: the local version is copied to a conflict-named file, then the remote version is applied. The safest choice.</summary>
     KeepBoth,
 
-    /// <summary>Decide later: the conflict stays in <see cref="GetConflicts"/> and nothing about the file changes.</summary>
+    /// <summary>Decide later: the conflict stays in <see cref="GetConflicts"/> with status <c>Deferred</c>, can still be resolved, and nothing about the file changes.</summary>
     Defer
 }

@@ -50,7 +50,7 @@
   "Dashboard.Event.RemoteRenameDetected": "Remote rename detected",
   "Dashboard.Event.ReconciliationCompleted": "Reconciliation completed",
   "Dashboard.Event.SyncScopeUpdated": "Sync scope updated",
-  "Dashboard.Open.Conflicts": "View conflicts",
+  "Dashboard.Open.Conflicts": "Review Conflicts",
   "Dashboard.Open.Queue": "View queue",
   "Dashboard.Open.Providers": "View providers",
   "Dashboard.Open.Activity": "View activity"

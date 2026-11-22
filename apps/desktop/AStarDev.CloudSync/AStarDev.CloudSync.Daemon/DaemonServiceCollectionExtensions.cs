@@ -33,6 +33,7 @@ internal static class DaemonServiceCollectionExtensions
         services.AddOneDriveProvider();
         services.AddSingleton<ActivityTracker>();
         services.AddSingleton<ICrawlProgressSink, IpcCrawlProgressSink>();
+        services.AddSingleton<ConflictViewFactory>();
         services.AddSingleton<IConflictEventSink, IpcConflictEventSink>();
         services.AddSyncEngine();
         services.AddStartupStages();

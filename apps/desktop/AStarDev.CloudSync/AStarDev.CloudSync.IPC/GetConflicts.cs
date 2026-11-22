@@ -1,7 +1,7 @@
 namespace AStarDev.CloudSync.IPC;
 
 /// <summary>
-/// Asks the daemon which conflicts of a job wait for the user. Ask once after connecting, then follow <see cref="ConflictDetected"/> and <see cref="ConflictResolved"/>.
+/// Asks the daemon which conflicts of a job wait for the user, deferred ones included, each with its path and what both sides hold. Ask once after connecting, then follow <see cref="ConflictDetected"/> and <see cref="ConflictResolved"/>.
 /// Fails with <see cref="HandlerFailed"/>, carrying a message fit for display, when the conflicts cannot be read.
 /// </summary>
 /// <param name="SyncJobId">The <see cref="SyncJobView.Id"/> of the job to list. An unknown job lists no conflicts.</param>

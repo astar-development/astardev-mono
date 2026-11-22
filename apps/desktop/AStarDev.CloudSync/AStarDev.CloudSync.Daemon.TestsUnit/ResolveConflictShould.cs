@@ -25,7 +25,9 @@ public sealed class ResolveConflictShould : IDisposable
         var result = await host.Services.GetRequiredService<ResolveConflictHandler>().HandleAsync(new ResolveConflict([conflict.Id.Value], ConflictChoice.Defer), Token);
 
         result.Value.ShouldBeOfType<Ok<CommandResult>>().Value.ShouldBe(new CommandResult(CommandOutcome.Accepted));
-        (await host.Services.GetRequiredService<IConflictStore>().ListOpenAsync(conflict.SyncJobId, Token)).Value.ShouldBeOfType<Ok<IReadOnlyList<Conflict>>>().Value.ShouldHaveSingleItem();
+        (await host.Services.GetRequiredService<IConflictStore>().ListOpenAsync(conflict.SyncJobId, Token)).Value.ShouldBeOfType<Ok<IReadOnlyList<Conflict>>>().Value.ShouldHaveSingleItem().Status.ShouldBe(ConflictStatus.Deferred);
+        var listed = await host.Services.GetRequiredService<ConflictsQuery>().HandleAsync(new GetConflicts(conflict.SyncJobId.Value), Token);
+        listed.Value.ShouldBeOfType<Ok<ConflictsView>>().Value.Conflicts.ShouldHaveSingleItem().Status.ShouldBe("Deferred");
     }
 
     [Fact]

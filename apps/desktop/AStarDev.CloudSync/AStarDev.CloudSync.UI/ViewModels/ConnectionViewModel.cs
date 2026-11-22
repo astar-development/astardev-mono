@@ -38,6 +38,12 @@ public sealed partial class ConnectionViewModel(Func<IIpcClient> createClient, T
     /// </summary>
     public ObservableCollection<DeadLetterView> DeadLetters { get; } = [];
 
+    /// <summary>
+    /// The conflicts that wait for the user, deferred ones included, across every job: read once on each connect, then kept current by <see cref="ConflictDetected"/> and <see cref="ConflictResolved"/> events and replaced by the Conflicts screen after each decision.
+    /// A deferred conflict raises no event, so a decision to defer shows here only through that replacement. Shown as received, not cleared when the link drops.
+    /// </summary>
+    public ObservableCollection<ConflictView> Conflicts { get; } = [];
+
     /// <summary>Banner text for <see cref="State"/>, so the view binds a ready-made label instead of converting the enum.</summary>
     public string StatusText => State switch
     {
@@ -82,6 +88,8 @@ public sealed partial class ConnectionViewModel(Func<IIpcClient> createClient, T
     {
         client.OnEvent<DaemonStatusChanged>(changed => postToUi(() => DaemonStatus = changed.Status));
         client.OnEvent<ActivityChanged>(changed => postToUi(() => Upsert(changed.Activity)));
+        client.OnEvent<ConflictDetected>(detected => postToUi(() => Upsert(detected.Conflict)));
+        client.OnEvent<ConflictResolved>(resolved => postToUi(() => Remove(resolved.ConflictId)));
 
         var connected = await client.ConnectAsync(cancellationToken);
         if (connected is Fail<IpcError>)
@@ -101,6 +109,7 @@ public sealed partial class ConnectionViewModel(Func<IIpcClient> createClient, T
         postToUi(() => DaemonStatus = status);
         if (await client.QueryAsync(new GetActivities(), cancellationToken) is Ok<ActivitiesView> activities) postToUi(() => Replace(activities.Value.Activities));
         if (await client.QueryAsync(new GetDeadLetters(), cancellationToken) is Ok<DeadLettersView> deadLetters) postToUi(() => ReplaceDeadLetters(deadLetters.Value.DeadLetters));
+        if (await ConflictListing.ListAsync(client, cancellationToken) is Ok<IReadOnlyList<ConflictView>> conflicts) postToUi(() => ReplaceConflicts(conflicts.Value));
 
         return await client.SubscribeAsync(cancellationToken);
     }
@@ -122,6 +131,26 @@ public sealed partial class ConnectionViewModel(Func<IIpcClient> createClient, T
     {
         DeadLetters.Clear();
         foreach (var deadLetter in deadLetters) DeadLetters.Add(deadLetter);
+    }
+
+    internal void ReplaceConflicts(IReadOnlyList<ConflictView> conflicts)
+    {
+        var kept = conflicts.Select(conflict => conflict.ConflictId).ToHashSet();
+        foreach (var gone in Conflicts.Where(conflict => !kept.Contains(conflict.ConflictId)).ToList()) Conflicts.Remove(gone);
+        foreach (var conflict in conflicts) Upsert(conflict);
+    }
+
+    private void Upsert(ConflictView conflict)
+    {
+        var index = Conflicts.ToList().FindIndex(existing => existing.ConflictId == conflict.ConflictId);
+        if (index < 0) Conflicts.Add(conflict);
+        else if (Conflicts[index] != conflict) Conflicts[index] = conflict;
+    }
+
+    private void Remove(Guid conflictId)
+    {
+        var existing = Conflicts.FirstOrDefault(conflict => conflict.ConflictId == conflictId);
+        if (existing is not null) Conflicts.Remove(existing);
     }
 
     private void SetState(ConnectionState state) => postToUi(() => State = state);
