@@ -35,6 +35,8 @@ public static class SyncEngineServiceCollectionExtensions
             provider.GetRequiredService<TimeProvider>(),
             provider.GetRequiredService<ILogger<DeltaProcessingService>>()));
         services.AddSingleton(provider => new SyncRunner(provider.GetRequiredService<ISyncJobStore>(), provider.GetRequiredService<InitialCrawler>(), provider.GetRequiredService<DeltaProcessingService>(), provider.GetRequiredService<ILogger<SyncRunner>>()));
+        services.AddOptions<OperationSchedulerOptions>().BindConfiguration(OperationSchedulerOptions.ConfigurationSection);
+        services.AddSingleton<OperationScheduler>();
 
         return services;
     }

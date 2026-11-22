@@ -1,6 +1,7 @@
 using AStarDev.CloudSync.Domain;
 using AStarDev.CloudSync.Persistence;
 using AStarDev.CloudSync.Ports;
+using AStarDev.CloudSync.SyncEngine;
 using AStarDev.FunctionalParadigm;
 using Microsoft.Extensions.DependencyInjection;
 
@@ -156,6 +157,144 @@ public sealed class OperationQueueShould
         await Should.ThrowAsync<OperationCanceledException>(() => store.ListAsync(cancelled.Token));
         Claimed(await store.ListAsync(Token)).ShouldBeEmpty();
     }
+
+    [Fact]
+    public async Task dead_letter_one_file_and_keep_processing_the_rest()
+    {
+        var time = new ManualTimeProvider(Start);
+        var poisoned = new ItemId(Guid.NewGuid());
+        var executor = new ScriptedOperationExecutor(operation => operation.ItemId == poisoned ? new Fail<ProviderError>(new Permanent("forbidden")) : new Ok<Unit>(default));
+        await using var host = SchedulerHost(time, executor);
+        var job = await SeedJobAsync(host);
+        var store = host.Services.GetRequiredService<IOperationStore>();
+        var bad = NewOperation(job, poisoned, OperationPriority.UserInitiated, 0);
+        var good = NewOperation(job, new ItemId(Guid.NewGuid()), OperationPriority.Background, 1);
+        var later = NewOperation(job, new ItemId(Guid.NewGuid()), OperationPriority.Background, 2);
+        await EnqueueAsync(store, bad, good, later);
+        var scheduler = host.Services.GetRequiredService<OperationScheduler>();
+
+        await DrainAsync(scheduler);
+        var listed = Claimed(await store.ListAsync(Token));
+
+        listed.Single(operation => operation.Id == bad.Id).Status.ShouldBe(OperationStatus.DeadLetter);
+        listed.Single(operation => operation.Id == bad.Id).Attempts.ShouldBe(1);
+        listed.Single(operation => operation.Id == bad.Id).LastError.ShouldNotBeNull().ShouldContain("forbidden");
+        listed.Single(operation => operation.Id == good.Id).Status.ShouldBe(OperationStatus.Completed);
+        listed.Single(operation => operation.Id == later.Id).Status.ShouldBe(OperationStatus.Completed);
+    }
+
+    [Fact]
+    public async Task retry_with_back_off_before_dead_lettering()
+    {
+        var time = new ManualTimeProvider(Start);
+        var executor = new ScriptedOperationExecutor(_ => new Fail<ProviderError>(new Transient("network drop")));
+        await using var host = SchedulerHost(time, executor);
+        var job = await SeedJobAsync(host);
+        var store = host.Services.GetRequiredService<IOperationStore>();
+        var operation = NewOperation(job, new ItemId(Guid.NewGuid()), OperationPriority.Background, 0);
+        await EnqueueAsync(store, operation);
+        var scheduler = host.Services.GetRequiredService<OperationScheduler>();
+
+        await RunOnceAsync(scheduler, expectProcessed: true);
+        var afterFirst = await OnlyAsync(store);
+        await RunOnceAsync(scheduler, expectProcessed: false);
+        time.Advance(TimeSpan.FromSeconds(10));
+        await RunOnceAsync(scheduler, expectProcessed: true);
+        var afterSecond = await OnlyAsync(store);
+        time.Advance(TimeSpan.FromSeconds(19));
+        await RunOnceAsync(scheduler, expectProcessed: false);
+        time.Advance(TimeSpan.FromSeconds(1));
+        await RunOnceAsync(scheduler, expectProcessed: true);
+        var afterThird = await OnlyAsync(store);
+
+        afterFirst.Status.ShouldBe(OperationStatus.Pending);
+        afterFirst.Attempts.ShouldBe(1);
+        afterFirst.NextAttemptUtc.ShouldBe(Start.AddSeconds(10));
+        afterFirst.LastError.ShouldNotBeNull().ShouldContain("network drop");
+        afterSecond.Attempts.ShouldBe(2);
+        afterSecond.NextAttemptUtc.ShouldBe(Start.AddSeconds(30));
+        afterThird.Status.ShouldBe(OperationStatus.DeadLetter);
+        afterThird.Attempts.ShouldBe(3);
+        await RunOnceAsync(scheduler, expectProcessed: false);
+        executor.Executed.Count.ShouldBe(3);
+    }
+
+    [Fact]
+    public async Task wait_the_provider_requested_time_when_rate_limited()
+    {
+        var time = new ManualTimeProvider(Start);
+        var executor = new ScriptedOperationExecutor(_ => new Fail<ProviderError>(new RateLimited(TimeSpan.FromMinutes(7))));
+        await using var host = SchedulerHost(time, executor);
+        var job = await SeedJobAsync(host);
+        var store = host.Services.GetRequiredService<IOperationStore>();
+        await EnqueueAsync(store, NewOperation(job, new ItemId(Guid.NewGuid()), OperationPriority.Background, 0));
+
+        await RunOnceAsync(host.Services.GetRequiredService<OperationScheduler>(), expectProcessed: true);
+
+        (await OnlyAsync(store)).NextAttemptUtc.ShouldBe(Start.AddMinutes(7));
+    }
+
+    [Fact]
+    public async Task honour_cancellation_in_the_scheduler()
+    {
+        var executor = new ScriptedOperationExecutor(_ => new Ok<Unit>(default));
+        await using var host = SchedulerHost(new ManualTimeProvider(Start), executor);
+        var job = await SeedJobAsync(host);
+        var store = host.Services.GetRequiredService<IOperationStore>();
+        await EnqueueAsync(store, NewOperation(job, new ItemId(Guid.NewGuid()), OperationPriority.Background, 0));
+        var scheduler = host.Services.GetRequiredService<OperationScheduler>();
+        using var cancelled = new CancellationTokenSource();
+        await cancelled.CancelAsync();
+
+        await Should.ThrowAsync<OperationCanceledException>(() => scheduler.RunOnceAsync(cancelled.Token));
+
+        (await OnlyAsync(store)).Status.ShouldBe(OperationStatus.Pending);
+        executor.Executed.ShouldBeEmpty();
+    }
+
+    [Fact]
+    public async Task stop_cleanly_after_working_through_the_queue()
+    {
+        var executor = new ScriptedOperationExecutor(_ => new Ok<Unit>(default));
+        await using var host = SchedulerHost(TimeProvider.System, executor);
+        var job = await SeedJobAsync(host);
+        var store = host.Services.GetRequiredService<IOperationStore>();
+        await EnqueueAsync(store, NewOperation(job, new ItemId(Guid.NewGuid()), OperationPriority.Background, 0), NewOperation(job, new ItemId(Guid.NewGuid()), OperationPriority.Background, 1));
+        await using var scheduler = host.Services.GetRequiredService<OperationScheduler>();
+
+        scheduler.Start();
+        scheduler.Start();
+        while (executor.Executed.Count < 2) await Task.Delay(10, Token);
+        await scheduler.StopAsync(Token);
+        await scheduler.StopAsync(Token);
+
+        Claimed(await store.ListAsync(Token)).ShouldAllBe(operation => operation.Status == OperationStatus.Completed);
+    }
+
+    private static DatabaseTestHost SchedulerHost(TimeProvider time, IOperationExecutor executor)
+        => DatabaseTestHost.Create(services =>
+        {
+            services.AddSingleton(time);
+            services.AddSingleton(executor);
+            services.AddSyncEngine();
+            services.Configure<OperationSchedulerOptions>(options =>
+            {
+                options.WorkerCount = 2;
+                options.MaxAttempts = 3;
+                options.RetryBaseDelay = TimeSpan.FromSeconds(10);
+                options.PollInterval = TimeSpan.FromMilliseconds(10);
+            });
+        });
+
+    private static async Task RunOnceAsync(OperationScheduler scheduler, bool expectProcessed)
+        => (await scheduler.RunOnceAsync(Token)).Value.ShouldBeOfType<Ok<bool>>().Value.ShouldBe(expectProcessed);
+
+    private static async Task DrainAsync(OperationScheduler scheduler)
+    {
+        while ((await scheduler.RunOnceAsync(Token)).Value.ShouldBeOfType<Ok<bool>>().Value) { }
+    }
+
+    private static async Task<Operation> OnlyAsync(IOperationStore store) => Claimed(await store.ListAsync(Token)).Single();
 
     private static Operation NewOperation(SyncJobId job, ItemId item, OperationPriority priority, int ageRank)
         => new(new OperationId(Guid.NewGuid()), job, item, OperationType.UploadFile, priority, OperationStatus.Pending, 0, Start, null, Start.AddMinutes(ageRank));
