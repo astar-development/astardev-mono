@@ -26,27 +26,41 @@ internal sealed class ConnectAccountHandler(ICloudProvider provider, IAccountSto
     private async Task<Result<CommandResult, IpcError>> KeepAsync(ProviderAccount account, CancellationToken cancellationToken)
         => await StoreAsync(account, cancellationToken) switch
         {
-            Ok<Unit> => await AnnounceAsync(account, cancellationToken),
+            Ok<AccountId> stored => await AnnounceAsync(account, stored.Value, cancellationToken),
             Fail<StoreError> fail => Reject(StoreErrorMessages.Describe(fail.Error, "saved"))
         };
 
-    private async Task<Result<Unit, StoreError>> StoreAsync(ProviderAccount account, CancellationToken cancellationToken)
+    private async Task<Result<AccountId, StoreError>> StoreAsync(ProviderAccount account, CancellationToken cancellationToken)
         => await store.ListAsync(cancellationToken) switch
         {
             Ok<IReadOnlyList<Account>> list => await AddOrRestoreAsync(account, list.Value, cancellationToken),
             Fail<StoreError> fail => fail
         };
 
-    private async Task<Result<Unit, StoreError>> AddOrRestoreAsync(ProviderAccount account, IReadOnlyList<Account> stored, CancellationToken cancellationToken)
+    private async Task<Result<AccountId, StoreError>> AddOrRestoreAsync(ProviderAccount account, IReadOnlyList<Account> stored, CancellationToken cancellationToken)
         => stored.FirstOrDefault(known => known.ProviderType == ApplicationConstants.OneDriveProviderType && known.AccountIdentifier == account.AccountIdentifier) switch
         {
-            { } known => await store.UpdateStatusAsync(known.Id, AccountStatus.Connected, cancellationToken),
-            null => await store.AddAsync(new Account(new AccountId(Guid.NewGuid()), ApplicationConstants.OneDriveProviderType, account.DisplayName, account.AccountIdentifier, timeProvider.GetUtcNow()), cancellationToken)
+            { } known => Keep(known.Id, await store.UpdateStatusAsync(known.Id, AccountStatus.Connected, cancellationToken)),
+            null => await AddAsync(account, cancellationToken)
         };
 
-    private async Task<Result<CommandResult, IpcError>> AnnounceAsync(ProviderAccount account, CancellationToken cancellationToken)
+    private async Task<Result<AccountId, StoreError>> AddAsync(ProviderAccount account, CancellationToken cancellationToken)
     {
-        logger.LogInformation("Connected account {Account}", account.DisplayName);
+        var added = new Account(new AccountId(Guid.NewGuid()), ApplicationConstants.OneDriveProviderType, account.DisplayName, account.AccountIdentifier, timeProvider.GetUtcNow());
+
+        return Keep(added.Id, await store.AddAsync(added, cancellationToken));
+    }
+
+    private static Result<AccountId, StoreError> Keep(AccountId id, Result<Unit, StoreError> stored)
+        => stored switch
+        {
+            Ok<Unit> => new Ok<AccountId>(id),
+            Fail<StoreError> fail => fail
+        };
+
+    private async Task<Result<CommandResult, IpcError>> AnnounceAsync(ProviderAccount account, AccountId id, CancellationToken cancellationToken)
+    {
+        logger.LogInformation("Connected account {AccountId}", id.Value);
 
         return await server.PublishAsync(new AccountConnected(account.DisplayName), cancellationToken) switch
         {

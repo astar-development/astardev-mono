@@ -8,15 +8,16 @@ internal sealed class PhysicalLocalFileSystem(ILocalIdentityReader identityReade
 {
     private const int HashBufferSize = 81920;
     private const int WatcherBufferSize = 65536;
+    private const string RedactedRoot = "<local root>";
 
     /// <inheritdoc/>
     public async Task<Result<IReadOnlyList<LocalFile>, LocalObservationError>> ListFilesAsync(string root, RelativePath subtree, CancellationToken cancellationToken)
     {
-        if (!Directory.Exists(root)) return new Fail<LocalObservationError>(new FileSystemFailed($"The local root '{root}' does not exist."));
+        if (!Directory.Exists(root)) return new Fail<LocalObservationError>(new FileSystemFailed("The local root does not exist."));
 
         var outcome = await Try.RunAsync(token => Task.Run(() => List(root, subtree, token), token), cancellationToken).ConfigureAwait(false);
 
-        return outcome.ToResult(ToFailure);
+        return outcome.ToResult(exception => ToFailure(root, exception));
     }
 
     /// <inheritdoc/>
@@ -24,13 +25,13 @@ internal sealed class PhysicalLocalFileSystem(ILocalIdentityReader identityReade
     {
         var outcome = await Try.RunAsync(token => HashAsync(Path.Combine(root, path.Value), token), cancellationToken).ConfigureAwait(false);
 
-        return outcome.ToResult(ToFailure);
+        return outcome.ToResult(exception => ToFailure(root, exception));
     }
 
     /// <inheritdoc/>
     /// <remarks>Created, changed and deleted raise <see cref="Touched"/> for the path; renamed raises it for the old and the new path; the watcher's error event, which is how a full buffer is reported, raises <see cref="Overflowed"/>.</remarks>
     public Result<IDisposable, LocalObservationError> Watch(string root, Action<LocalFileEvent> onEvent)
-        => Try.Run<IDisposable>(() => Start(root, onEvent)).ToResult(ToFailure);
+        => Try.Run<IDisposable>(() => Start(root, onEvent)).ToResult(exception => ToFailure(root, exception));
 
     private IReadOnlyList<LocalFile> List(string root, RelativePath subtree, CancellationToken cancellationToken)
     {
@@ -89,5 +90,5 @@ internal sealed class PhysicalLocalFileSystem(ILocalIdentityReader identityReade
         return watcher;
     }
 
-    private static LocalObservationError ToFailure(Exception exception) => new FileSystemFailed(exception.Message);
+    private static LocalObservationError ToFailure(string root, Exception exception) => new FileSystemFailed(exception.Message.Replace(root, RedactedRoot, StringComparison.Ordinal));
 }
