@@ -6,6 +6,7 @@ using AStarDev.CloudSync.UI.Notifications;
 using AStarDev.CloudSync.UI.Theming;
 using AStarDev.CloudSync.UI.Tray;
 using AStarDev.CloudSync.UI.ViewModels;
+using AStarDev.CloudSync.UI.ViewModels.Onboarding;
 using AStarDev.FunctionalParadigm;
 using Avalonia.Threading;
 using Microsoft.Extensions.DependencyInjection;
@@ -60,7 +61,8 @@ internal static class UiServiceCollectionExtensions
         foreach (var screen in typeof(App).Assembly.GetTypes().Where(type => type is { IsClass: true, IsAbstract: false } && typeof(IScreen).IsAssignableFrom(type))) services.AddSingleton(typeof(IScreen), screen);
         services.AddSingleton<INavigationService, NavigationService>();
         services.AddSingleton(provider => new StatusBarViewModel(provider.GetRequiredService<ConnectionViewModel>(), provider.GetRequiredService<ILocalisationService>()));
-        services.AddSingleton(provider => new MainViewModel(provider.GetRequiredService<INavigationService>(), provider.GetServices<IScreen>(), provider.GetRequiredService<StatusBarViewModel>()));
+        services.AddSingleton(provider => new OnboardingViewModel(provider.GetRequiredService<ILocalisationService>(), provider.GetRequiredService<Func<INavigationService>>(), provider.GetRequiredService<ConnectionViewModel>(), provider.GetRequiredService<AccountsViewModel>(), provider.GetRequiredService<ConnectViewModel>(), provider.GetRequiredService<FolderTreeViewModel>(), provider.GetRequiredService<ScopeSelectionViewModel>()));
+        services.AddSingleton(provider => new MainViewModel(provider.GetRequiredService<INavigationService>(), provider.GetServices<IScreen>(), provider.GetRequiredService<StatusBarViewModel>(), provider.GetRequiredService<OnboardingViewModel>()));
         services.AddSingleton<TrayLifecycle>();
         services.AddSingleton<PlaceholderNotificationPresenter>();
         services.AddSingleton<INotificationPresenter>(provider => provider.GetRequiredService<PlaceholderNotificationPresenter>());

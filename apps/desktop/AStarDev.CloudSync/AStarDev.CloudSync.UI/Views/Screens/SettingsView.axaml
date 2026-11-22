@@ -1,52 +1,87 @@
 <UserControl xmlns="https://github.com/avaloniaui"
                 xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
                 xmlns:vm="using:AStarDev.CloudSync.UI.ViewModels"
+                xmlns:views="using:AStarDev.CloudSync.UI.Views"
                 xmlns:screens="using:AStarDev.CloudSync.UI.ViewModels.Screens"
                 xmlns:loc="using:AStarDev.CloudSync.UI.Localisation"
                 x:Class="AStarDev.CloudSync.UI.Views.Screens.SettingsView"
                 x:DataType="screens:SettingsViewModel">
-    <ScrollViewer>
-        <StackPanel Margin="16" Spacing="8">
-            <TextBlock Text="{Binding Title}" FontSize="24" FontWeight="SemiBold" Foreground="{DynamicResource Text.Primary.Brush}" />
-            <TextBlock Text="{loc:Loc Common.RemoteFolders}" FontWeight="SemiBold" />
-            <TreeView ItemsSource="{Binding Folders.Roots}" MaxHeight="400">
-                <TreeView.Styles>
-                    <Style Selector="TreeViewItem" x:DataType="vm:FolderNodeViewModel">
-                        <Setter Property="IsExpanded" Value="{Binding IsExpanded, Mode=TwoWay}" />
-                    </Style>
-                </TreeView.Styles>
-                <TreeView.ItemTemplate>
-                    <TreeDataTemplate x:DataType="vm:FolderNodeViewModel" ItemsSource="{Binding Children}">
-                        <StackPanel Orientation="Horizontal" Spacing="4">
-                            <CheckBox IsChecked="{Binding IsSelected, Mode=TwoWay}" IsVisible="{Binding CanSelect}" MinWidth="0" Padding="0" />
-                            <TextBlock Text="{Binding Text}" VerticalAlignment="Center" />
+    <DockPanel Margin="16">
+        <TextBlock DockPanel.Dock="Top" Text="{Binding Title}" FontSize="24" FontWeight="SemiBold" Foreground="{DynamicResource Text.Primary.Brush}" Margin="0,0,0,8" />
+        <ListBox DockPanel.Dock="Left" ItemsSource="{Binding Categories}" SelectedItem="{Binding SelectedCategory, Mode=TwoWay}" Background="{DynamicResource Settings.Category.Brush}" MinWidth="160" Margin="0,0,16,0">
+            <ListBox.ItemTemplate>
+                <DataTemplate x:DataType="vm:SettingsCategoryViewModel">
+                    <TextBlock Text="{Binding Title}" />
+                </DataTemplate>
+            </ListBox.ItemTemplate>
+        </ListBox>
+        <ScrollViewer>
+            <Panel>
+                <StackPanel Spacing="8" IsVisible="{Binding IsGeneral}">
+                    <TextBlock Text="{loc:Loc Settings.General.Heading}" FontSize="18" FontWeight="SemiBold" />
+                    <TextBlock Text="{loc:Loc Settings.General.Language}" />
+                    <TextBlock Text="{loc:Loc Settings.General.LanguageNote}" Foreground="{DynamicResource Text.Secondary.Brush}" TextWrapping="Wrap" />
+                </StackPanel>
+                <StackPanel Spacing="8" IsVisible="{Binding IsProviders}">
+                    <TextBlock Text="{loc:Loc Settings.Providers.Heading}" FontSize="18" FontWeight="SemiBold" />
+                    <TextBlock Text="{loc:Loc Settings.Providers.Description}" TextWrapping="Wrap" />
+                    <Button Content="{loc:Loc Settings.Providers.Open}" Command="{Binding OpenProvidersCommand}" HorizontalAlignment="Left" />
+                </StackPanel>
+                <StackPanel Spacing="8" IsVisible="{Binding IsSynchronisation}">
+                    <TextBlock Text="{loc:Loc Settings.Synchronisation.Heading}" FontSize="18" FontWeight="SemiBold" />
+                    <TextBlock Text="{loc:Loc Settings.Synchronisation.Description}" TextWrapping="Wrap" />
+                    <TextBlock Text="{loc:Loc Common.RemoteFolders}" FontWeight="SemiBold" />
+                    <views:FolderTreeView DataContext="{Binding Folders}" />
+                    <TextBlock Text="{loc:Loc Common.LocalFolder}" FontWeight="SemiBold" />
+                    <StackPanel Orientation="Horizontal" Spacing="8">
+                        <TextBox Text="{Binding Selection.LocalRoot, Mode=TwoWay}" IsReadOnly="{Binding Selection.HasJob}" Width="360" PlaceholderText="{loc:Loc Common.LocalFolderPlaceholder}" />
+                        <Button Content="{loc:Loc Common.Browse}" Command="{Binding Selection.BrowseCommand}" IsEnabled="{Binding !Selection.HasJob}" />
+                    </StackPanel>
+                    <StackPanel Orientation="Horizontal" Spacing="8">
+                        <TextBlock Text="{loc:Loc Common.FirstSync}" VerticalAlignment="Center" />
+                        <ComboBox ItemsSource="{Binding Selection.BootstrapModes}" SelectedItem="{Binding Selection.BootstrapMode, Mode=TwoWay}" IsEnabled="{Binding !Selection.HasJob}" />
+                        <Button Content="{loc:Loc Common.CreateSyncJob}" Command="{Binding Selection.CreateJobCommand}" IsEnabled="{Binding Selection.CanCreateJob}" />
+                    </StackPanel>
+                    <TextBlock Text="{Binding Selection.JobSummary}" />
+                    <TextBlock Text="{Binding Selection.StatusMessage}" Foreground="{DynamicResource Trust.Critical.Brush}" TextWrapping="Wrap" />
+                    <Border Background="{DynamicResource Settings.Placeholder.Brush}" BorderBrush="{DynamicResource Border.Brush}" BorderThickness="1" Padding="12">
+                        <StackPanel Spacing="4" DataContext="{Binding ScopeManagement}" x:DataType="vm:SettingsEntryViewModel">
+                            <TextBlock Text="{Binding Heading}" FontWeight="SemiBold" />
+                            <TextBlock Text="{Binding Consequences}" TextWrapping="Wrap" />
+                            <TextBlock Text="{Binding WhatHappensNext}" TextWrapping="Wrap" Foreground="{DynamicResource Text.Secondary.Brush}" />
                         </StackPanel>
-                    </TreeDataTemplate>
-                </TreeView.ItemTemplate>
-            </TreeView>
-            <TextBlock Text="{loc:Loc Common.LocalFolder}" FontWeight="SemiBold" />
-            <StackPanel Orientation="Horizontal" Spacing="8">
-                <TextBox Text="{Binding Selection.LocalRoot, Mode=TwoWay}" IsReadOnly="{Binding Selection.HasJob}" Width="360" PlaceholderText="{loc:Loc Common.LocalFolderPlaceholder}" />
-                <Button Content="{loc:Loc Common.Browse}" Command="{Binding Selection.BrowseCommand}" IsEnabled="{Binding !Selection.HasJob}" />
-            </StackPanel>
-            <StackPanel Orientation="Horizontal" Spacing="8">
-                <TextBlock Text="{loc:Loc Common.FirstSync}" VerticalAlignment="Center" />
-                <ComboBox ItemsSource="{Binding Selection.BootstrapModes}" SelectedItem="{Binding Selection.BootstrapMode, Mode=TwoWay}" IsEnabled="{Binding !Selection.HasJob}" />
-                <Button Content="{loc:Loc Common.CreateSyncJob}" Command="{Binding Selection.CreateJobCommand}" IsEnabled="{Binding Selection.CanCreateJob}" />
-            </StackPanel>
-            <TextBlock Text="{Binding Selection.JobSummary}" />
-            <TextBlock Text="{Binding Selection.StatusMessage}" Foreground="{DynamicResource Trust.Critical.Brush}" TextWrapping="Wrap" />
-            <TextBlock Text="{Binding AdvancedHeading}" FontWeight="SemiBold" Margin="0,16,0,0" />
-            <ItemsControl ItemsSource="{Binding Advanced}">
-                <ItemsControl.ItemTemplate>
-                    <DataTemplate x:DataType="vm:DestinationViewModel">
-                        <Button Content="{Binding Title}"
-                                Command="{Binding $parent[UserControl].((screens:SettingsViewModel)DataContext).OpenAdvancedCommand}"
-                                CommandParameter="{Binding Id}"
-                                Margin="0,0,0,4" />
-                    </DataTemplate>
-                </ItemsControl.ItemTemplate>
-            </ItemsControl>
-        </StackPanel>
-    </ScrollViewer>
+                    </Border>
+                    <Border Background="{DynamicResource Settings.Placeholder.Brush}" BorderBrush="{DynamicResource Border.Brush}" BorderThickness="1" Padding="12">
+                        <StackPanel Spacing="4" DataContext="{Binding SyncRootChange}" x:DataType="vm:SettingsEntryViewModel">
+                            <TextBlock Text="{Binding Heading}" FontWeight="SemiBold" />
+                            <TextBlock Text="{Binding Consequences}" TextWrapping="Wrap" />
+                            <TextBlock Text="{Binding WhatHappensNext}" TextWrapping="Wrap" Foreground="{DynamicResource Text.Secondary.Brush}" />
+                        </StackPanel>
+                    </Border>
+                </StackPanel>
+                <StackPanel Spacing="8" IsVisible="{Binding IsAppearance}">
+                    <TextBlock Text="{loc:Loc Settings.Appearance.Heading}" FontSize="18" FontWeight="SemiBold" />
+                    <TextBlock Text="{loc:Loc Settings.Appearance.Placeholder}" TextWrapping="Wrap" />
+                </StackPanel>
+                <StackPanel Spacing="8" IsVisible="{Binding IsNotifications}">
+                    <TextBlock Text="{loc:Loc Settings.Notifications.Heading}" FontSize="18" FontWeight="SemiBold" />
+                    <TextBlock Text="{loc:Loc Settings.Notifications.Placeholder}" TextWrapping="Wrap" />
+                </StackPanel>
+                <StackPanel Spacing="8" IsVisible="{Binding IsAdvanced}">
+                    <TextBlock Text="{Binding AdvancedHeading}" FontSize="18" FontWeight="SemiBold" />
+                    <TextBlock Text="{loc:Loc Settings.Advanced.Description}" TextWrapping="Wrap" />
+                    <ItemsControl ItemsSource="{Binding Advanced}">
+                        <ItemsControl.ItemTemplate>
+                            <DataTemplate x:DataType="vm:DestinationViewModel">
+                                <Button Content="{Binding Title}"
+                                        Command="{Binding $parent[UserControl].((screens:SettingsViewModel)DataContext).OpenAdvancedCommand}"
+                                        CommandParameter="{Binding Id}"
+                                        Margin="0,0,0,4" />
+                            </DataTemplate>
+                        </ItemsControl.ItemTemplate>
+                    </ItemsControl>
+                </StackPanel>
+            </Panel>
+        </ScrollViewer>
+    </DockPanel>
 </UserControl>
