@@ -76,7 +76,8 @@ public sealed class InitialCrawlShould
         provider.GenerateTree(120, Docs);
         provider.GenerateTree(30, Notes);
         provider.FailRoot(Docs, new Permanent("forbidden"));
-        await using var host = CreateHost(provider, new RecordingProgressSink());
+        var sink = new RecordingProgressSink();
+        await using var host = CreateHost(provider, sink);
         var job = await SeedAsync(host, Docs, Notes);
 
         var summary = await CrawlAsync(host, job);
@@ -88,6 +89,7 @@ public sealed class InitialCrawlShould
         docs.Value.ShouldBeOfType<Ok<CrawlCheckpoint>>().Value.ShouldBe(CrawlCheckpoint.None);
         notes.Value.ShouldBeOfType<Ok<CrawlCheckpoint>>().Value.Completed.ShouldBeTrue();
         Count(host, "Items").ShouldBe(30);
+        sink.Reports.ShouldContain(new CrawlProgress(job.Id, Docs, 0, false, Failed: true));
     }
 
     [Fact]
@@ -96,13 +98,15 @@ public sealed class InitialCrawlShould
         var provider = new FakeCloudProvider(pageSize: 50);
         provider.GenerateTree(120, Docs);
         provider.ScriptFailures(new Transient("network drop"), new RateLimited(TimeSpan.FromSeconds(30)));
-        await using var host = CreateHost(provider, new RecordingProgressSink());
+        var sink = new RecordingProgressSink();
+        await using var host = CreateHost(provider, sink);
         var job = await SeedAsync(host, Docs);
 
         var summary = await CrawlAsync(host, job);
 
         summary.ShouldBe(new CrawlSummary(1, 0));
         Count(host, "Items").ShouldBe(120);
+        sink.Reports.Where(report => report.RetryIn is not null).Select(report => report.RetryIn).ShouldBe([TimeSpan.FromSeconds(2), TimeSpan.FromSeconds(30)]);
     }
 
     [Fact]
@@ -132,7 +136,7 @@ public sealed class InitialCrawlShould
 
         await CrawlAsync(host, job);
 
-        sink.Reports.Last().ShouldBe(new CrawlProgress(job.Id, Docs, 120, true));
+        sink.Reports.Last().ShouldBe(new CrawlProgress(job.Id, Docs, 120, true, 120));
         sink.Reports.Count(report => report.Completed).ShouldBe(1);
     }
 

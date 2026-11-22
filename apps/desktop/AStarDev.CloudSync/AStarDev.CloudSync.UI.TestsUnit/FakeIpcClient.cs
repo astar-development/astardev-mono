@@ -19,7 +19,11 @@ internal sealed class FakeIpcClient(List<string> calls, bool available) : IIpcCl
 
     public Func<GetSyncScopes, Result<SyncScopesView, IpcError>> ScopesReply { get; init; } = _ => new Ok<SyncScopesView>(new SyncScopesView([]));
 
+    public Result<ActivitiesView, IpcError> ActivitiesReply { get; init; } = new Ok<ActivitiesView>(new ActivitiesView([]));
+
     public List<GetRemoteFolders> FolderQueries { get; } = [];
+
+    private readonly List<Delegate> eventHandlers = [];
 
     public List<ICommand> Sent { get; } = [];
 
@@ -61,6 +65,7 @@ internal sealed class FakeIpcClient(List<string> calls, bool available) : IIpcCl
             GetRemoteRootSummary => (Result<TResult, IpcError>)(object)SummaryReply,
             GetAccounts => (Result<TResult, IpcError>)(object)AccountsReply,
             GetSyncJobs => (Result<TResult, IpcError>)(object)JobsReply,
+            GetActivities => (Result<TResult, IpcError>)(object)ActivitiesReply,
             GetSyncScopes scopes => (Result<TResult, IpcError>)(object)ScopesReply(scopes),
             GetRemoteFolders folders => (Result<TResult, IpcError>)(object)Record(folders),
             _ => new Ok<TResult>((TResult)(object)Status)
@@ -76,7 +81,12 @@ internal sealed class FakeIpcClient(List<string> calls, bool available) : IIpcCl
 
     public void OnEvent<TEvent>(Action<TEvent> handler)
         where TEvent : IEvent
+        => eventHandlers.Add(handler);
+
+    public void Raise<TEvent>(TEvent @event)
+        where TEvent : IEvent
     {
+        foreach (var handler in eventHandlers.OfType<Action<TEvent>>()) handler(@event);
     }
 
     public Task<Result<Unit, IpcError>> SubscribeAsync(CancellationToken cancellationToken)

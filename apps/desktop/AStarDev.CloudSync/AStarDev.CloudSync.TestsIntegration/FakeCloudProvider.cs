@@ -106,7 +106,7 @@ internal sealed class FakeCloudProvider(int pageSize) : ICloudProvider
         ItemsServed += page.Count;
         ResumeTokensSeen.Add(resumeToken);
 
-        return Task.FromResult<Result<ProviderSnapshotPage, ProviderError>>(new Ok<ProviderSnapshotPage>(new ProviderSnapshotPage(page, last ? null : next.ToString(), last ? new DeltaToken($"delta-{root.Value}") : null)));
+        return Task.FromResult<Result<ProviderSnapshotPage, ProviderError>>(new Ok<ProviderSnapshotPage>(new ProviderSnapshotPage(page, last ? null : next.ToString(), last ? new DeltaToken($"delta-{root.Value}") : null, source.Count)));
     }
 
     private sealed class ItemSource(int count, Func<int, ProviderItem> at)

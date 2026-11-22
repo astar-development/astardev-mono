@@ -6,6 +6,25 @@
              x:DataType="vm:ActivityViewModel">
     <DockPanel Margin="16">
         <TextBlock DockPanel.Dock="Top" Text="{Binding Title}" FontSize="24" FontWeight="SemiBold" Foreground="{DynamicResource Text.Primary.Brush}" />
+        <StackPanel DockPanel.Dock="Top" IsVisible="{Binding HasDaemonActivities}" Spacing="8" Margin="0,8,0,0">
+            <TextBlock Text="{Binding DaemonActivitiesHeading}" FontWeight="SemiBold" Foreground="{DynamicResource Text.Primary.Brush}" />
+            <ItemsControl ItemsSource="{Binding DaemonActivities}">
+                <ItemsControl.ItemTemplate>
+                    <DataTemplate x:DataType="vm:DaemonActivityRowViewModel">
+                        <Border Classes="card" Margin="0,0,0,8">
+                            <StackPanel Spacing="4">
+                                <TextBlock Text="{Binding Title}" FontWeight="SemiBold" Foreground="{DynamicResource Text.Primary.Brush}" />
+                                <ProgressBar Minimum="0" Maximum="100" Value="{Binding Percent}" IsVisible="{Binding HasPercent}" />
+                                <TextBlock Text="{Binding ProgressText}" Foreground="{DynamicResource Text.Secondary.Brush}" />
+                                <TextBlock Text="{Binding EtaText}" IsVisible="{Binding EtaText, Converter={x:Static ObjectConverters.IsNotNull}}" Foreground="{DynamicResource Text.Secondary.Brush}" />
+                                <TextBlock Text="{Binding RetryText}" IsVisible="{Binding RetryText, Converter={x:Static ObjectConverters.IsNotNull}}" Foreground="{DynamicResource Trust.Degraded.Brush}" />
+                                <TextBlock Text="{Binding ActionRequiredText}" TextWrapping="Wrap" IsVisible="{Binding ActionRequiredText, Converter={x:Static ObjectConverters.IsNotNull}}" Foreground="{DynamicResource Trust.Degraded.Brush}" />
+                            </StackPanel>
+                        </Border>
+                    </DataTemplate>
+                </ItemsControl.ItemTemplate>
+            </ItemsControl>
+        </StackPanel>
         <views:OperationListView />
     </DockPanel>
 </UserControl>
