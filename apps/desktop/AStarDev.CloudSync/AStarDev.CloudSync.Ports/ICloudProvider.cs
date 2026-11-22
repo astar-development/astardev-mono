@@ -34,11 +34,12 @@ public interface ICloudProvider
 
     /// <summary>Lists the remote items under one remote root as they are now, one page at a time.</summary>
     /// <param name="root">The remote folder to list.</param>
+    /// <param name="resumeToken"><see langword="null"/> to start at the first page, or the <see cref="ProviderSnapshotPage.ResumeToken"/> of the previous page to continue after it, also in a later run of the process.</param>
     /// <param name="cancellationToken">Cancelling abandons the listing and surfaces as <see cref="OperationCanceledException"/>, never as a <see cref="ProviderError"/>.</param>
-    /// <returns>One page of items, or the reason the listing failed. Match <see cref="ProviderError"/> to decide whether to retry.</returns>
+    /// <returns>One page of items, or the reason the listing failed. A page with no <see cref="ProviderSnapshotPage.ResumeToken"/> is the last. Match <see cref="ProviderError"/> to decide whether to retry; the same call can be repeated.</returns>
     /// <example>
     /// <code>
-    /// var page = await provider.GetSnapshotAsync(rootId, cancellationToken);
+    /// var page = await provider.GetSnapshotAsync(rootId, null, cancellationToken);
     /// var delay = page switch
     /// {
     ///     Fail&lt;ProviderError&gt; { Error: RateLimited limited } => limited.RetryAfter,
@@ -46,5 +47,5 @@ public interface ICloudProvider
     /// };
     /// </code>
     /// </example>
-    Task<Result<ProviderSnapshotPage, ProviderError>> GetSnapshotAsync(RemoteItemId root, CancellationToken cancellationToken);
+    Task<Result<ProviderSnapshotPage, ProviderError>> GetSnapshotAsync(RemoteItemId root, string? resumeToken, CancellationToken cancellationToken);
 }

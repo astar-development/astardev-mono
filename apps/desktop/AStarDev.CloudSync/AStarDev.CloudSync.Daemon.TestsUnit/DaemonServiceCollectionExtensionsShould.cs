@@ -44,6 +44,15 @@ public sealed class DaemonServiceCollectionExtensionsShould
     }
 
     [Fact]
+    public async Task register_the_sync_engine_with_the_ipc_progress_sink()
+    {
+        await using var host = DaemonTestHost.Create();
+
+        host.Services.GetRequiredService<SyncEngine.SyncRunner>().ShouldBeSameAs(host.Services.GetRequiredService<SyncEngine.SyncRunner>());
+        host.Services.GetRequiredService<SyncEngine.ICrawlProgressSink>().ShouldBeOfType<IpcCrawlProgressSink>();
+    }
+
+    [Fact]
     public async Task reconnect_stored_accounts_before_the_daemon_accepts_connections()
     {
         var provider = new StubCloudProvider();

@@ -47,7 +47,7 @@ internal sealed class StubCloudProvider : ICloudProvider
         return Task.FromResult(DisconnectResult);
     }
 
-    public Task<Result<ProviderSnapshotPage, ProviderError>> GetSnapshotAsync(RemoteItemId root, CancellationToken cancellationToken)
+    public Task<Result<ProviderSnapshotPage, ProviderError>> GetSnapshotAsync(RemoteItemId root, string? resumeToken, CancellationToken cancellationToken)
     {
         cancellationToken.ThrowIfCancellationRequested();
         Roots.Add(root);

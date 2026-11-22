@@ -26,6 +26,8 @@ public sealed class IpcHostedServiceShould
             services.GetRequiredService<RemoveSyncScopeHandler>(),
             services.GetRequiredService<SyncJobsQuery>(),
             services.GetRequiredService<SyncScopesQuery>(),
+            services.GetRequiredService<StartSyncHandler>(),
+            services.GetRequiredService<StopSyncHandler>(),
             TimeProvider.System,
             NullLogger<IpcHostedService>.Instance);
     }

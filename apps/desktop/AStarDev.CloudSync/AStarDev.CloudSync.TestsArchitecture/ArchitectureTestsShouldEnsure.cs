@@ -60,7 +60,7 @@ public sealed class ArchitectureTestsShouldEnsure
     [Fact]
     public void the_sync_engine_does_not_depend_on_microsoft_graph() =>
         Types
-            .InAssembly(typeof(SyncEngine.Class1).Assembly)
+            .InAssembly(typeof(SyncEngine.SyncRunner).Assembly)
             .ShouldNot()
             .HaveDependencyOn("Microsoft.Graph")
             .GetResult().IsSuccessful.ShouldBeTrue();
@@ -94,7 +94,7 @@ public sealed class ArchitectureTestsShouldEnsure
 
     [Fact]
     public void the_sync_engine_is_independently_testable()
-        => ShouldNotDependOn(typeof(SyncEngine.Class1).Assembly,
+        => ShouldNotDependOn(typeof(SyncEngine.SyncRunner).Assembly,
             "AStarDev.CloudSync.Persistence", "AStarDev.CloudSync.OneDrive", "AStarDev.CloudSync.IPC",
             "AStarDev.CloudSync.Daemon", "AStarDev.CloudSync.UI");
 
@@ -164,7 +164,7 @@ public sealed class ArchitectureTestsShouldEnsure
         typeof(Observability.TelemetryServiceCollectionExtensions).Assembly,
         typeof(OneDrive.OneDriveServiceCollectionExtensions).Assembly,
         typeof(Persistence.DatabaseOptions).Assembly,
-        typeof(SyncEngine.Class1).Assembly
+        typeof(SyncEngine.SyncRunner).Assembly
     ];
 
     private static void ShouldNotDependOn(System.Reflection.Assembly assembly, params string[] forbidden) => Types
