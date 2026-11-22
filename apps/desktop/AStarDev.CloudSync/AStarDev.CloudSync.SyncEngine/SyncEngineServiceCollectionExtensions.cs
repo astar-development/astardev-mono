@@ -28,7 +28,13 @@ public static class SyncEngineServiceCollectionExtensions
             provider.GetRequiredService<ICrawlProgressSink>(),
             provider.GetRequiredService<TimeProvider>(),
             provider.GetRequiredService<ILogger<InitialCrawler>>()));
-        services.AddSingleton(provider => new SyncRunner(provider.GetRequiredService<ISyncJobStore>(), provider.GetRequiredService<InitialCrawler>(), provider.GetRequiredService<ILogger<SyncRunner>>()));
+        services.AddSingleton(provider => new DeltaProcessingService(
+            provider.GetRequiredService<ICloudProvider>(),
+            provider.GetRequiredService<IItemIndexStore>(),
+            provider.GetRequiredService<ISyncScopeStore>(),
+            provider.GetRequiredService<TimeProvider>(),
+            provider.GetRequiredService<ILogger<DeltaProcessingService>>()));
+        services.AddSingleton(provider => new SyncRunner(provider.GetRequiredService<ISyncJobStore>(), provider.GetRequiredService<InitialCrawler>(), provider.GetRequiredService<DeltaProcessingService>(), provider.GetRequiredService<ILogger<SyncRunner>>()));
 
         return services;
     }

@@ -23,4 +23,13 @@ public interface IItemIndexStore
     /// <param name="cancellationToken">Cancelling before the write completes stores neither the items nor the checkpoint.</param>
     /// <returns>Success, <see cref="SyncScopeNotFound"/> when the scope is not selected, or <see cref="StorageFailed"/>.</returns>
     Task<Result<Unit, StoreError>> SavePageAsync(SyncScope scope, IReadOnlyList<ProviderItem> items, CrawlCheckpoint checkpoint, DateTimeOffset observedUtc, CancellationToken cancellationToken);
+
+    /// <summary>Applies one page of remote changes to the stored items and snapshots, and keeps the scope's new delta token, all or nothing.</summary>
+    /// <param name="scope">The scope the changes were reported for.</param>
+    /// <param name="changes">The page, applied in order. Created and modified items are added or updated by <see cref="ProviderChange.RemoteItemId"/> with a new remote snapshot; renamed items get their new path; deleted items are removed together with their snapshots and any items below them. A change for an unknown item is applied as far as it can be, so applying a page again is safe.</param>
+    /// <param name="newToken">The token to keep once the changes are stored; <see langword="null"/> for a page that is not the last, which leaves the stored token as it is.</param>
+    /// <param name="observedUtc">When the provider reported the changes.</param>
+    /// <param name="cancellationToken">Cancelling before the write completes stores neither the changes nor the token.</param>
+    /// <returns>Success, <see cref="SyncScopeNotFound"/> when the scope is not selected, or <see cref="StorageFailed"/>, in which case the old token is still stored.</returns>
+    Task<Result<Unit, StoreError>> ApplyDeltaPageAsync(SyncScope scope, IReadOnlyList<ProviderChange> changes, DeltaToken? newToken, DateTimeOffset observedUtc, CancellationToken cancellationToken);
 }
