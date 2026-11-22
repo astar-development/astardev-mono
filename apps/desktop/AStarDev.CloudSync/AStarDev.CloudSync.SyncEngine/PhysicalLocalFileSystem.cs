@@ -3,8 +3,8 @@ using AStarDev.FunctionalParadigm;
 
 namespace AStarDev.CloudSync.SyncEngine;
 
-/// <summary><see cref="ILocalFileSystem"/> over the real disk, watching with <see cref="FileSystemWatcher"/>. The filesystem identity is not read because the base class library has no inode API, so <see cref="LocalFile.Identity"/> is always null.</summary>
-internal sealed class PhysicalLocalFileSystem : ILocalFileSystem
+/// <summary><see cref="ILocalFileSystem"/> over the real disk, watching with <see cref="FileSystemWatcher"/>. The filesystem identity comes from the <see cref="ILocalIdentityReader"/>, so <see cref="LocalFile.Identity"/> is null where the reader has none.</summary>
+internal sealed class PhysicalLocalFileSystem(ILocalIdentityReader identityReader) : ILocalFileSystem
 {
     private const int HashBufferSize = 81920;
     private const int WatcherBufferSize = 65536;
@@ -32,7 +32,7 @@ internal sealed class PhysicalLocalFileSystem : ILocalFileSystem
     public Result<IDisposable, LocalObservationError> Watch(string root, Action<LocalFileEvent> onEvent)
         => Try.Run<IDisposable>(() => Start(root, onEvent)).ToResult(ToFailure);
 
-    private static IReadOnlyList<LocalFile> List(string root, RelativePath subtree, CancellationToken cancellationToken)
+    private IReadOnlyList<LocalFile> List(string root, RelativePath subtree, CancellationToken cancellationToken)
     {
         var full = string.IsNullOrEmpty(subtree.Value) ? root : Path.Combine(root, subtree.Value);
         if (File.Exists(full)) return Describe(root, new FileInfo(full)) is { } single ? [single] : [];
@@ -50,8 +50,8 @@ internal sealed class PhysicalLocalFileSystem : ILocalFileSystem
         return files;
     }
 
-    private static LocalFile? Describe(string root, FileInfo file)
-        => file.Attributes.HasFlag(FileAttributes.ReparsePoint) ? null : new LocalFile(ToRelative(root, file.FullName), file.Length, new DateTimeOffset(file.LastWriteTimeUtc, TimeSpan.Zero), null);
+    private LocalFile? Describe(string root, FileInfo file)
+        => file.Attributes.HasFlag(FileAttributes.ReparsePoint) ? null : new LocalFile(ToRelative(root, file.FullName), file.Length, new DateTimeOffset(file.LastWriteTimeUtc, TimeSpan.Zero), identityReader.Read(file.FullName));
 
     private static RelativePath ToRelative(string root, string fullPath) => new(Path.GetRelativePath(root, fullPath).Replace(Path.DirectorySeparatorChar, '/'));
 

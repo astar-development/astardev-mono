@@ -16,7 +16,7 @@ public interface ILocalObservationStore
     /// <param name="jobId">The job whose items to read.</param>
     /// <param name="subtree">A file, or a folder with everything below it. An empty path means the whole job. A folder's name matches that folder's files only, never a sibling that merely starts with the same letters.</param>
     /// <param name="cancellationToken">Cancelling abandons the read.</param>
-    /// <returns>One snapshot per file, with <see cref="LocalSnapshot.Identity"/> always null because the identity is not stored; empty when nothing was observed; or <see cref="StorageFailed"/>.</returns>
+    /// <returns>One snapshot per file, each with the <see cref="LocalSnapshot.Identity"/> that was recorded, null when none was; empty when nothing was observed; or <see cref="StorageFailed"/>.</returns>
     Task<Result<IReadOnlyList<LocalSnapshot>, StoreError>> ListPresentAsync(SyncJobId jobId, RelativePath subtree, CancellationToken cancellationToken);
 
     /// <summary>Records what the local disk showed, all or nothing.</summary>

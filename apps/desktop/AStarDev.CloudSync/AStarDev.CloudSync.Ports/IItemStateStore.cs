@@ -12,6 +12,6 @@ public interface IItemStateStore
     /// <summary>Lists the files of a job with their latest local and remote observation. Folders are not listed.</summary>
     /// <param name="jobId">The job whose items to read.</param>
     /// <param name="cancellationToken">Cancelling abandons the read.</param>
-    /// <returns>One row per stored file, with <see cref="LocalSnapshot.Identity"/> always null; empty when none; or <see cref="StorageFailed"/>.</returns>
+    /// <returns>One row per stored file, with the stored <see cref="LocalSnapshot.Identity"/> and <see cref="StoredItem.LastLocalIdentity"/>; empty when none; or <see cref="StorageFailed"/>.</returns>
     Task<Result<IReadOnlyList<StoredItem>, StoreError>> ListAsync(SyncJobId jobId, CancellationToken cancellationToken);
 }
