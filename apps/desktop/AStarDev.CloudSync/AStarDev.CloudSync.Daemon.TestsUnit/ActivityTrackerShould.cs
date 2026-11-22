@@ -42,6 +42,20 @@ public sealed class ActivityTrackerShould
     }
 
     [Fact]
+    public async Task report_working_while_deltas_are_being_applied()
+    {
+        var tracker = new ActivityTracker(new FakeJobs(), new ManualTimeProvider(Start));
+        await tracker.ApplyAsync(new CrawlProgress(JobId, Docs, 500, true, 500), Token);
+
+        var working = await tracker.ApplyAsync(new CrawlProgress(JobId, Docs, 500, false, Delta: true), Token);
+        var done = await tracker.ApplyAsync(new CrawlProgress(JobId, Docs, 500, true, Delta: true), Token);
+
+        working.State.ShouldBe(ActivityState.Working);
+        working.ItemsDone.ShouldBe(500);
+        done.State.ShouldBe(ActivityState.Healthy);
+    }
+
+    [Fact]
     public async Task report_healthy_once_every_scope_has_completed()
     {
         var clock = new ManualTimeProvider(Start);

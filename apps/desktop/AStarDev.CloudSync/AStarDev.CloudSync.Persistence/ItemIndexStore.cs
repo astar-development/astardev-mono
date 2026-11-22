@@ -49,6 +49,29 @@ internal sealed class ItemIndexStore(IDbContextFactory<CloudSyncDbContext> conte
     }
 
     /// <inheritdoc/>
+    public async Task<Result<Unit, StoreError>> ResetScopeAsync(SyncScope scope, CancellationToken cancellationToken)
+    {
+        var outcome = await Try.RunAsync<Result<Unit, StoreError>>(async token =>
+        {
+            await using var context = await contextFactory.CreateDbContextAsync(token).ConfigureAwait(false);
+            if (!await context.SyncScopes.AnyAsync(row => row.SyncJobId == scope.SyncJobId && row.RemoteRootId == scope.RemoteRootId, token).ConfigureAwait(false)) return new Fail<StoreError>(new SyncScopeNotFound(scope));
+
+            await using var transaction = await context.Database.BeginTransactionAsync(token).ConfigureAwait(false);
+            await context.CrawlCheckpoints.Where(row => row.SyncJobId == scope.SyncJobId && row.RemoteRootId == scope.RemoteRootId).ExecuteDeleteAsync(token).ConfigureAwait(false);
+            await context.DeltaStates.Where(row => row.SyncJobId == scope.SyncJobId && row.RemoteRootId == scope.RemoteRootId).ExecuteDeleteAsync(token).ConfigureAwait(false);
+            await transaction.CommitAsync(token).ConfigureAwait(false);
+
+            return new Ok<Unit>(default);
+        }, cancellationToken).ConfigureAwait(false);
+
+        return outcome.ToResult(ToStorageFailure) switch
+        {
+            Ok<Result<Unit, StoreError>> ok => ok.Value,
+            Fail<StoreError> fail => fail
+        };
+    }
+
+    /// <inheritdoc/>
     public async Task<Result<Unit, StoreError>> ApplyDeltaPageAsync(SyncScope scope, IReadOnlyList<ProviderChange> changes, DeltaToken? newToken, DateTimeOffset observedUtc, CancellationToken cancellationToken)
     {
         var outcome = await Try.RunAsync<Result<Unit, StoreError>>(async token =>

@@ -14,6 +14,7 @@ internal sealed class FakeCloudProvider(int pageSize) : ICloudProvider
     private readonly Dictionary<RemoteItemId, List<ProviderItem>> children = [];
     private readonly Dictionary<RemoteItemId, List<ProviderChange>> changes = [];
     private readonly HashSet<DeltaToken> expiredTokens = [];
+    private readonly Dictionary<RemoteItemId, int> listingsCompleted = [];
     private int tokensIssued;
 
     public Action<int>? BeforePage { get; set; }
@@ -116,8 +117,9 @@ internal sealed class FakeCloudProvider(int pageSize) : ICloudProvider
         PagesServed++;
         ItemsServed += page.Count;
         ResumeTokensSeen.Add(resumeToken);
+        var token = last ? new DeltaToken(NextListingToken(root)) : (DeltaToken?)null;
 
-        return Task.FromResult<Result<ProviderSnapshotPage, ProviderError>>(new Ok<ProviderSnapshotPage>(new ProviderSnapshotPage(page, last ? null : next.ToString(), last ? new DeltaToken($"delta-{root.Value}") : null, source.Count)));
+        return Task.FromResult<Result<ProviderSnapshotPage, ProviderError>>(new Ok<ProviderSnapshotPage>(new ProviderSnapshotPage(page, last ? null : next.ToString(), token, source.Count)));
     }
 
     public Task<Result<ProviderDeltaPage, ProviderError>> GetDeltasAsync(RemoteItemId root, DeltaToken token, string? resumeToken, CancellationToken cancellationToken)
@@ -136,6 +138,14 @@ internal sealed class FakeCloudProvider(int pageSize) : ICloudProvider
         var newToken = last ? new DeltaToken($"delta-{root.Value}-{++tokensIssued}") : (DeltaToken?)null;
 
         return Task.FromResult<Result<ProviderDeltaPage, ProviderError>>(new Ok<ProviderDeltaPage>(new ProviderDeltaPage(page, last ? null : next.ToString(), newToken)));
+    }
+
+    private string NextListingToken(RemoteItemId root)
+    {
+        var count = listingsCompleted.GetValueOrDefault(root);
+        listingsCompleted[root] = count + 1;
+
+        return count == 0 ? $"delta-{root.Value}" : $"delta-{root.Value}-relisted-{count}";
     }
 
     private sealed class ItemSource(int count, Func<int, ProviderItem> at)

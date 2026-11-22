@@ -1,5 +1,6 @@
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
+using Microsoft.Extensions.Options;
 using AStarDev.CloudSync.Ports;
 
 namespace AStarDev.CloudSync.SyncEngine;
@@ -32,9 +33,12 @@ public static class SyncEngineServiceCollectionExtensions
             provider.GetRequiredService<ICloudProvider>(),
             provider.GetRequiredService<IItemIndexStore>(),
             provider.GetRequiredService<ISyncScopeStore>(),
+            provider.GetRequiredService<InitialCrawler>(),
+            provider.GetRequiredService<ICrawlProgressSink>(),
             provider.GetRequiredService<TimeProvider>(),
             provider.GetRequiredService<ILogger<DeltaProcessingService>>()));
-        services.AddSingleton(provider => new SyncRunner(provider.GetRequiredService<ISyncJobStore>(), provider.GetRequiredService<InitialCrawler>(), provider.GetRequiredService<DeltaProcessingService>(), provider.GetRequiredService<ILogger<SyncRunner>>()));
+        services.AddOptions<DeltaPollingOptions>().BindConfiguration(DeltaPollingOptions.ConfigurationSection);
+        services.AddSingleton(provider => new SyncRunner(provider.GetRequiredService<ISyncJobStore>(), provider.GetRequiredService<InitialCrawler>(), provider.GetRequiredService<DeltaProcessingService>(), provider.GetRequiredService<IOptions<DeltaPollingOptions>>(), provider.GetRequiredService<TimeProvider>(), provider.GetRequiredService<ILogger<SyncRunner>>()));
         services.AddOptions<OperationSchedulerOptions>().BindConfiguration(OperationSchedulerOptions.ConfigurationSection);
         services.AddSingleton<OperationScheduler>();
 

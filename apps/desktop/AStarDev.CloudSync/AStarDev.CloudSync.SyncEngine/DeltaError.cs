@@ -15,5 +15,9 @@ internal sealed record DeltaProviderFailed(ProviderError Error);
 /// <param name="Error">The store's reason.</param>
 internal sealed record DeltaStoreFailed(StoreError Error);
 
+/// <summary>The token was invalid and listing the scope again did not complete, or gave no new token. The scope's crawl checkpoint is kept, so the next run continues the listing.</summary>
+/// <param name="Scope">The scope that was reindexed.</param>
+internal sealed record ReindexFailed(SyncScope Scope);
+
 /// <summary>Closed set of reasons delta processing of a scope stopped.</summary>
-internal union DeltaError(ScopeNotReady, DeltaProviderFailed, DeltaStoreFailed);
+internal union DeltaError(ScopeNotReady, DeltaProviderFailed, DeltaStoreFailed, ReindexFailed);

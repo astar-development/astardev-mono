@@ -64,7 +64,16 @@ internal sealed class ActivityTracker(ISyncJobStore jobs, TimeProvider timeProvi
 
             scope.Failed = progress.Failed;
             retryIn = progress.RetryIn;
+            if (progress.Delta) scope.Working = !progress.Completed && !progress.Failed;
             if (progress.Failed) return;
+
+            if (progress.Delta)
+            {
+                scope.Completed = true;
+                updated = now;
+
+                return;
+            }
 
             if (progress.RetryIn is null)
             {
@@ -80,7 +89,7 @@ internal sealed class ActivityTracker(ISyncJobStore jobs, TimeProvider timeProvi
         {
             var done = scopes.Values.Sum(scope => scope.Items);
             long? total = scopes.Values.All(scope => scope.Total is not null) ? scopes.Values.Sum(scope => scope.Total!.Value) : null;
-            var state = retryIn is not null ? ActivityState.Waiting : scopes.Values.All(scope => scope.Completed) ? ActivityState.Healthy : ActivityState.InitialIndexing;
+            var state = retryIn is not null ? ActivityState.Waiting : scopes.Values.Any(scope => scope.Working) ? ActivityState.Working : scopes.Values.All(scope => scope.Completed) ? ActivityState.Healthy : ActivityState.InitialIndexing;
 
             return new ActivityView(id.Value, Name, state, done, total, Percent(done, total), EtaSeconds(done, total), started, updated ?? started, retryIn is { } wait ? (int)Math.Ceiling(wait.TotalSeconds) : null, scopes.Values.Any(scope => scope.Failed));
         }
@@ -112,5 +121,7 @@ internal sealed class ActivityTracker(ISyncJobStore jobs, TimeProvider timeProvi
         public bool Completed { get; set; }
 
         public bool Failed { get; set; }
+
+        public bool Working { get; set; }
     }
 }

@@ -2,23 +2,31 @@ using AStarDev.CloudSync.Domain;
 using AStarDev.CloudSync.Ports;
 using AStarDev.FunctionalParadigm;
 using Microsoft.Extensions.Logging;
+using Microsoft.Extensions.Options;
 
 namespace AStarDev.CloudSync.SyncEngine;
 
-/// <summary>Runs the initial crawl of a job in the background, at most one run per job, and stops it on request or when the process shuts down.</summary>
+/// <summary>
+/// Runs the initial crawl of a job in the background, at most one run per job, then applies the provider's changes every <see cref="DeltaPollingOptions.Interval"/> once every scope has crawled; a scope that failed is crawled again each round.
+/// Stops on request or when the process shuts down.
+/// </summary>
 public sealed class SyncRunner : IAsyncDisposable
 {
     private readonly Dictionary<SyncJobId, RunningCrawl> running = [];
     private readonly ISyncJobStore jobs;
     private readonly InitialCrawler crawler;
     private readonly DeltaProcessingService deltas;
+    private readonly DeltaPollingOptions options;
+    private readonly TimeProvider timeProvider;
     private readonly ILogger<SyncRunner> logger;
 
-    internal SyncRunner(ISyncJobStore jobs, InitialCrawler crawler, DeltaProcessingService deltas, ILogger<SyncRunner> logger)
+    internal SyncRunner(ISyncJobStore jobs, InitialCrawler crawler, DeltaProcessingService deltas, IOptions<DeltaPollingOptions> options, TimeProvider timeProvider, ILogger<SyncRunner> logger)
     {
         this.jobs = jobs;
         this.crawler = crawler;
         this.deltas = deltas;
+        this.options = options.Value;
+        this.timeProvider = timeProvider;
         this.logger = logger;
     }
 
@@ -74,9 +82,14 @@ public sealed class SyncRunner : IAsyncDisposable
     {
         try
         {
-            var summary = await crawler.CrawlAsync(syncJobId, cancellationToken);
-            logger.LogInformation("Crawl of job {Job} ended: {Summary}", syncJobId.Value, summary.Value);
-            await deltas.ProcessJobAsync(syncJobId, cancellationToken);
+            while (true)
+            {
+                var summary = await crawler.CrawlAsync(syncJobId, cancellationToken);
+                logger.LogInformation("Crawl of job {Job} ended: {Summary}", syncJobId.Value, summary.Value);
+                if (summary is Ok<CrawlSummary> { Value.ScopesFailed: 0 }) await deltas.ProcessJobAsync(syncJobId, cancellationToken);
+
+                await Task.Delay(options.Interval > TimeSpan.Zero ? options.Interval : TimeSpan.FromSeconds(1), timeProvider, cancellationToken);
+            }
         }
         finally
         {
