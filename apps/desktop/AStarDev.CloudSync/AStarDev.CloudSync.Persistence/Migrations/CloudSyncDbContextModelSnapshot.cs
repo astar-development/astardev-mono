@@ -15,7 +15,7 @@ internal sealed partial class CloudSyncDbContextModelSnapshot : ModelSnapshot
     // If you encounter a merge conflict in the line below, it means you need to
     // discard one of the migration branches and recreate its migrations on top of
     // the other branch. See https://aka.ms/efcore-docs-migrations-conflicts for more info.
-    public override string LastMigrationId => "20261122090124_AddDeltaStates";
+    public override string LastMigrationId => "20261122103734_AddKnownSnapshotsAndConflicts";
 
     protected override void BuildModel(ModelBuilder modelBuilder)
     {
@@ -54,6 +54,37 @@ internal sealed partial class CloudSyncDbContextModelSnapshot : ModelSnapshot
                     .IsUnique();
 
                 b.ToTable("Accounts");
+            });
+
+        modelBuilder.Entity("AStarDev.CloudSync.Persistence.ConflictEntity", b =>
+            {
+                b.Property<Guid>("Id")
+                    .HasColumnType("TEXT");
+
+                b.Property<long>("CreatedUtc")
+                    .HasColumnType("INTEGER");
+
+                b.Property<Guid>("ItemId")
+                    .HasColumnType("TEXT");
+
+                b.Property<string>("Status")
+                    .IsRequired()
+                    .HasColumnType("TEXT");
+
+                b.Property<Guid>("SyncJobId")
+                    .HasColumnType("TEXT");
+
+                b.Property<string>("Type")
+                    .IsRequired()
+                    .HasColumnType("TEXT");
+
+                b.HasKey("Id");
+
+                b.HasIndex("ItemId", "Type", "Status");
+
+                b.HasIndex("SyncJobId", "Status", "CreatedUtc");
+
+                b.ToTable("Conflicts");
             });
 
         modelBuilder.Entity("AStarDev.CloudSync.Persistence.CrawlCheckpointEntity", b =>
@@ -176,6 +207,37 @@ internal sealed partial class CloudSyncDbContextModelSnapshot : ModelSnapshot
                 b.ToTable("ItemSnapshots");
             });
 
+        modelBuilder.Entity("AStarDev.CloudSync.Persistence.KnownSnapshotEntity", b =>
+            {
+                b.Property<Guid>("ItemId")
+                    .HasColumnType("TEXT");
+
+                b.Property<string>("ETag")
+                    .HasColumnType("TEXT");
+
+                b.Property<string>("Hash")
+                    .HasColumnType("TEXT");
+
+                b.Property<long>("ModifiedUtc")
+                    .HasColumnType("INTEGER");
+
+                b.Property<string>("Path")
+                    .IsRequired()
+                    .HasColumnType("TEXT");
+
+                b.Property<long>("Size")
+                    .HasColumnType("INTEGER");
+
+                b.Property<Guid>("SyncJobId")
+                    .HasColumnType("TEXT");
+
+                b.HasKey("ItemId");
+
+                b.HasIndex("SyncJobId");
+
+                b.ToTable("KnownSnapshots");
+            });
+
         modelBuilder.Entity("AStarDev.CloudSync.Persistence.OperationEntity", b =>
             {
                 b.Property<Guid>("Id")
@@ -240,6 +302,43 @@ internal sealed partial class CloudSyncDbContextModelSnapshot : ModelSnapshot
                 b.ToTable("ProviderState");
             });
 
+        modelBuilder.Entity("AStarDev.CloudSync.Persistence.StagedKnownEntity", b =>
+            {
+                b.Property<Guid>("OperationId")
+                    .HasColumnType("TEXT");
+
+                b.Property<string>("ETag")
+                    .HasColumnType("TEXT");
+
+                b.Property<string>("Hash")
+                    .HasColumnType("TEXT");
+
+                b.Property<Guid>("ItemId")
+                    .HasColumnType("TEXT");
+
+                b.Property<long>("ModifiedUtc")
+                    .HasColumnType("INTEGER");
+
+                b.Property<string>("Path")
+                    .IsRequired()
+                    .HasColumnType("TEXT");
+
+                b.Property<bool>("Remove")
+                    .HasColumnType("INTEGER");
+
+                b.Property<long>("Size")
+                    .HasColumnType("INTEGER");
+
+                b.Property<Guid>("SyncJobId")
+                    .HasColumnType("TEXT");
+
+                b.HasKey("OperationId");
+
+                b.HasIndex("SyncJobId");
+
+                b.ToTable("StagedKnownSnapshots");
+            });
+
         modelBuilder.Entity("AStarDev.CloudSync.Persistence.SyncJobEntity", b =>
             {
                 b.Property<Guid>("Id")
@@ -293,6 +392,15 @@ internal sealed partial class CloudSyncDbContextModelSnapshot : ModelSnapshot
                 b.ToTable("SyncScopes");
             });
 
+        modelBuilder.Entity("AStarDev.CloudSync.Persistence.ConflictEntity", b =>
+            {
+                b.HasOne("AStarDev.CloudSync.Persistence.SyncJobEntity", null)
+                    .WithMany()
+                    .HasForeignKey("SyncJobId")
+                    .OnDelete(DeleteBehavior.Cascade)
+                    .IsRequired();
+            });
+
         modelBuilder.Entity("AStarDev.CloudSync.Persistence.CrawlCheckpointEntity", b =>
             {
                 b.HasOne("AStarDev.CloudSync.Persistence.SyncScopeEntity", null)
@@ -334,6 +442,15 @@ internal sealed partial class CloudSyncDbContextModelSnapshot : ModelSnapshot
                     .IsRequired();
             });
 
+        modelBuilder.Entity("AStarDev.CloudSync.Persistence.KnownSnapshotEntity", b =>
+            {
+                b.HasOne("AStarDev.CloudSync.Persistence.SyncJobEntity", null)
+                    .WithMany()
+                    .HasForeignKey("SyncJobId")
+                    .OnDelete(DeleteBehavior.Cascade)
+                    .IsRequired();
+            });
+
         modelBuilder.Entity("AStarDev.CloudSync.Persistence.OperationEntity", b =>
             {
                 b.HasOne("AStarDev.CloudSync.Persistence.SyncJobEntity", null)
@@ -348,6 +465,15 @@ internal sealed partial class CloudSyncDbContextModelSnapshot : ModelSnapshot
                 b.HasOne("AStarDev.CloudSync.Persistence.SyncJobEntity", null)
                     .WithOne()
                     .HasForeignKey("AStarDev.CloudSync.Persistence.ProviderStateEntity", "SyncJobId")
+                    .OnDelete(DeleteBehavior.Cascade)
+                    .IsRequired();
+            });
+
+        modelBuilder.Entity("AStarDev.CloudSync.Persistence.StagedKnownEntity", b =>
+            {
+                b.HasOne("AStarDev.CloudSync.Persistence.SyncJobEntity", null)
+                    .WithMany()
+                    .HasForeignKey("SyncJobId")
                     .OnDelete(DeleteBehavior.Cascade)
                     .IsRequired();
             });
