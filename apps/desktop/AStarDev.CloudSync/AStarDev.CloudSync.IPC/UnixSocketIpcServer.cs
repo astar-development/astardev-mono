@@ -3,13 +3,16 @@ using System.Diagnostics;
 using System.Net.Sockets;
 using System.Text.Json;
 using AStarDev.FunctionalParadigm;
+using Microsoft.Extensions.Logging;
+using Microsoft.Extensions.Logging.Abstractions;
 
 namespace AStarDev.CloudSync.IPC;
 
 /// <summary>Serves the IPC contract over a Unix domain socket, one length-prefixed JSON frame per envelope.</summary>
 /// <param name="socketPath">Where the socket file is created.</param>
 /// <param name="onError">Told about failures nobody else can receive: a broken peer, a dying accept loop.</param>
-internal sealed class UnixSocketIpcServer(string socketPath, Action<IpcError>? onError = null) : IIpcServer
+/// <param name="logger">Receives connection and failed-request logs; omit to log nothing.</param>
+internal sealed class UnixSocketIpcServer(string socketPath, Action<IpcError>? onError = null, ILogger? logger = null) : IIpcServer
 {
     private delegate Task<Result<JsonElement, IpcError>> Handler(JsonElement payload, CancellationToken cancellationToken);
 
@@ -24,6 +27,7 @@ internal sealed class UnixSocketIpcServer(string socketPath, Action<IpcError>? o
     private readonly ConcurrentDictionary<string, Handler> queries = new();
     private readonly ConcurrentDictionary<Connection, byte> connections = new();
     private readonly Action<IpcError> report = onError ?? (_ => { });
+    private readonly ILogger log = logger ?? NullLogger.Instance;
     private CancellationTokenSource? lifetime;
     private Task<Result<Unit, IpcError>> serverLoop = Task.FromResult<Result<Unit, IpcError>>(new Ok<Unit>(default));
     private int disposed;
@@ -200,6 +204,7 @@ internal sealed class UnixSocketIpcServer(string socketPath, Action<IpcError>? o
         var connection = new Connection(new EnvelopeChannel(new NetworkStream(socket, ownsSocket: true)));
         connections[connection] = 0;
         IpcTelemetry.ConnectionOpened(ApplicationConstants.ServerSide);
+        IpcLog.ConnectionOpened(log, ApplicationConstants.ServerSide);
         try
         {
             while (true)
@@ -224,6 +229,7 @@ internal sealed class UnixSocketIpcServer(string socketPath, Action<IpcError>? o
         {
             connections.TryRemove(connection, out _);
             IpcTelemetry.ConnectionClosed(ApplicationConstants.ServerSide);
+            IpcLog.ConnectionClosed(log, ApplicationConstants.ServerSide);
             await connection.Channel.DisposeAsync();
         }
     }
@@ -265,6 +271,7 @@ internal sealed class UnixSocketIpcServer(string socketPath, Action<IpcError>? o
             _ => new Fail<IpcError>(new MalformedFrame($"Unknown request '{request.GetType().Name}'."))
         };
         IpcTelemetry.CompleteRequest(activity, ApplicationConstants.ServerSide, kind, type, started, outcome);
+        if (outcome is Fail<IpcError> failed) IpcLog.RequestFailed(log, ApplicationConstants.ServerSide, kind, type, failed.Error.Describe());
 
         return outcome;
     }

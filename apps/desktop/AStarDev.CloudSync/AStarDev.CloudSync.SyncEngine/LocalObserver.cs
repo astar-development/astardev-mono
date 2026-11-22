@@ -116,7 +116,7 @@ internal sealed class LocalObserver(ILocalFileSystem fileSystem, ILocalObservati
                     present.Add(new LocalSnapshot(file.Path, file.Size, file.ModifiedUtc, file.Identity, ok.Value));
                     break;
                 case Fail<LocalObservationError> fail:
-                    logger.LogWarning("Local file {Path} of job {Job} could not be read and is left for the next scan: {Failure}", file.Path.Value, job.Id.Value, fail.Error.Value);
+                    SyncLog.TemporaryFileLock(logger, file.Path.Value, job.Id.Value, fail.Error.Value?.ToString() ?? string.Empty);
                     break;
             }
         }

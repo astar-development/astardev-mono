@@ -7,7 +7,7 @@ public sealed class CorrelationScopeShould
     {
         var logger = new CapturingLogger();
 
-        using var scope = CorrelationScope.Begin(logger, operationId: "op-1", itemId: "item-1", syncJobId: "job-1", accountId: "account-1");
+        using var scope = CorrelationScope.Begin(logger, operationId: "op-1", itemId: "item-1", syncJobId: "job-1", accountId: "account-1", remoteItemId: "remote-1");
 
         var state = logger.Scopes.ShouldHaveSingleItem().ShouldBeAssignableTo<IReadOnlyList<KeyValuePair<string, object?>>>().ShouldNotBeNull();
         state.ToDictionary(pair => pair.Key, pair => pair.Value).ShouldBe(new Dictionary<string, object?>
@@ -15,7 +15,8 @@ public sealed class CorrelationScopeShould
             ["OperationId"] = "op-1",
             ["ItemId"] = "item-1",
             ["SyncJobId"] = "job-1",
-            ["AccountId"] = "account-1"
+            ["AccountId"] = "account-1",
+            ["RemoteItemId"] = "remote-1"
         });
     }
 

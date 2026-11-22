@@ -5,6 +5,7 @@ using AStarDev.FunctionalParadigm;
 
 namespace AStarDev.CloudSync.IPC.TestsUnit;
 
+[Collection("IPC metrics")]
 public sealed class UnixSocketTransportShould : IAsyncLifetime
 {
     private static readonly TimeSpan Timeout = TimeSpan.FromSeconds(10);

@@ -1,4 +1,5 @@
 using AStarDev.CloudSync.Domain;
+using AStarDev.CloudSync.Observability;
 using AStarDev.CloudSync.Ports;
 using AStarDev.FunctionalParadigm;
 using Microsoft.Extensions.Logging;
@@ -92,6 +93,8 @@ public sealed class OperationScheduler(IOperationStore store, IOperationExecutor
 
     private async Task<Result<bool, StoreError>> ExecuteAsync(Operation operation, CancellationToken cancellationToken)
     {
+        using var scope = CorrelationScope.Begin(logger, operation.Id.Value.ToString(), operation.ItemId.Value.ToString(), operation.SyncJobId.Value.ToString());
+        OperationLog.Started(logger, operation.Type.ToString(), operation.Attempts);
         var started = timeProvider.GetTimestamp();
         metrics.RecordStarted(operation, timeProvider.GetUtcNow());
         var result = await executor.ExecuteAsync(operation, cancellationToken);
@@ -99,7 +102,7 @@ public sealed class OperationScheduler(IOperationStore store, IOperationExecutor
         RecordOutcome(operation, result);
         var settled = result switch
         {
-            Ok<Unit> => await store.CompleteAsync(operation.Id, cancellationToken),
+            Ok<Unit> => await CompleteAsync(operation, cancellationToken),
             Fail<ProviderError> fail => await FailAsync(operation, fail.Error, cancellationToken)
         };
 
@@ -125,9 +128,37 @@ public sealed class OperationScheduler(IOperationStore store, IOperationExecutor
     private async Task<Result<Unit, StoreError>> FailAsync(Operation operation, ProviderError error, CancellationToken cancellationToken)
     {
         var retryAtUtc = RetryDelay(operation, error) is { } delay ? timeProvider.GetUtcNow() + delay : (DateTimeOffset?)null;
-        logger.LogWarning("Operation {Operation} failed on attempt {Attempt}, {Outcome}: {Error}", operation.Id.Value, operation.Attempts, retryAtUtc is null ? "dead-lettered" : $"retrying at {retryAtUtc:O}", error.Value);
+        LogFailure(operation, error, retryAtUtc);
 
         return await store.FailAsync(operation.Id, error.Value?.ToString() ?? string.Empty, retryAtUtc, cancellationToken);
+    }
+
+    private async Task<Result<Unit, StoreError>> CompleteAsync(Operation operation, CancellationToken cancellationToken)
+    {
+        var completed = await store.CompleteAsync(operation.Id, cancellationToken);
+        if (completed is Ok<Unit>) OperationLog.Completed(logger, operation.Type.ToString(), operation.Attempts);
+
+        return completed;
+    }
+
+    private void LogFailure(Operation operation, ProviderError error, DateTimeOffset? retryAtUtc)
+    {
+        var reason = error.Value?.ToString() ?? string.Empty;
+        switch (error.Value, retryAtUtc)
+        {
+            case (RateLimited, { } at):
+                OperationLog.RateLimitEncountered(logger, operation.Attempts, at);
+                break;
+            case (_, { } at):
+                OperationLog.RetryScheduled(logger, operation.Attempts, at, reason);
+                break;
+            case (AuthenticationFailed, null):
+                OperationLog.AuthenticationExpired(logger, operation.Attempts, reason);
+                break;
+            default:
+                OperationLog.Failed(logger, operation.Attempts, reason);
+                break;
+        }
     }
 
     private TimeSpan? RetryDelay(Operation operation, ProviderError error)

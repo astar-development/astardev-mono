@@ -1,4 +1,5 @@
 using AStarDev.CloudSync.Domain;
+using AStarDev.CloudSync.Observability;
 using AStarDev.CloudSync.Ports;
 using AStarDev.FunctionalParadigm;
 using Microsoft.Extensions.Logging;
@@ -38,8 +39,15 @@ internal sealed class DeltaProcessingService(ICloudProvider provider, IItemIndex
     {
         await progress.ReportAsync(new CrawlProgress(scope.SyncJobId, scope.RemoteRootId, checkpoint.ItemsIndexed, false, Delta: true), cancellationToken);
         var started = timeProvider.GetTimestamp();
+        using var correlation = CorrelationScope.Begin(logger, syncJobId: scope.SyncJobId.Value.ToString(), remoteItemId: scope.RemoteRootId.Value);
         var outcome = await ApplyPagesAsync(scope, token, cancellationToken);
-        if (IsInvalidToken(outcome)) outcome = await ReindexAsync(scope, cancellationToken);
+        if (IsInvalidToken(outcome))
+        {
+            outcome = await ReindexAsync(scope, cancellationToken);
+            if (outcome is Ok<int>) SyncLog.DeltaTokenRefreshed(logger, scope.RemoteRootId.Value, scope.SyncJobId.Value);
+        }
+
+        if (outcome is Ok<int> applied) SyncLog.DeltaProcessingFinished(logger, scope.RemoteRootId.Value, scope.SyncJobId.Value, applied.Value);
 
         PerformanceMetrics.Shared.RecordDelta(timeProvider.GetElapsedTime(started));
 
@@ -53,7 +61,7 @@ internal sealed class DeltaProcessingService(ICloudProvider provider, IItemIndex
 
     private async Task<Result<int, DeltaError>> ReindexAsync(SyncScope scope, CancellationToken cancellationToken)
     {
-        logger.LogWarning("The delta token of {Root} of job {Job} is invalid; listing the scope again", scope.RemoteRootId.Value, scope.SyncJobId.Value);
+        SyncLog.DeltaTokenInvalid(logger, scope.RemoteRootId.Value, scope.SyncJobId.Value);
 
         if (await index.ResetScopeAsync(scope, cancellationToken) is Fail<StoreError> reset) return new Fail<DeltaError>(new DeltaStoreFailed(reset.Error));
 

@@ -107,6 +107,7 @@ public sealed class ConflictResolver
         if (status.Value is Fail<StoreError> statusFailure) return Stored(statusFailure.Error);
 
         SyncMetrics.Shared.ConflictResolved(choice.ToString());
+        SyncLog.ConflictResolved(logger, conflict.Id.Value, conflict.ItemId.Value, conflict.SyncJobId.Value, choice.ToString());
         var recorded = await RecordAsync(conflict with { Status = ConflictStatus.Resolved }, choice, copy, cancellationToken);
         if (copy is not null) await ReplanAsync(conflict.SyncJobId, cancellationToken);
 

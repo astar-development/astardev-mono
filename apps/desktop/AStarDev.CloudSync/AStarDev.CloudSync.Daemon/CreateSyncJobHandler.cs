@@ -50,7 +50,7 @@ internal sealed class CreateSyncJobHandler(IAccountStore accounts, ISyncJobStore
 
     private Ok<CommandResult> Accept(SyncJob job)
     {
-        logger.LogInformation("Created sync job {Job} for {LocalRoot} in {Mode} mode", job.Id.Value, job.LocalRootPath, job.BootstrapMode);
+        logger.LogInformation("Created sync job {Job} in {Mode} mode", job.Id.Value, job.BootstrapMode);
 
         return new Ok<CommandResult>(new CommandResult(CommandOutcome.Accepted));
     }
