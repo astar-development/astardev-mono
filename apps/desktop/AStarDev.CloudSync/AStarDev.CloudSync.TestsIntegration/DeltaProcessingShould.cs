@@ -97,6 +97,51 @@ public sealed class DeltaProcessingShould
         await Should.ThrowAsync<OperationCanceledException>(() => host.Services.GetRequiredService<DeltaProcessingService>().ProcessScopeAsync(scope, cancelled.Token));
         await Should.ThrowAsync<OperationCanceledException>(() => host.Services.GetRequiredService<DeltaProcessingService>().ProcessJobAsync(scope.SyncJobId, cancelled.Token));
         await Should.ThrowAsync<OperationCanceledException>(() => host.Services.GetRequiredService<IItemIndexStore>().ApplyDeltaPageAsync(scope, [], null, DateTimeOffset.UnixEpoch, cancelled.Token));
+        await Should.ThrowAsync<OperationCanceledException>(() => host.Services.GetRequiredService<IItemIndexStore>().ResetScopeAsync(scope, cancelled.Token));
+    }
+
+    [Fact]
+    public async Task reindex_the_scope_when_the_token_is_invalid()
+    {
+        var provider = new FakeCloudProvider(pageSize: 100);
+        AddFiles(provider, "a", "b");
+        await using var host = CreateHost(provider);
+        var job = await SeedAsync(host);
+        await CrawlAsync(host, job);
+        provider.AddItem(File("c", 3), Docs);
+        provider.ExpireToken(new DeltaToken("delta-docs"));
+
+        var outcome = await host.Services.GetRequiredService<DeltaProcessingService>().ProcessScopeAsync(new SyncScope(job.Id, Docs), Token);
+
+        outcome.Value.ShouldBeOfType<Ok<int>>();
+        Query(host, "SELECT RemoteItemId FROM Items ORDER BY RemoteItemId").ShouldBe(["a", "b", "c"]);
+        (await TokenAsync(host, job)).ShouldBe(new DeltaToken("delta-docs-1"));
+        provider.ResumeTokensSeen.Count.ShouldBe(2);
+    }
+
+    [Fact]
+    public async Task leave_other_scopes_alone_during_a_reindex()
+    {
+        var pictures = new RemoteItemId("pictures");
+        var provider = new FakeCloudProvider(pageSize: 100);
+        AddFiles(provider, "a");
+        provider.AddItem(File("p", 1), pictures);
+        await using var host = CreateHost(provider);
+        var job = await SeedAsync(host);
+        (await host.Services.GetRequiredService<ISyncScopeStore>().AddAsync(new SyncScope(job.Id, pictures), Token)).Value.ShouldBeOfType<Ok<Unit>>();
+        await CrawlAsync(host, job);
+        var before = (await host.Services.GetRequiredService<IItemIndexStore>().GetCheckpointAsync(new SyncScope(job.Id, pictures), Token)).Value.ShouldBeOfType<Ok<CrawlCheckpoint>>().Value;
+        var pagesBefore = provider.PagesServed;
+        provider.ExpireToken(new DeltaToken("delta-docs"));
+
+        var outcome = await host.Services.GetRequiredService<DeltaProcessingService>().ProcessScopeAsync(new SyncScope(job.Id, Docs), Token);
+
+        outcome.Value.ShouldBeOfType<Ok<int>>();
+        provider.PagesServed.ShouldBe(pagesBefore + 1);
+        var after = (await host.Services.GetRequiredService<IItemIndexStore>().GetCheckpointAsync(new SyncScope(job.Id, pictures), Token)).Value.ShouldBeOfType<Ok<CrawlCheckpoint>>().Value;
+        after.ShouldBe(before);
+        Query(host, "SELECT COUNT(*) FROM ItemSnapshots s JOIN Items i ON i.Id = s.ItemId WHERE i.RemoteItemId = 'p'").ShouldBe(["1"]);
+        Query(host, "SELECT COUNT(*) FROM Items").ShouldBe(["2"]);
     }
 
     private static ProviderItem File(string id, long size) => new(new RemoteItemId(id), new RelativePath($"{id}.txt"), ItemType.File, size, DateTimeOffset.UnixEpoch);

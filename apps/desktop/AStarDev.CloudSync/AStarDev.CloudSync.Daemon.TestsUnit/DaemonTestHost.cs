@@ -15,7 +15,7 @@ internal sealed class DaemonTestHost(IHost host, string socketPath, string datab
 
     public IServiceProvider Services => host.Services;
 
-    public static DaemonTestHost Create(Action<string>? seedDatabase = null, Action<IServiceCollection>? configureServices = null)
+    public static DaemonTestHost Create(Action<string>? seedDatabase = null, Action<IServiceCollection>? configureServices = null, IReadOnlyDictionary<string, string?>? configuration = null)
     {
         var socketPath = Path.Combine(Path.GetTempPath(), $"cloudsync-daemon-{Guid.NewGuid():N}.sock");
         var databasePath = Path.Combine(Path.GetTempPath(), $"cloudsync-daemon-{Guid.NewGuid():N}", "cloudsync.db");
@@ -23,6 +23,7 @@ internal sealed class DaemonTestHost(IHost host, string socketPath, string datab
         var builder = Host.CreateApplicationBuilder();
         builder.Configuration[$"{ApplicationConstants.IpcConfigurationSection}:{nameof(IpcOptions.SocketPath)}"] = socketPath;
         builder.Configuration[$"{DatabaseOptions.ConfigurationSection}:{nameof(DatabaseOptions.Path)}"] = databasePath;
+        foreach (var pair in configuration ?? new Dictionary<string, string?>()) builder.Configuration[pair.Key] = pair.Value;
         builder.Services.AddCloudSyncDaemon();
         configureServices?.Invoke(builder.Services);
 

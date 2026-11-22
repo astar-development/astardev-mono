@@ -18,6 +18,8 @@ internal sealed class StubCloudProvider : ICloudProvider
 
     public Result<ProviderDeltaPage, ProviderError> DeltaResult { get; init; } = new Ok<ProviderDeltaPage>(new ProviderDeltaPage([]));
 
+    public int DeltaCalls { get; private set; }
+
     public List<RemoteItemId> Roots { get; } = [];
 
     public List<RemoteItemId> Parents { get; } = [];
@@ -60,6 +62,7 @@ internal sealed class StubCloudProvider : ICloudProvider
     public Task<Result<ProviderDeltaPage, ProviderError>> GetDeltasAsync(RemoteItemId root, DeltaToken token, string? resumeToken, CancellationToken cancellationToken)
     {
         cancellationToken.ThrowIfCancellationRequested();
+        DeltaCalls++;
 
         return Task.FromResult(DeltaResult);
     }

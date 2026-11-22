@@ -22,6 +22,13 @@ internal sealed class InitialCrawler(ICloudProvider provider, IItemIndexStore in
             Fail<StoreError> fail => fail
         };
 
+    /// <summary>Crawls one scope, continuing from its checkpoint; a completed scope is skipped. Used to list a scope again after <see cref="IItemIndexStore.ResetScopeAsync"/>.</summary>
+    /// <param name="scope">The scope to crawl.</param>
+    /// <param name="cancellationToken">Cancelling stops after the current page is stored and surfaces as <see cref="OperationCanceledException"/>.</param>
+    /// <returns><see langword="true"/> when the scope is completed; <see langword="false"/> when it stopped on an error and kept its checkpoint.</returns>
+    public Task<bool> CrawlScopeAsync(SyncScope scope, CancellationToken cancellationToken)
+        => CrawlScopeAsync(scope, new CrawlProgressThrottle(ApplicationConstants.ProgressInterval, timeProvider), cancellationToken);
+
     private async Task<CrawlSummary> CrawlScopesAsync(IReadOnlyList<SyncScope> selected, CancellationToken cancellationToken)
     {
         var throttle = new CrawlProgressThrottle(ApplicationConstants.ProgressInterval, timeProvider);
