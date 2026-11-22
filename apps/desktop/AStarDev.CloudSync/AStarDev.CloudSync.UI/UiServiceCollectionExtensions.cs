@@ -8,6 +8,7 @@ using AStarDev.CloudSync.UI.Tray;
 using AStarDev.CloudSync.UI.ViewModels;
 using AStarDev.CloudSync.UI.ViewModels.Onboarding;
 using AStarDev.FunctionalParadigm;
+using AStarDev.SingleInstance;
 using Avalonia.Threading;
 using Microsoft.Extensions.DependencyInjection;
 
@@ -39,6 +40,9 @@ internal static class UiServiceCollectionExtensions
     {
         services.AddCloudSyncTelemetry(ApplicationConstants.ServiceName);
         services.AddSingleton(TimeProvider.System);
+        services.AddSingleInstance();
+        services.AddSingleton(_ => SingleInstanceOptionsFactory.Create(DaemonSocketPath.InstanceFolder(Environment.GetEnvironmentVariable(ApplicationConstants.XdgRuntimeDirEnvironmentVariable)), ApplicationConstants.InstanceName, null));
+        services.AddSingleton<InstanceHold>();
         services.AddSingleton<ICultureService>(new CultureService(LocalisationService.DefaultLanguage));
         services.AddSingleton<ILocalisationService>(provider => CreateLocalisation(provider.GetRequiredService<ICultureService>()));
         services.AddSingleton<IThemeService, ThemeService>();

@@ -32,7 +32,7 @@ public abstract record InstanceClaim
         }
     }
 
-    /// <summary>The lock could not be created at all (for example the data folder cannot be written), so single instance cannot be enforced.</summary>
+    /// <summary>The lock could not be created at all (for example the data folder cannot be written), so single instance cannot be enforced; the app should fail to start.</summary>
     public sealed record LockUnavailable : InstanceClaim
     {
         internal LockUnavailable()

@@ -11,6 +11,10 @@ internal static class ApplicationConstants
 
     public static string SocketFileName => "daemon.sock";
 
+    public static string InstanceDirectoryName => "astardev-cloudsync-ui";
+
+    public static string InstanceName => "ui";
+
     public static string ConnectedText => "Connected";
 
     public static string ReconnectingText => "Reconnecting";

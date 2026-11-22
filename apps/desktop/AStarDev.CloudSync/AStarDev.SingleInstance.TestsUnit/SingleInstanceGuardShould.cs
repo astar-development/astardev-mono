@@ -5,13 +5,13 @@ using Microsoft.Extensions.Logging;
 
 namespace AStarDev.SingleInstance.TestsUnit;
 
-public sealed class GivenASingleInstanceGuard : IDisposable
+public sealed class SingleInstanceGuardShould : IDisposable
 {
     private readonly TemporaryDataFolder data = new();
     private readonly RecordingLogger logger = new();
     private readonly ServiceProvider provider;
 
-    public GivenASingleInstanceGuard() => provider = new ServiceCollection()
+    public SingleInstanceGuardShould() => provider = new ServiceCollection()
         .AddLogging(logging => logging.ClearProviders().AddProvider(logger))
         .AddSingleInstance()
         .BuildServiceProvider();
@@ -21,7 +21,7 @@ public sealed class GivenASingleInstanceGuard : IDisposable
     private ISingleInstanceGuard Guard => provider.GetRequiredService<ISingleInstanceGuard>();
 
     [Fact]
-    public async Task when_no_instance_is_running_then_the_claim_is_primary()
+    public async Task return_primary_when_no_instance_is_running()
     {
         var claim = await Guard.ClaimAsync(data.Options(), CancellationToken);
 
@@ -29,7 +29,7 @@ public sealed class GivenASingleInstanceGuard : IDisposable
     }
 
     [Fact]
-    public async Task when_an_instance_is_running_then_a_second_launch_hands_off_and_the_running_instance_is_asked_to_show_itself()
+    public async Task hand_off_a_second_launch_and_ask_the_running_instance_to_show_itself()
     {
         await using var primary = (await Guard.ClaimAsync(data.Options(), CancellationToken)).ShouldBeOfType<InstanceClaim.Primary>().Instance;
         int activations = 0;
@@ -42,7 +42,7 @@ public sealed class GivenASingleInstanceGuard : IDisposable
     }
 
     [Fact]
-    public async Task when_the_running_instance_is_disposed_then_the_next_launch_is_primary()
+    public async Task return_primary_for_the_next_launch_after_the_running_instance_is_disposed()
     {
         var first = (await Guard.ClaimAsync(data.Options(), CancellationToken)).ShouldBeOfType<InstanceClaim.Primary>().Instance;
         await first.DisposeAsync();
@@ -53,7 +53,7 @@ public sealed class GivenASingleInstanceGuard : IDisposable
     }
 
     [Fact]
-    public async Task when_a_crashed_instance_left_its_socket_file_behind_then_the_next_launch_is_primary_and_can_be_handed_off_to()
+    public async Task return_primary_and_accept_hand_offs_when_a_crashed_instance_left_its_socket_file_behind()
     {
         data.Folder.Create();
         await data.Folder.FileSystem.File.WriteAllTextAsync(data.SocketPath, "stale", CancellationToken);
@@ -65,7 +65,7 @@ public sealed class GivenASingleInstanceGuard : IDisposable
     }
 
     [Fact]
-    public async Task when_the_lock_is_held_but_nothing_listens_then_the_launch_is_not_answered_and_a_warning_is_logged()
+    public async Task return_not_answered_and_log_a_warning_when_the_lock_is_held_but_nothing_listens()
     {
         data.Folder.Create();
         await using var heldLock = new FileStream(data.LockPath, FileMode.OpenOrCreate, FileAccess.ReadWrite, FileShare.None);
@@ -77,7 +77,7 @@ public sealed class GivenASingleInstanceGuard : IDisposable
     }
 
     [Fact]
-    public async Task when_the_running_instance_accepts_but_never_answers_then_the_launch_is_not_answered_after_the_timeout()
+    public async Task return_not_answered_after_the_timeout_when_the_running_instance_never_answers()
     {
         data.Folder.Create();
         await using var heldLock = new FileStream(data.LockPath, FileMode.OpenOrCreate, FileAccess.ReadWrite, FileShare.None);
@@ -91,7 +91,7 @@ public sealed class GivenASingleInstanceGuard : IDisposable
     }
 
     [Fact]
-    public async Task when_two_users_have_different_data_folders_then_both_are_primary()
+    public async Task return_primary_for_two_users_with_different_data_folders()
     {
         using var otherUser = new TemporaryDataFolder();
         await using var first = (await Guard.ClaimAsync(data.Options(), CancellationToken)).ShouldBeOfType<InstanceClaim.Primary>().Instance;
@@ -102,7 +102,7 @@ public sealed class GivenASingleInstanceGuard : IDisposable
     }
 
     [Fact]
-    public async Task when_many_launches_race_then_exactly_one_is_primary()
+    public async Task return_primary_for_exactly_one_of_many_racing_launches()
     {
         var claims = await Task.WhenAll(Enumerable.Range(0, 20).Select(_ => Task.Run(() => Guard.ClaimAsync(data.Options(TimeSpan.FromSeconds(2)), CancellationToken), CancellationToken)));
         var primaries = claims.OfType<InstanceClaim.Primary>().ToList();
@@ -113,7 +113,7 @@ public sealed class GivenASingleInstanceGuard : IDisposable
     }
 
     [Fact]
-    public async Task when_the_data_folder_cannot_be_created_then_the_lock_is_unavailable_and_an_error_is_logged()
+    public async Task return_lock_unavailable_and_log_an_error_when_the_data_folder_cannot_be_created()
     {
         data.Folder.Parent!.Create();
         await data.Folder.FileSystem.File.WriteAllTextAsync(data.Folder.FullName, "a file where the folder should be", CancellationToken);
@@ -125,7 +125,7 @@ public sealed class GivenASingleInstanceGuard : IDisposable
     }
 
     [Fact]
-    public async Task when_the_lock_file_name_is_too_long_for_the_file_system_then_the_lock_is_unavailable()
+    public async Task return_lock_unavailable_when_the_lock_file_name_is_too_long_for_the_file_system()
     {
         var options = SingleInstanceOptionsFactory.Create(data.Folder, new string('n', 300), TimeSpan.FromMilliseconds(300));
 
@@ -136,7 +136,7 @@ public sealed class GivenASingleInstanceGuard : IDisposable
 
     [Fact]
     [System.Runtime.Versioning.UnsupportedOSPlatform("windows")]
-    public async Task when_the_data_folder_is_read_only_then_the_lock_is_unavailable()
+    public async Task return_lock_unavailable_when_the_data_folder_is_read_only()
     {
         Assert.SkipWhen(OperatingSystem.IsWindows() || Environment.UserName == "root", "Unix permissions only, and root ignores them.");
         data.Folder.Create();
@@ -150,7 +150,7 @@ public sealed class GivenASingleInstanceGuard : IDisposable
 
     [Fact]
     [System.Runtime.Versioning.UnsupportedOSPlatform("windows")]
-    public async Task when_an_instance_is_running_then_its_socket_is_readable_and_writable_by_the_owner_only()
+    public async Task restrict_the_socket_of_the_running_instance_to_its_owner()
     {
         Assert.SkipWhen(OperatingSystem.IsWindows(), "Unix permissions only.");
         await using var primary = (await Guard.ClaimAsync(data.Options(), CancellationToken)).ShouldBeOfType<InstanceClaim.Primary>().Instance;
@@ -159,7 +159,7 @@ public sealed class GivenASingleInstanceGuard : IDisposable
     }
 
     [Fact]
-    public async Task when_accepting_keeps_failing_then_listening_stops_and_an_error_is_logged()
+    public async Task stop_listening_and_log_an_error_when_accepting_keeps_failing()
     {
         var broken = HandOffProtocol.CreateSocket();
         broken.Dispose();
@@ -180,7 +180,7 @@ public sealed class GivenASingleInstanceGuard : IDisposable
     }
 
     [Fact]
-    public async Task when_the_socket_path_is_too_long_then_the_instance_is_still_primary_and_a_warning_is_logged()
+    public async Task return_primary_and_log_a_warning_when_the_socket_path_is_too_long()
     {
         var options = SingleInstanceOptionsFactory.Create(data.Folder, new string('s', 120), TimeSpan.FromMilliseconds(300));
 
@@ -191,7 +191,7 @@ public sealed class GivenASingleInstanceGuard : IDisposable
     }
 
     [Fact]
-    public async Task when_a_client_sends_something_other_than_show_then_the_running_instance_is_not_activated_and_keeps_answering()
+    public async Task not_activate_the_running_instance_for_a_request_other_than_show_and_keep_answering()
     {
         await using var primary = (await Guard.ClaimAsync(data.Options(), CancellationToken)).ShouldBeOfType<InstanceClaim.Primary>().Instance;
         int activations = 0;
@@ -208,7 +208,7 @@ public sealed class GivenASingleInstanceGuard : IDisposable
     }
 
     [Fact]
-    public async Task when_an_activation_handler_throws_then_the_second_launch_is_still_handed_off()
+    public async Task hand_off_a_second_launch_even_when_an_activation_handler_throws()
     {
         await using var primary = (await Guard.ClaimAsync(data.Options(), CancellationToken)).ShouldBeOfType<InstanceClaim.Primary>().Instance;
         primary.ActivationRequested += (_, _) => throw new InvalidOperationException("The window is gone.");
@@ -219,7 +219,7 @@ public sealed class GivenASingleInstanceGuard : IDisposable
     }
 
     [Fact]
-    public async Task when_the_caller_cancels_during_the_hand_off_then_the_claim_is_cancelled()
+    public async Task cancel_the_claim_when_the_caller_cancels_during_the_hand_off()
     {
         data.Folder.Create();
         await using var heldLock = new FileStream(data.LockPath, FileMode.OpenOrCreate, FileAccess.ReadWrite, FileShare.None);
@@ -232,7 +232,7 @@ public sealed class GivenASingleInstanceGuard : IDisposable
     }
 
     [Fact]
-    public async Task when_the_caller_cancels_then_the_claim_is_cancelled()
+    public async Task cancel_the_claim_when_the_caller_cancels()
     {
         using var cancellation = new CancellationTokenSource();
         await cancellation.CancelAsync();
@@ -241,7 +241,7 @@ public sealed class GivenASingleInstanceGuard : IDisposable
     }
 
     [Fact]
-    public async Task when_the_data_folder_path_holds_personal_data_then_no_log_contains_it()
+    public async Task keep_a_data_folder_path_that_holds_personal_data_out_of_the_logs()
     {
         using var personal = new TemporaryDataFolder("jane.doe@example.com");
         await using var primary = (await Guard.ClaimAsync(personal.Options(), CancellationToken)).ShouldBeOfType<InstanceClaim.Primary>().Instance;

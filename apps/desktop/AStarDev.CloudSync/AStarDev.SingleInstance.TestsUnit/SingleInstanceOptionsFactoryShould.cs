@@ -2,7 +2,7 @@ using Testably.Abstractions;
 
 namespace AStarDev.SingleInstance.TestsUnit;
 
-public class GivenSingleInstanceOptionsFactory
+public sealed class SingleInstanceOptionsFactoryShould
 {
     private static readonly System.IO.Abstractions.IDirectoryInfo Folder = new RealFileSystem().DirectoryInfo.New("/tmp/jane.doe@example.com");
 
@@ -10,7 +10,7 @@ public class GivenSingleInstanceOptionsFactory
     [InlineData(null)]
     [InlineData("")]
     [InlineData("   ")]
-    public void when_the_name_is_blank_then_the_default_name_is_used(string? name)
+    public void use_the_default_name_when_the_name_is_blank(string? name)
     {
         var options = SingleInstanceOptionsFactory.Create(Folder, name, null);
 
@@ -18,7 +18,7 @@ public class GivenSingleInstanceOptionsFactory
     }
 
     [Fact]
-    public void when_a_name_is_given_then_it_is_trimmed()
+    public void trim_a_given_name()
     {
         var options = SingleInstanceOptionsFactory.Create(Folder, "  cloudsync ", null);
 
@@ -29,7 +29,7 @@ public class GivenSingleInstanceOptionsFactory
     [InlineData(null)]
     [InlineData(0)]
     [InlineData(-5)]
-    public void when_the_timeout_is_missing_or_not_positive_then_the_default_timeout_is_used(int? milliseconds)
+    public void use_the_default_timeout_when_the_timeout_is_missing_or_not_positive(int? milliseconds)
     {
         var options = SingleInstanceOptionsFactory.Create(Folder, "app", milliseconds is { } value ? TimeSpan.FromMilliseconds(value) : null);
 
@@ -37,7 +37,7 @@ public class GivenSingleInstanceOptionsFactory
     }
 
     [Fact]
-    public void when_a_positive_timeout_is_given_then_it_is_kept()
+    public void keep_a_positive_timeout()
     {
         var options = SingleInstanceOptionsFactory.Create(Folder, "app", TimeSpan.FromMilliseconds(750));
 
@@ -45,7 +45,10 @@ public class GivenSingleInstanceOptionsFactory
     }
 
     [Fact]
-    public void when_the_options_are_printed_then_the_folder_is_redacted()
+    public void create_options_for_a_folder_path() => SingleInstanceOptionsFactory.Create("/tmp/si-path", "app", null).DataFolder.FullName.ShouldBe("/tmp/si-path");
+
+    [Fact]
+    public void redact_the_folder_when_printed()
     {
         var options = SingleInstanceOptionsFactory.Create(Folder, "app", null);
 

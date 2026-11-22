@@ -1,6 +1,7 @@
 using System.Diagnostics;
 using AStarDev.CloudSync.UI.Localisation;
 using AStarDev.CloudSync.UI.Theming;
+using AStarDev.SingleInstance;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting;
 using Microsoft.Extensions.Logging;
@@ -36,6 +37,15 @@ public sealed class UiServiceCollectionExtensionsShould
 
         serviceName.ShouldBe("astardev-cloudsync-ui");
         loggerProviders.ShouldContain(typeof(OpenTelemetryLoggerProvider));
+    }
+
+    [Fact]
+    public void compose_the_single_instance_guard_and_options_for_the_ui()
+    {
+        using var host = CreateHost();
+
+        host.Services.GetRequiredService<ISingleInstanceGuard>().ShouldNotBeNull();
+        host.Services.GetRequiredService<SingleInstanceOptions>().Name.ShouldBe("ui");
     }
 
     [Fact]
