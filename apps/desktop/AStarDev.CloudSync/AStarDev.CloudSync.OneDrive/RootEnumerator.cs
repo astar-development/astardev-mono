@@ -28,7 +28,7 @@ internal sealed class RootEnumerator(HttpClient client, OneDriveTelemetry teleme
     /// <summary>Fetches one page of changes. Graph's delta links and next links are absolute URLs, so the delta token and resume token are used as the request URL.</summary>
     /// <returns>The page, or the <see cref="ProviderError"/> met; a 410 is <see cref="InvalidDeltaToken"/>. Cancellation propagates as <see cref="OperationCanceledException"/>.</returns>
     public async Task<Result<ProviderDeltaPage, ProviderError>> GetDeltasAsync(RemoteItemId root, DeltaToken token, string? resumeToken, CancellationToken cancellationToken)
-        => await GetPageAsync(resumeToken ?? token.Value, cancellationToken).ConfigureAwait(false) switch
+        => await GetPageAsync(CountDelta(resumeToken ?? token.Value), cancellationToken).ConfigureAwait(false) switch
         {
             Ok<GraphChildrenPage> ok => await resolver.ResolveAsync(root, ok.Value.Value ?? [], cancellationToken).ConfigureAwait(false) switch
             {
@@ -37,6 +37,13 @@ internal sealed class RootEnumerator(HttpClient client, OneDriveTelemetry teleme
             },
             Fail<ProviderError> fail => fail
         };
+
+    private string CountDelta(string url)
+    {
+        telemetry.Provider.CountDelta();
+
+        return url;
+    }
 
     /// <summary>Fetches every page of children of one folder.</summary>
     /// <returns>All children, or the first <see cref="ProviderError"/> met; items from earlier pages are dropped on failure. Cancellation propagates as <see cref="OperationCanceledException"/>.</returns>

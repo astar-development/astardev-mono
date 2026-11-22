@@ -27,7 +27,7 @@ public static class OneDriveServiceCollectionExtensions
         services.AddSingleton<AccessTokenHolder>();
         services.AddSingleton<ITokenCacheStore>(_ => new SecretToolTokenCacheStore());
         services.AddSingleton(provider => new RootEnumerator(CreateGraphClient(provider.GetRequiredService<AccessTokenHolder>()), provider.GetRequiredService<OneDriveTelemetry>()));
-        services.AddSingleton(provider => new ItemTransfer(CreateGraphClient(provider.GetRequiredService<AccessTokenHolder>()), new HttpClient(new SocketsHttpHandler()) { Timeout = Timeout.InfiniteTimeSpan }));
+        services.AddSingleton(provider => new ItemTransfer(CreateGraphClient(provider.GetRequiredService<AccessTokenHolder>()), new HttpClient(new SocketsHttpHandler()) { Timeout = Timeout.InfiniteTimeSpan }, ItemTransfer.DefaultChunkSize, provider.GetRequiredService<OneDriveTelemetry>().Provider));
         services.AddSingleton<ICloudProvider, OneDriveProvider>();
 
         return services;
