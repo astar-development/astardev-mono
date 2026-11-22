@@ -268,20 +268,85 @@ Conflict Detected
       ↓
 Persist Conflict
       ↓
-Publish Event
+Journal Conflict
+      ↓
+Publish ConflictDetected
 ```
 
 ### UI
 
 ```text
-Receive Event
+Connect
       ↓
-Display Conflict
+GetConflicts(SyncJobId)
+      ↓
+Follow ConflictDetected / ConflictResolved
       ↓
 Collect User Decision
       ↓
 Send ResolveConflict Command
 ```
+
+---
+
+### Conflict Contract
+
+Query:
+
+```csharp
+public sealed record GetConflicts(Guid SyncJobId) : IQuery<ConflictsView>;
+
+public sealed record ConflictsView(IReadOnlyList<ConflictView> Conflicts);
+```
+
+`ConflictsView` lists the job's open and deferred conflicts, oldest first. An unknown job lists none. A conflict that cannot be read fails the query with `HandlerFailed` and a message fit for display.
+
+Projection:
+
+```csharp
+public sealed record ConflictView(
+    Guid ConflictId, Guid SyncJobId, Guid ItemId, string Type,
+    DateTimeOffset DetectedUtc, string Status, string Path,
+    ConflictSideView? Local, ConflictSideView? Remote);
+
+public sealed record ConflictSideView(string Path, DateTimeOffset ModifiedUtc, long SizeBytes);
+```
+
+- `Status` is `Open` or `Deferred`. A deferred conflict is still waiting and can be resolved.
+- `Path` is relative to the synchronised root: remote path, else local path, else last reconciled path.
+- `Local` and `Remote` are `null` when that side has no file, for example after a delete.
+
+Command:
+
+```csharp
+public sealed record ResolveConflict(IReadOnlyList<Guid> ConflictIds, ConflictChoice Choice) : ICommand;
+
+public enum ConflictChoice { KeepLocal, KeepRemote, KeepBoth, Defer }
+```
+
+One id is a single resolve; several are a bulk resolve with one choice. The daemon queues the work and journals every decision.
+
+Response:
+
+```text
+Accepted         every conflict handled
+Rejected         at least one not handled; the others are still resolved
+ValidationError  no id given
+```
+
+Events:
+
+```csharp
+public sealed record ConflictDetected(ConflictView Conflict) : IEvent;
+
+public sealed record ConflictResolved(
+    Guid ConflictId, Guid SyncJobId, Guid ItemId, string Resolution, DateTimeOffset ResolvedUtc) : IEvent;
+```
+
+- `ConflictDetected` is published once per new open conflict.
+- `ConflictResolved` is published for each resolved conflict, which then leaves `GetConflicts`.
+- `Defer` publishes no event. The conflict stays listed with status `Deferred`.
+- Events reach only subscribed clients. A client that connects later learns of conflicts through `GetConflicts`.
 
 ---
 

@@ -1,0 +1,168 @@
+{
+    // Use IntelliSense to learn about possible attributes.
+    // Hover to view descriptions of existing attributes.
+    // For more information, visit: https://go.microsoft.com/fwlink/?linkid=830387
+    "version": "0.2.0",
+    "configurations": [
+    {
+      "name": "C#: AStarDev.AppHost Debug",
+      "type": "dotnet",
+      "request": "launch",
+      "projectPath": "${workspaceFolder}/apps/Aspire/AStarDev.AppHost/AStarDev.AppHost.csproj"
+    },
+        {
+            "name": "C#: AStarDev.AppHost.TestsIntegration",
+            "type": "dotnet",
+            "request": "launch",
+            "projectPath": "${workspaceFolder}/apps/Aspire/AStarDev.AppHost.TestsIntegration/AStarDev.AppHost.TestsIntegration.csproj",
+            "launchConfigurationId": "AStarDev.AppHost.TestsIntegration"
+        },
+        {
+            "name": "C#: AStarDev.AppHost.TestsUnit",
+            "type": "dotnet",
+            "request": "launch",
+            "projectPath": "${workspaceFolder}/apps/Aspire/AStarDev.AppHost.TestsUnit/AStarDev.AppHost.TestsUnit.csproj",
+            "launchConfigurationId": "AStarDev.AppHost.TestsUnit"
+        },
+        {
+            "name": "C#: AStarDev.AppHost [Default Configuration]",
+            "type": "dotnet",
+            "request": "launch",
+            "projectPath": "${workspaceFolder}/apps/Aspire/AStarDev.AppHost/AStarDev.AppHost.csproj"
+        },
+        {
+            "name": "C#: AStarDev.AppHost [https]",
+            "type": "dotnet",
+            "request": "launch",
+            "projectPath": "${workspaceFolder}/apps/Aspire/AStarDev.AppHost/AStarDev.AppHost.csproj",
+            "launchProfileName": "https",
+            "launchConfigurationId": "https"
+        },
+        {
+            "name": "C#: AStarDev.AppHost [http]",
+            "type": "dotnet",
+            "request": "launch",
+            "projectPath": "${workspaceFolder}/apps/Aspire/AStarDev.AppHost/AStarDev.AppHost.csproj",
+            "launchProfileName": "http",
+            "launchConfigurationId": "http"
+        },
+        {
+            "name": "C#: AStarDev.CloudSync.Daemon.TestsUnit",
+            "type": "dotnet",
+            "request": "launch",
+            "projectPath": "${workspaceFolder}/apps/desktop/AStarDev.CloudSync/AStarDev.CloudSync.Daemon.TestsUnit/AStarDev.CloudSync.Daemon.TestsUnit.csproj",
+            "launchProfileName": "AStarDev.CloudSync.Daemon.TestsUnit",
+            "launchConfigurationId": "AStarDev.CloudSync.Daemon.TestsUnit"
+        },
+        {
+            "name": "C#: AStarDev.CloudSync.Daemon",
+            "type": "dotnet",
+            "request": "launch",
+            "projectPath": "${workspaceFolder}/apps/desktop/AStarDev.CloudSync/AStarDev.CloudSync.Daemon/AStarDev.CloudSync.Daemon.csproj",
+            "launchProfileName": "AStarDev.CloudSync.Daemon",
+            "launchConfigurationId": "AStarDev.CloudSync.Daemon"
+        },
+        {
+            "name": "C#: AStarDev.CloudSync.Domain.TestsUnit",
+            "type": "dotnet",
+            "request": "launch",
+            "projectPath": "${workspaceFolder}/apps/desktop/AStarDev.CloudSync/AStarDev.CloudSync.Domain.TestsUnit/AStarDev.CloudSync.Domain.TestsUnit.csproj",
+            "launchProfileName": "AStarDev.CloudSync.Domain.TestsUnit",
+            "launchConfigurationId": "AStarDev.CloudSync.Domain.TestsUnit"
+        },
+        {
+            "name": "C#: AStarDev.CloudSync.IPC.TestsUnit",
+            "type": "dotnet",
+            "request": "launch",
+            "projectPath": "${workspaceFolder}/apps/desktop/AStarDev.CloudSync/AStarDev.CloudSync.IPC.TestsUnit/AStarDev.CloudSync.IPC.TestsUnit.csproj",
+            "launchProfileName": "AStarDev.CloudSync.IPC.TestsUnit",
+            "launchConfigurationId": "AStarDev.CloudSync.IPC.TestsUnit"
+        },
+        {
+            "name": "C#: AStarDev.CloudSync.Observability.TestsUnit",
+            "type": "dotnet",
+            "request": "launch",
+            "projectPath": "${workspaceFolder}/apps/desktop/AStarDev.CloudSync/AStarDev.CloudSync.Observability.TestsUnit/AStarDev.CloudSync.Observability.TestsUnit.csproj",
+            "launchProfileName": "AStarDev.CloudSync.Observability.TestsUnit",
+            "launchConfigurationId": "AStarDev.CloudSync.Observability.TestsUnit"
+        },
+        {
+            "name": "C#: AStarDev.CloudSync.OneDrive.TestsUnit",
+            "type": "dotnet",
+            "request": "launch",
+            "projectPath": "${workspaceFolder}/apps/desktop/AStarDev.CloudSync/AStarDev.CloudSync.OneDrive.TestsUnit/AStarDev.CloudSync.OneDrive.TestsUnit.csproj",
+            "launchProfileName": "AStarDev.CloudSync.OneDrive.TestsUnit",
+            "launchConfigurationId": "AStarDev.CloudSync.OneDrive.TestsUnit"
+        },
+        {
+            "name": "C#: AStarDev.CloudSync.Persistence.TestsUnit",
+            "type": "dotnet",
+            "request": "launch",
+            "projectPath": "${workspaceFolder}/apps/desktop/AStarDev.CloudSync/AStarDev.CloudSync.Persistence.TestsUnit/AStarDev.CloudSync.Persistence.TestsUnit.csproj",
+            "launchProfileName": "AStarDev.CloudSync.Persistence.TestsUnit",
+            "launchConfigurationId": "AStarDev.CloudSync.Persistence.TestsUnit"
+        },
+        {
+            "name": "C#: AStarDev.CloudSync.Ports.TestsUnit",
+            "type": "dotnet",
+            "request": "launch",
+            "projectPath": "${workspaceFolder}/apps/desktop/AStarDev.CloudSync/AStarDev.CloudSync.Ports.TestsUnit/AStarDev.CloudSync.Ports.TestsUnit.csproj",
+            "launchProfileName": "AStarDev.CloudSync.Ports.TestsUnit",
+            "launchConfigurationId": "AStarDev.CloudSync.Ports.TestsUnit"
+        },
+        {
+            "name": "C#: AStarDev.CloudSync.SyncEngine.TestsUnit",
+            "type": "dotnet",
+            "request": "launch",
+            "projectPath": "${workspaceFolder}/apps/desktop/AStarDev.CloudSync/AStarDev.CloudSync.SyncEngine.TestsUnit/AStarDev.CloudSync.SyncEngine.TestsUnit.csproj",
+            "launchProfileName": "AStarDev.CloudSync.SyncEngine.TestsUnit",
+            "launchConfigurationId": "AStarDev.CloudSync.SyncEngine.TestsUnit"
+        },
+        {
+            "name": "C#: AStarDev.CloudSync.TestsArchitecture",
+            "type": "dotnet",
+            "request": "launch",
+            "projectPath": "${workspaceFolder}/apps/desktop/AStarDev.CloudSync/AStarDev.CloudSync.TestsArchitecture/AStarDev.CloudSync.TestsArchitecture.csproj",
+            "launchProfileName": "AStarDev.CloudSync.TestsArchitecture",
+            "launchConfigurationId": "AStarDev.CloudSync.TestsArchitecture"
+        },
+        {
+            "name": "C#: AStarDev.CloudSync.TestsIntegration",
+            "type": "dotnet",
+            "request": "launch",
+            "projectPath": "${workspaceFolder}/apps/desktop/AStarDev.CloudSync/AStarDev.CloudSync.TestsIntegration/AStarDev.CloudSync.TestsIntegration.csproj",
+            "launchProfileName": "AStarDev.CloudSync.TestsIntegration",
+            "launchConfigurationId": "AStarDev.CloudSync.TestsIntegration"
+        },
+        {
+            "name": "C#: AStarDev.CloudSync.UI.TestsUnit",
+            "type": "dotnet",
+            "request": "launch",
+            "projectPath": "${workspaceFolder}/apps/desktop/AStarDev.CloudSync/AStarDev.CloudSync.UI.TestsUnit/AStarDev.CloudSync.UI.TestsUnit.csproj",
+            "launchProfileName": "AStarDev.CloudSync.UI.TestsUnit",
+            "launchConfigurationId": "AStarDev.CloudSync.UI.TestsUnit"
+        },
+        {
+            "name": "C#: AStarDev.CloudSync.UI",
+            "type": "dotnet",
+            "request": "launch",
+            "projectPath": "${workspaceFolder}/apps/desktop/AStarDev.CloudSync/AStarDev.CloudSync.UI/AStarDev.CloudSync.UI.csproj",
+            "launchProfileName": "AStarDev.CloudSync.UI",
+            "launchConfigurationId": "AStarDev.CloudSync.UI"
+        },
+        {
+            "name": "C#: AStarDev.FunctionalParadigm.TestsUnit",
+            "type": "dotnet",
+            "request": "launch",
+            "projectPath": "${workspaceFolder}/nuget-packages/AStarDev.FunctionalParadigm.TestsUnit/AStarDev.FunctionalParadigm.TestsUnit.csproj",
+            "launchProfileName": "AStarDev.FunctionalParadigm.TestsUnit",
+            "launchConfigurationId": "AStarDev.FunctionalParadigm.TestsUnit"
+        },
+        {
+            "name": "C#: Debug Active File",
+            "type": "dotnet",
+            "request": "launch",
+            "projectPath": "${file}"
+        }
+    ]
+}
