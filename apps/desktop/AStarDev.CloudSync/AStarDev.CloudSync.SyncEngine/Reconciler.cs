@@ -7,7 +7,7 @@ internal sealed class Reconciler : IReconciler
 {
     /// <inheritdoc/>
     /// <remarks>
-    /// With no known baseline only creation can be decided, and creations on both sides are the same only when path, size and modified time all match.
+    /// With no known baseline only creation can be decided, and creations on both sides are the same only when the path matches and both content fingerprints are present and equal; otherwise the result is a conflict, never a guess.
     /// With a baseline, each side is compared to it, then the pair is resolved per concern: existence, location and content.
     /// </remarks>
     public SyncDecision Reconcile(CanonicalItemState state)
@@ -23,7 +23,7 @@ internal sealed class Reconciler : IReconciler
         };
 
     private static bool IsSameCreation(LocalSnapshot local, RemoteSnapshot remote)
-        => local.Path == remote.Path && local.Size == remote.Size && local.ModifiedUtc == remote.ModifiedUtc;
+        => local.Path == remote.Path && local.Fingerprint is { } fingerprint && fingerprint == remote.Fingerprint;
 
     private static SyncDecision ResolveAgainstBaseline(KnownSnapshot known, LocalSnapshot? local, RemoteSnapshot? remote)
     {
@@ -33,6 +33,8 @@ internal sealed class Reconciler : IReconciler
         if (localChanges.HasFlag(ChangeSet.Deleted) || remoteChanges.HasFlag(ChangeSet.Deleted)) return ResolveDeletion(localChanges, remoteChanges);
         if (local is null || remote is null) return Apply(SyncDecisionType.NoOp);
 
+        if (IsRenameAgainstModify(localChanges, remoteChanges)) return Apply(SyncDecisionType.Merge);
+
         var location = ResolveLocation(localChanges, remoteChanges, local, remote);
         var content = ResolveContent(localChanges, remoteChanges);
 
@@ -41,6 +43,9 @@ internal sealed class Reconciler : IReconciler
 
         return Combine([.. location.Steps, .. content.Steps]);
     }
+
+    private static bool IsRenameAgainstModify(ChangeSet local, ChangeSet remote)
+        => (local, remote) is (ChangeSet.Renamed, ChangeSet.Modified) or (ChangeSet.Modified, ChangeSet.Renamed);
 
     private static ChangeSet DetectLocal(KnownSnapshot known, LocalSnapshot? local)
     {

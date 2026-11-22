@@ -7,4 +7,5 @@ namespace AStarDev.CloudSync.Domain;
 /// <param name="ModifiedUtc">Last-modified time of the content.</param>
 /// <param name="ETag">The provider's content version.</param>
 /// <param name="CTag">The provider's metadata version. Null when the provider gives none.</param>
-public sealed record RemoteSnapshot(RemoteItemId ItemId, RelativePath Path, long Size, DateTimeOffset ModifiedUtc, ETag ETag, CTag? CTag);
+/// <param name="Fingerprint">Content digest the provider reports. Null when it gives none, in which case content equality with a local item cannot be proven.</param>
+public sealed record RemoteSnapshot(RemoteItemId ItemId, RelativePath Path, long Size, DateTimeOffset ModifiedUtc, ETag ETag, CTag? CTag, ContentFingerprint? Fingerprint = null);
