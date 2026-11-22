@@ -47,5 +47,45 @@ internal sealed class ConflictStore(IDbContextFactory<CloudSyncDbContext> contex
         return outcome.ToResult(ToStorageFailure);
     }
 
+    /// <inheritdoc/>
+    public async Task<Result<Conflict, StoreError>> GetAsync(ConflictId id, CancellationToken cancellationToken)
+    {
+        var outcome = await Try.RunAsync<Result<Conflict, StoreError>>(async token =>
+        {
+            await using var context = await contextFactory.CreateDbContextAsync(token).ConfigureAwait(false);
+            var row = await context.Conflicts.AsNoTracking().FirstOrDefaultAsync(entity => entity.Id == id, token).ConfigureAwait(false);
+
+            return row is null ? new Fail<StoreError>(new ConflictNotFound(id)) : new Ok<Conflict>(row.ToConflict());
+        }, cancellationToken).ConfigureAwait(false);
+
+        return outcome.ToResult(ToStorageFailure) switch
+        {
+            Ok<Result<Conflict, StoreError>> ok => ok.Value,
+            Fail<StoreError> fail => fail
+        };
+    }
+
+    /// <inheritdoc/>
+    public async Task<Result<Unit, StoreError>> UpdateStatusAsync(ConflictId id, ConflictStatus status, CancellationToken cancellationToken)
+    {
+        var outcome = await Try.RunAsync<Result<Unit, StoreError>>(async token =>
+        {
+            await using var context = await contextFactory.CreateDbContextAsync(token).ConfigureAwait(false);
+            var row = await context.Conflicts.FirstOrDefaultAsync(entity => entity.Id == id, token).ConfigureAwait(false);
+            if (row is null) return new Fail<StoreError>(new ConflictNotFound(id));
+
+            row.Status = status;
+            await context.SaveChangesAsync(token).ConfigureAwait(false);
+
+            return new Ok<Unit>(default);
+        }, cancellationToken).ConfigureAwait(false);
+
+        return outcome.ToResult(ToStorageFailure) switch
+        {
+            Ok<Result<Unit, StoreError>> ok => ok.Value,
+            Fail<StoreError> fail => fail
+        };
+    }
+
     private static StoreError ToStorageFailure(Exception exception) => new StorageFailed(exception.Message);
 }

@@ -16,6 +16,7 @@ internal static class StoreErrorMessages
         SyncScopeNotFound => "That folder is not selected.",
         OperationNotRunning => "That operation is not running.",
         OperationNotDeadLettered => "That operation is not waiting for a decision any more.",
+        ConflictNotFound => "That conflict no longer exists.",
         StorageFailed e => $"The {subject} could not be {failedAction} because the database failed: {e.Message}"
     };
 }

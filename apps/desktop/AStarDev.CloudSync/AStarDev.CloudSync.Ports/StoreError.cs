@@ -38,5 +38,9 @@ public sealed record OperationNotRunning(OperationId Id);
 /// <param name="Id">The identity that was looked up.</param>
 public sealed record OperationNotDeadLettered(OperationId Id);
 
+/// <summary>No conflict has the identity. Retrying will not help; the conflict was never stored or went with its job. Nothing was changed.</summary>
+/// <param name="Id">The identity that was looked up.</param>
+public sealed record ConflictNotFound(ConflictId Id);
+
 /// <summary>Closed set of failures that cross the state store boundary.</summary>
-public union StoreError(AccountNotFound, AccountAlreadyExists, StorageFailed, SyncJobNotFound, SyncJobAlreadyExists, SyncScopeAlreadyExists, SyncScopeNotFound, OperationNotRunning, OperationNotDeadLettered);
+public union StoreError(AccountNotFound, AccountAlreadyExists, StorageFailed, SyncJobNotFound, SyncJobAlreadyExists, SyncScopeAlreadyExists, SyncScopeNotFound, OperationNotRunning, OperationNotDeadLettered, ConflictNotFound);

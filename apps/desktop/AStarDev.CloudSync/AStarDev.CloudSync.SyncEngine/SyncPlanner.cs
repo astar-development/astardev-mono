@@ -48,7 +48,7 @@ public sealed class SyncPlanner
 
     /// <summary>
     /// Plans the work for every item of the job. An item that already has a pending, running or dead-lettered operation is left alone, so planning again never queues the same work twice;
-    /// an item in conflict gets one open conflict per reason however often it is planned. A newly stored conflict is journaled as <c>ConflictDetected</c> and then announced to the <see cref="IConflictEventSink"/>.
+    /// an item in conflict gets one open conflict per reason however often it is planned, and none while it has such work, which is how a resolved conflict is not raised again before its operations finish. A newly stored conflict is journaled as <c>ConflictDetected</c> and then announced to the <see cref="IConflictEventSink"/>.
     /// </summary>
     /// <param name="jobId">The job to plan. Its stored bootstrap mode governs only the first plan, while the job has no baseline and no operation: Download copies remote content over local, Upload copies local over remote, and neither deletes the other side's extra items. Merge, and every later plan, use the normal rules, so differing content on both sides is a conflict.</param>
     /// <param name="cancellationToken">Cancelling stops planning and surfaces as <see cref="OperationCanceledException"/>; what was already queued stays queued.</param>
@@ -71,7 +71,7 @@ public sealed class SyncPlanner
             Fail<StoreError> fail => fail
         };
 
-    private static HashSet<ItemId> BusyItems(IReadOnlyList<Operation> existing)
+    internal static HashSet<ItemId> BusyItems(IReadOnlyList<Operation> existing)
         => existing.Where(operation => operation.Status is OperationStatus.Pending or OperationStatus.Running or OperationStatus.DeadLetter).Select(operation => operation.ItemId).ToHashSet();
 
     private static BootstrapMode BootstrapModeFor(SyncJob job, IReadOnlyList<KnownEntry> known, IReadOnlyList<Operation> existing)
@@ -88,7 +88,8 @@ public sealed class SyncPlanner
             cancellationToken.ThrowIfCancellationRequested();
             var outcome = Decide(mode, state) switch
             {
-                Resolved resolved => await QueueAsync(jobId, state, resolved, busy, cancellationToken),
+                Resolved resolved => await QueueAsync(jobId, state, resolved, busy, null, cancellationToken),
+                Conflicted when busy.Contains(state.ItemId) => new Ok<PlanSummary>(new PlanSummary(0, 0)),
                 Conflicted conflicted => await RecordConflictAsync(jobId, state, conflicted, cancellationToken)
             };
             if (outcome.Value is Fail<StoreError> failure) return failure;
@@ -101,14 +102,14 @@ public sealed class SyncPlanner
     private SyncDecision Decide(BootstrapMode mode, CanonicalItemState state)
         => mode != BootstrapMode.Merge && state.Known is null ? BootstrapResolver.Resolve(mode, state) : reconciler.Reconcile(state);
 
-    private async Task<Result<PlanSummary, StoreError>> QueueAsync(SyncJobId jobId, CanonicalItemState state, Resolved decision, HashSet<ItemId> busy, CancellationToken cancellationToken)
+    internal async Task<Result<PlanSummary, StoreError>> QueueAsync(SyncJobId jobId, CanonicalItemState state, Resolved decision, HashSet<ItemId> busy, OperationPriority? priority, CancellationToken cancellationToken)
     {
         var plan = OperationPlanner.Plan(state, decision);
         if (plan.Operations.Count == 0 || busy.Contains(state.ItemId)) return new Ok<PlanSummary>(new PlanSummary(0, 0));
 
         var now = timeProvider.GetUtcNow();
         var operations = plan.Operations
-            .Select((planned, index) => new Operation(new OperationId(Guid.NewGuid()), jobId, state.ItemId, planned.Type, planned.Priority, OperationStatus.Pending, 0, now, null, now.AddTicks(index)))
+            .Select((planned, index) => new Operation(new OperationId(Guid.NewGuid()), jobId, state.ItemId, planned.Type, priority ?? planned.Priority, OperationStatus.Pending, 0, now, null, now.AddTicks(index)))
             .ToList();
 
         var staged = await knownStore.StageAsync(jobId, operations[^1].Id, state.ItemId, plan.Known, cancellationToken);
