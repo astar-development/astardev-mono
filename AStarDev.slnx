@@ -28,6 +28,8 @@
     <Project Path="apps/desktop/AStarDev.CloudSync/AStarDev.CloudSync.TestsIntegration/AStarDev.CloudSync.TestsIntegration.csproj" />
     <Project Path="apps/desktop/AStarDev.CloudSync/AStarDev.CloudSync.UI/AStarDev.CloudSync.UI.csproj" />
     <Project Path="apps/desktop/AStarDev.CloudSync/AStarDev.CloudSync.UI.TestsUnit/AStarDev.CloudSync.UI.TestsUnit.csproj" />
+    <Project Path="apps/desktop/AStarDev.CloudSync/AStarDev.SingleInstance/AStarDev.SingleInstance.csproj" />
+    <Project Path="apps/desktop/AStarDev.CloudSync/AStarDev.SingleInstance.TestsUnit/AStarDev.SingleInstance.TestsUnit.csproj" />
   </Folder>
   <Folder Name="/nuget-packages/">
     <Project Path="nuget-packages/AStarDev.FunctionalParadigm/AStarDev.FunctionalParadigm.csproj" />

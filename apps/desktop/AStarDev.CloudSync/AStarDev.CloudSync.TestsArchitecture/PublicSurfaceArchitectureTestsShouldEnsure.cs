@@ -53,10 +53,14 @@ public sealed class PublicSurfaceArchitectureTestsShouldEnsure
         => ShouldExposeExactly(typeof(SyncEngine.SyncRunner).Assembly, "CanonicalStateReader", "ConflictItemBusy", "ConflictItemGone", "ConflictNotOpen", "ConflictResolution", "ConflictResolver", "IConflictEventSink", "ICrawlProgressSink", "CrawlProgress", "DeltaPollingOptions", "IOperationExecutor", "KeepBothCopyFailed", "LocalObservationOptions", "LocalObservationRunner", "OperationScheduler", "OperationSchedulerOptions", "PlanSummary", "ResolutionError", "ResolutionStoreFailed", "SyncEngineServiceCollectionExtensions", "SyncPlanner", "SyncRunner");
 
     [Fact]
+    public void single_instance_exposes_only_its_approved_public_types()
+        => ShouldExposeExactly(typeof(SingleInstance.ISingleInstanceGuard).Assembly, "InstanceClaim", "ISingleInstanceGuard", "PrimaryInstance", "SingleInstanceOptions", "SingleInstanceOptionsFactory", "SingleInstanceServiceCollectionExtensions");
+
+    [Fact]
     public void the_functional_paradigm_library_exposes_only_its_approved_public_types()
         => ShouldExposeExactly(typeof(Try).Assembly,
             "Exceptional", "Exceptional`1", "ExceptionalExtensions", "Fail`1", "Failure`1", "MapErrorExtensions",
-            "Ok`1", "Result`2", "Success`1", "Try", "Unit");
+            "None`1", "Ok`1", "Option", "Option`1", "OptionExtensions", "Result`2", "Some`1", "Success`1", "Try", "Unit");
 
     private static void ShouldExposeExactly(Assembly assembly, params string[] approvedTypeNames)
         => assembly.GetExportedTypes()
