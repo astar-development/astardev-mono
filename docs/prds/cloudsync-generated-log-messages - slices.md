@@ -465,3 +465,15 @@ file and line). Change nothing.
 - Default taken: the CA1848 error is switched on last (B7), because the build
   must stay at 0 warnings while modules migrate.
 - File counts are estimates.
+
+## Issue numbers
+
+Epic: #168 (umbrella #207).
+
+- B1: #189 Event id blocks, uniqueness test and rule (enabling)
+- B2: #190 Migrate Daemon log calls
+- B3: #191 Migrate Daemon startup log calls
+- B4: #192 Migrate SyncEngine log calls
+- B5: #193 Migrate SingleInstance log calls
+- B6: #194 Migrate Persistence and Observability log calls
+- B7: #195 Enforce: CA1848 as an error and an architecture test

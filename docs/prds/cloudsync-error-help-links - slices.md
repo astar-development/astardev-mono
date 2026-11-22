@@ -710,3 +710,19 @@ file and line). Change nothing.
   types, not a BCL exception thrown at a site; those are covered by the site's
   own test.
 - File counts are estimates.
+
+## Issue numbers
+
+Epic: #169 (umbrella #207).
+
+- C1: #196 Errors project: code, link and helpers (enabling)
+- C2: #197 Ports errors carry code and link
+- C3: #198 IPC errors and the wire reply carry the code
+- C4: #199 Persistence errors carry code and link
+- C5: #200 SyncEngine errors and thrown exceptions carry code and link
+- C6: #201 Daemon startup errors and exceptions carry code and link
+- C7: #202 OneDrive thrown exceptions carry a link
+- C8: #203 UI errors and thrown exceptions carry code and link
+- C9: #204 Error logs carry the error code
+- C10: #205 UI error panel shows the code and link
+- C11: #206 Architecture sweep: every error has a code and link

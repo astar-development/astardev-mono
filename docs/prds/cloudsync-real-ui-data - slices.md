@@ -1427,3 +1427,27 @@ file and line). Change nothing.
 - File counts are estimates.
 - Cross-epic: from B1, new log messages are generated; from C1, new error cases
   carry a code. A slice merged before C1 is swept by C11.
+
+## Issue numbers
+
+Epic: #167 (umbrella #207).
+
+- A1: #170 Settings store and IPC (enabling)
+- A2: #171 Telemetry store in a separate telemetry.db (enabling)
+- A3: #172 Drive facts on the provider port (enabling)
+- A4: #173 Status contract and real status bar
+- A5: #174 Sync progress, throughput and estimate (enabling)
+- A6: #175 Real dashboard
+- A7: #176 Onboarding review and sync progress
+- A8: #177 Real provider catalogue and per-account insights
+- A9: #178 Correlation id on provider errors
+- A10: #179 Real Settings screens
+- A11: #180 Real History with filters
+- A12: #181 Audit trail and query
+- A13: #182 Audit as a rail destination
+- A14: #183 Export activity and audit
+- A15: #184 Logs: store, query and screen
+- A16: #185 Traces: store, query and screen
+- A17: #186 Metrics: store, query and screen
+- A18: #187 Diagnostics screen
+- A19: #188 Remove placeholders and add the guard test
