@@ -13,6 +13,8 @@ internal static class ApplicationConstants
 
     public static string SocketFileName => "daemon.sock";
 
+    public static string DevelopmentConfigurationSection => "CloudSync";
+
     public static string UnknownVersion => "unknown";
 
     public static string ProcessStartStageName => "Process start";

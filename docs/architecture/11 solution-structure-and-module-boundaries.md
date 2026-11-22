@@ -94,6 +94,8 @@ AStarDev.CloudSync.UI
 
 AStarDev.CloudSync.Observability
 
+AStarDev.CloudSync.FakeProvider
+
 AStarDev.CloudSync.TestsIntegration
 ```
 
@@ -412,6 +414,27 @@ Utilities
 
 ---
 
+## AStarDev.CloudSync.FakeProvider
+
+Purpose:
+
+```text
+Run The Sync Engine Without OneDrive
+```
+
+Contains:
+
+- FakeCloudProvider (scripted and generated trees, recorded uploads, renames and deletes)
+
+Rules:
+
+- Depends only on Domain and Ports
+- Exposes no public types; the daemon and the test projects see it through InternalsVisibleTo
+- The daemon references it in Debug builds only, so a release build never ships it
+- A Debug daemon selects it with `CloudSync:Provider=Fake`; see `docs/runbooks/cloudsync-fake-provider.md`
+
+---
+
 ## AStarDev.CloudSync.TestsIntegration
 
 Purpose:
@@ -422,7 +445,6 @@ System Verification
 
 Contains:
 
-- Fake Providers
 - Integration Tests
 - Recovery Tests
 - Scale Tests

@@ -39,6 +39,10 @@ public sealed class PublicSurfaceArchitectureTestsShouldEnsure
         => ShouldExposeExactly(typeof(Observability.TelemetryServiceCollectionExtensions).Assembly, "CorrelationScope", "TelemetryServiceCollectionExtensions");
 
     [Fact]
+    public void the_fake_provider_exposes_no_public_types()
+        => ShouldExposeExactly(typeof(FakeProvider.FakeCloudProvider).Assembly);
+
+    [Fact]
     public void persistence_exposes_only_its_approved_public_types()
         => ShouldExposeExactly(typeof(Persistence.DatabaseOptions).Assembly,
             "DatabaseError", "DatabaseMode", "DatabaseOptions", "DatabaseUnavailable", "IDatabaseInitialiser", "IDatabaseState",

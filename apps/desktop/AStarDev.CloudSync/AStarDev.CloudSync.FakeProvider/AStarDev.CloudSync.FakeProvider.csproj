@@ -1,0 +1,22 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <ItemGroup>
+    <ProjectReference Include="..\AStarDev.CloudSync.Domain\AStarDev.CloudSync.Domain.csproj" />
+    <ProjectReference Include="..\AStarDev.CloudSync.Ports\AStarDev.CloudSync.Ports.csproj" />
+    <ProjectReference Include="..\..\..\..\nuget-packages\AStarDev.FunctionalParadigm\AStarDev.FunctionalParadigm.csproj" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <InternalsVisibleTo Include="AStarDev.CloudSync.Daemon" />
+    <InternalsVisibleTo Include="AStarDev.CloudSync.Daemon.TestsUnit" />
+    <InternalsVisibleTo Include="AStarDev.CloudSync.TestsIntegration" />
+    <InternalsVisibleTo Include="AStarDev.CloudSync.TestsArchitecture" />
+  </ItemGroup>
+
+  <PropertyGroup>
+    <TargetFramework>net11.0</TargetFramework>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <Nullable>enable</Nullable>
+  </PropertyGroup>
+
+</Project>

@@ -16,7 +16,7 @@ namespace AStarDev.CloudSync.Daemon;
 internal static class DaemonServiceCollectionExtensions
 {
     /// <summary>
-    /// Registers telemetry first, so everything after it is observed, then options, health checks, persistence, the cloud provider, the sync engine, the single-instance guard, the startup stages, the IPC handlers and the hosted services. <see cref="StartupHostedService"/> is registered
+    /// Registers telemetry first, so everything after it is observed, then options, health checks, persistence, the cloud provider, the sync engine, the single-instance guard, the startup stages, the IPC handlers and the hosted services. In debug builds the provider switch comes last, so <c>CloudSync:Provider=Fake</c> can replace the provider. <see cref="StartupHostedService"/> is registered
     /// before <see cref="IpcHostedService"/>, so the IPC server only listens once every startup stage has finished.
     /// </summary>
     /// <example>
@@ -65,6 +65,9 @@ internal static class DaemonServiceCollectionExtensions
         services.AddHealthChecks().AddCheck<ProviderHealthCheck>(ApplicationConstants.ProviderHealthCheckName);
         services.AddHealthChecks().AddCheck<QueueHealthCheck>(ApplicationConstants.QueueHealthCheckName);
         services.AddHostedService<IpcHostedService>();
+#if DEBUG
+        services.AddDevelopmentProviderSwitch();
+#endif
 
         return services;
     }

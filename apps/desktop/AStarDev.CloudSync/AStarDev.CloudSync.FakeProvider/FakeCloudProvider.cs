@@ -1,11 +1,16 @@
 using AStarDev.CloudSync.Domain;
 using AStarDev.CloudSync.Ports;
+using System.Text;
 using AStarDev.FunctionalParadigm;
 
-namespace AStarDev.CloudSync.TestsIntegration;
+namespace AStarDev.CloudSync.FakeProvider;
 
+/// <summary>An in-memory <see cref="ICloudProvider"/> for tests and for running the daemon without OneDrive. Serves scripted or generated trees and records every upload, rename and delete.</summary>
+/// <param name="pageSize">How many items a snapshot or delta page holds.</param>
 internal sealed class FakeCloudProvider(int pageSize) : ICloudProvider
 {
+    private const string GeneratedIdPrefix = "item-";
+
     public static readonly RemoteItemId DefaultRoot = new("root");
 
     private readonly Dictionary<RemoteItemId, ItemSource> sources = [];
@@ -18,6 +23,8 @@ internal sealed class FakeCloudProvider(int pageSize) : ICloudProvider
     private int tokensIssued;
 
     public Action<int>? BeforePage { get; set; }
+
+    public bool ServeGeneratedContent { get; set; }
 
     public Dictionary<RemoteItemId, byte[]> Contents { get; } = [];
 
@@ -55,7 +62,7 @@ internal sealed class FakeCloudProvider(int pageSize) : ICloudProvider
             var isFolder = index % 10 == 0;
             var name = isFolder ? $"folder-{index}" : $"file-{index}.txt";
 
-            return new ProviderItem(new RemoteItemId($"item-{index}"), new RelativePath(name), isFolder ? ItemType.Folder : ItemType.File, isFolder ? 0 : index, DateTimeOffset.UnixEpoch.AddSeconds(index));
+            return new ProviderItem(new RemoteItemId($"{GeneratedIdPrefix}{index}"), new RelativePath(name), isFolder ? ItemType.Folder : ItemType.File, isFolder ? 0 : index, DateTimeOffset.UnixEpoch.AddSeconds(index));
         });
 
     public void ScriptChanges(RemoteItemId root, params ProviderChange[] scripted)
@@ -158,7 +165,9 @@ internal sealed class FakeCloudProvider(int pageSize) : ICloudProvider
             ? new Fail<ProviderError>(new Transient($"Try again for {itemId.Value}"))
             : Contents.TryGetValue(itemId, out var bytes)
                 ? new Ok<Stream>(new MemoryStream(bytes))
-                : new Fail<ProviderError>(new Permanent($"No content for {itemId.Value}"));
+                : ServeGeneratedContent && itemId.Value.StartsWith(GeneratedIdPrefix, StringComparison.Ordinal)
+                    ? new Ok<Stream>(new MemoryStream(Encoding.UTF8.GetBytes(itemId.Value)))
+                    : new Fail<ProviderError>(new Permanent($"No content for {itemId.Value}"));
 
         return Task.FromResult(result);
     }

@@ -2,6 +2,7 @@ using System.Net;
 using System.Text;
 using AStarDev.CloudSync.Daemon;
 using AStarDev.CloudSync.Domain;
+using AStarDev.CloudSync.FakeProvider;
 using AStarDev.CloudSync.IPC;
 using AStarDev.CloudSync.OneDrive;
 using AStarDev.CloudSync.Persistence;
