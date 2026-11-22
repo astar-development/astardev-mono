@@ -76,6 +76,24 @@ public sealed class ConflictResolutionShould : IDisposable
     }
 
     [Fact]
+    public async Task span_the_resolution_of_a_conflict_and_the_operations_it_queues_in_one_trace()
+    {
+        using var spans = new RecordedSpans();
+        await using var host = CreateRealHost(new FakeCloudProvider(10), new RecordingConflictEventSink());
+        var job = await SeedConflictsAsync(host, 1);
+        await PlanAsync(host, job);
+        var conflict = (await OpenAsync(host, job)).Single();
+
+        (await host.Services.GetRequiredService<ConflictResolver>().ResolveAsync([conflict.Id], ConflictResolution.KeepLocal, Token)).Single().Value.ShouldBeOfType<Ok<Unit>>();
+
+        var recorded = spans.ForJob(job);
+        var resolution = recorded.Where(span => span.OperationName == "cloudsync.conflict.resolve").ShouldHaveSingleItem();
+        resolution.GetTagItem("cloudsync.conflict.resolution").ShouldBe("KeepLocal");
+        var planning = recorded.Where(span => span.OperationName == "cloudsync.operation.plan" && span.TraceId == resolution.TraceId).ShouldHaveSingleItem();
+        planning.ParentSpanId.ShouldBe(resolution.SpanId);
+    }
+
+    [Fact]
     public async Task keep_both_preserves_both_versions()
     {
         var provider = new FakeCloudProvider(10);

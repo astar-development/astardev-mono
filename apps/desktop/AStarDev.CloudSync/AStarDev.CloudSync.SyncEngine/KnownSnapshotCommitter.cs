@@ -1,3 +1,4 @@
+using System.Diagnostics;
 using AStarDev.CloudSync.Domain;
 using AStarDev.CloudSync.Ports;
 using AStarDev.FunctionalParadigm;
@@ -14,10 +15,19 @@ internal sealed class KnownSnapshotCommitter(IOperationExecutor inner, IKnownSna
         var result = await inner.ExecuteAsync(operation, cancellationToken);
         if (result.Value is Fail<ProviderError>) return result;
 
+        using var span = WorkflowTelemetry.StartCommit(operation);
+
         return await knownStore.CommitAsync(operation.Id, cancellationToken) switch
         {
             Ok<Unit> => result,
-            Fail<StoreError> fail => new Fail<ProviderError>(new Transient($"The baseline of operation {operation.Id.Value} could not be stored: {fail.Error.Value}"))
+            Fail<StoreError> fail => CommitFailed(span, operation, fail.Error)
         };
+    }
+
+    private static Fail<ProviderError> CommitFailed(Activity? span, Operation operation, StoreError error)
+    {
+        WorkflowTelemetry.Fail(span, error.Value?.GetType().Name ?? "unknown", "The baseline could not be stored.");
+
+        return new Fail<ProviderError>(new Transient($"The baseline of operation {operation.Id.Value} could not be stored: {error.Value}"));
     }
 }

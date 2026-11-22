@@ -43,11 +43,20 @@ internal sealed class OperationExecutor(ISyncJobStore jobStore, IItemStateStore 
     private async Task<Result<Unit, ProviderError>> ReadKnownAsync(Operation operation, string root, IReadOnlyList<StoredItem> rows, CancellationToken cancellationToken)
         => await knownStore.ListAsync(operation.SyncJobId, cancellationToken).ConfigureAwait(false) switch
         {
-            Ok<IReadOnlyList<KnownEntry>> known => await RunAsync(operation.Type, root, CanonicalStateBuilder.Build(rows, known.Value).FirstOrDefault(state => state.ItemId == operation.ItemId), cancellationToken).ConfigureAwait(false),
+            Ok<IReadOnlyList<KnownEntry>> known => await RunAsync(operation, root, CanonicalStateBuilder.Build(rows, known.Value).FirstOrDefault(state => state.ItemId == operation.ItemId), cancellationToken).ConfigureAwait(false),
             Fail<StoreError> fail => Unreadable(fail.Error)
         };
 
-    private Task<Result<Unit, ProviderError>> RunAsync(OperationType type, string root, CanonicalItemState? state, CancellationToken cancellationToken)
+    private async Task<Result<Unit, ProviderError>> RunAsync(Operation operation, string root, CanonicalItemState? state, CancellationToken cancellationToken)
+    {
+        using var span = operation.Type is OperationType.DownloadFile or OperationType.UploadFile or OperationType.RenameRemote or OperationType.DeleteRemote ? WorkflowTelemetry.StartProviderRequest(operation) : null;
+        var outcome = await DispatchAsync(operation.Type, root, state, cancellationToken).ConfigureAwait(false);
+        if (outcome is Fail<ProviderError> fail) WorkflowTelemetry.Fail(span, fail.Error.Value?.GetType().Name ?? "unknown", fail.Error.Value?.ToString() ?? string.Empty);
+
+        return outcome;
+    }
+
+    private Task<Result<Unit, ProviderError>> DispatchAsync(OperationType type, string root, CanonicalItemState? state, CancellationToken cancellationToken)
     {
         if (type == OperationType.DownloadFile) return DownloadAsync(root, state, cancellationToken);
         if (type == OperationType.UploadFile) return UploadAsync(root, state, cancellationToken);

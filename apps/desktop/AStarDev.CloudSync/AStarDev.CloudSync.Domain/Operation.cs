@@ -11,4 +11,5 @@ namespace AStarDev.CloudSync.Domain;
 /// <param name="NextAttemptUtc">The operation is not claimed before this time, which delays a retry.</param>
 /// <param name="LastError">Why the last attempt failed; <see langword="null"/> when none has.</param>
 /// <param name="CreatedUtc">When the operation was enqueued. Older operations are claimed first within a priority.</param>
-public sealed record Operation(OperationId Id, SyncJobId SyncJobId, ItemId ItemId, OperationType Type, OperationPriority Priority, OperationStatus Status, int Attempts, DateTimeOffset NextAttemptUtc, string? LastError, DateTimeOffset CreatedUtc);
+/// <param name="TraceParent">The W3C <c>traceparent</c> of the span that planned the operation, kept so the executor continues the same trace even after a restart; <see langword="null"/> when nothing was tracing at planning time.</param>
+public sealed record Operation(OperationId Id, SyncJobId SyncJobId, ItemId ItemId, OperationType Type, OperationPriority Priority, OperationStatus Status, int Attempts, DateTimeOffset NextAttemptUtc, string? LastError, DateTimeOffset CreatedUtc, string? TraceParent = null);
