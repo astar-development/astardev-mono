@@ -13,6 +13,7 @@
     <Project Path="apps/desktop/AStarDev.CloudSync/AStarDev.CloudSync.Daemon.TestsUnit/AStarDev.CloudSync.Daemon.TestsUnit.csproj" />
     <Project Path="apps/desktop/AStarDev.CloudSync/AStarDev.CloudSync.Domain/AStarDev.CloudSync.Domain.csproj" />
     <Project Path="apps/desktop/AStarDev.CloudSync/AStarDev.CloudSync.Domain.TestsUnit/AStarDev.CloudSync.Domain.TestsUnit.csproj" />
+    <Project Path="apps/desktop/AStarDev.CloudSync/AStarDev.CloudSync.FakeProvider/AStarDev.CloudSync.FakeProvider.csproj" />
     <Project Path="apps/desktop/AStarDev.CloudSync/AStarDev.CloudSync.IPC/AStarDev.CloudSync.IPC.csproj" />
     <Project Path="apps/desktop/AStarDev.CloudSync/AStarDev.CloudSync.IPC.TestsUnit/AStarDev.CloudSync.IPC.TestsUnit.csproj" />
     <Project Path="apps/desktop/AStarDev.CloudSync/AStarDev.CloudSync.Observability/AStarDev.CloudSync.Observability.csproj" />

@@ -11,6 +11,10 @@
     <ProjectReference Include="..\..\..\..\nuget-packages\AStarDev.FunctionalParadigm\AStarDev.FunctionalParadigm.csproj" />
   </ItemGroup>
 
+  <ItemGroup Condition="'$(Configuration)' == 'Debug'">
+    <ProjectReference Include="..\AStarDev.CloudSync.FakeProvider\AStarDev.CloudSync.FakeProvider.csproj" />
+  </ItemGroup>
+
   <ItemGroup>
     <InternalsVisibleTo Include="AStarDev.CloudSync.Daemon.TestsUnit" />
     <InternalsVisibleTo Include="AStarDev.CloudSync.TestsArchitecture" />

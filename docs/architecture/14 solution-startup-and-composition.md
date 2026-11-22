@@ -283,6 +283,11 @@ with test doubles.
 
 This enables deterministic testing.
 
+A Debug build of the daemon can also replace Provider by configuration:
+`CloudSync:Provider=Fake` registers the fake provider after the real composition
+method, with a generated tree of `CloudSync:FakeTreeSize` items. The setting and
+the fake do not exist in a release build.
+
 ---
 
 ## Architectural Invariants

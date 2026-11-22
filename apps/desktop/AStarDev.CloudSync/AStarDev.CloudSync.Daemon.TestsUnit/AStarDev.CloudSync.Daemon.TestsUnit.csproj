@@ -26,6 +26,7 @@
 
   <ItemGroup>
     <ProjectReference Include="..\AStarDev.CloudSync.Daemon\AStarDev.CloudSync.Daemon.csproj" />
+    <ProjectReference Include="..\AStarDev.CloudSync.FakeProvider\AStarDev.CloudSync.FakeProvider.csproj" />
   </ItemGroup>
 
 </Project>
