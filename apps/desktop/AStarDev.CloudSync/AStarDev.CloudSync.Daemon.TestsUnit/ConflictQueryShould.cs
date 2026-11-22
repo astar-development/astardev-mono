@@ -216,6 +216,6 @@ public sealed class ConflictQueryShould : IDisposable
     {
         var account = await host.AddAccountAsync("id", AccountStatus.Connected, Token);
 
-        return await host.AddJobAsync(account, localRoot, Token);
+        return await host.AddJobAsync(account, localRoot, Token, enabled: false);
     }
 }
