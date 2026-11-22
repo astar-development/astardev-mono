@@ -47,7 +47,7 @@ public sealed class SyncPlanner
     }
 
     /// <summary>
-    /// Plans the work for every item of the job. An item that already has a pending, running or dead-lettered operation is left alone, so planning again never queues the same work twice;
+    /// Plans the work for every item of the job. An item gone from both sides loses its baseline and leftover rows, unless it still has such an operation, so the baselines do not pile up and a later item at the same path is new. An item that already has a pending, running or dead-lettered operation is left alone, so planning again never queues the same work twice;
     /// an item in conflict gets one open conflict per reason however often it is planned, and none while it has such work, which is how a resolved conflict is not raised again before its operations finish. A newly stored conflict is journaled as <c>ConflictDetected</c> and then announced to the <see cref="IConflictEventSink"/>.
     /// </summary>
     /// <param name="jobId">The job to plan. Its stored bootstrap mode governs only the first plan, while the job has no baseline and no operation: Download copies remote content over local, Upload copies local over remote, and neither deletes the other side's extra items. Merge, and every later plan, use the normal rules, so differing content on both sides is a conflict.</param>
@@ -86,7 +86,7 @@ public sealed class SyncPlanner
         foreach (var state in states)
         {
             cancellationToken.ThrowIfCancellationRequested();
-            var outcome = Decide(mode, state) switch
+            var outcome = IsGone(state, busy) ? await RemoveKnownAsync(jobId, state, cancellationToken) : Decide(mode, state) switch
             {
                 Resolved resolved => await QueueAsync(jobId, state, resolved, busy, null, cancellationToken),
                 Conflicted when busy.Contains(state.ItemId) => new Ok<PlanSummary>(new PlanSummary(0, 0)),
@@ -98,6 +98,15 @@ public sealed class SyncPlanner
 
         return new Ok<PlanSummary>(total);
     }
+
+    private static bool IsGone(CanonicalItemState state, HashSet<ItemId> busy) => state is { Known: not null, Local: null, Remote: null } && !busy.Contains(state.ItemId);
+
+    private async Task<Result<PlanSummary, StoreError>> RemoveKnownAsync(SyncJobId jobId, CanonicalItemState state, CancellationToken cancellationToken)
+        => await knownStore.RemoveAsync(jobId, state.ItemId, cancellationToken) switch
+        {
+            Ok<Unit> => new Ok<PlanSummary>(new PlanSummary(0, 0)),
+            Fail<StoreError> fail => fail
+        };
 
     private SyncDecision Decide(BootstrapMode mode, CanonicalItemState state)
         => mode != BootstrapMode.Merge && state.Known is null ? BootstrapResolver.Resolve(mode, state) : reconciler.Reconcile(state);
