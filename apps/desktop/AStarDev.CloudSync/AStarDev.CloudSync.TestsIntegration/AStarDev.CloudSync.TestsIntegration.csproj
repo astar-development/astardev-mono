@@ -29,6 +29,7 @@
     <ProjectReference Include="..\AStarDev.CloudSync.Ports\AStarDev.CloudSync.Ports.csproj" />
     <ProjectReference Include="..\AStarDev.CloudSync.Domain\AStarDev.CloudSync.Domain.csproj" />
     <ProjectReference Include="..\AStarDev.CloudSync.Persistence\AStarDev.CloudSync.Persistence.csproj" />
+    <ProjectReference Include="..\AStarDev.CloudSync.SyncEngine\AStarDev.CloudSync.SyncEngine.csproj" />
     <ProjectReference Include="..\..\..\..\nuget-packages\AStarDev.FunctionalParadigm\AStarDev.FunctionalParadigm.csproj" />
   </ItemGroup>
 

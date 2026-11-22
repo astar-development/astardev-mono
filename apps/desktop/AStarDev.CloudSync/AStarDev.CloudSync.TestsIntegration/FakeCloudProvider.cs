@@ -6,12 +6,28 @@ namespace AStarDev.CloudSync.TestsIntegration;
 
 internal sealed class FakeCloudProvider(int pageSize) : ICloudProvider
 {
-    private readonly List<ProviderItem> items = [];
+    public static readonly RemoteItemId DefaultRoot = new("root");
+
+    private readonly Dictionary<RemoteItemId, ItemSource> sources = [];
+    private readonly Dictionary<RemoteItemId, ProviderError> failingRoots = [];
     private readonly Queue<ProviderError> scriptedFailures = new();
     private readonly Dictionary<RemoteItemId, List<ProviderItem>> children = [];
-    private int cursor;
 
-    public void AddItem(ProviderItem item) => items.Add(item);
+    public Action<int>? BeforePage { get; set; }
+
+    public int PagesServed { get; private set; }
+
+    public int ItemsServed { get; private set; }
+
+    public List<string?> ResumeTokensSeen { get; } = [];
+
+    public void AddItem(ProviderItem item, RemoteItemId? root = null)
+    {
+        var key = root ?? DefaultRoot;
+        if (!sources.TryGetValue(key, out var source)) sources[key] = source = ItemSource.FromList([]);
+
+        source.Add(item);
+    }
 
     public void AddChild(RemoteItemId parent, ProviderItem item)
     {
@@ -19,15 +35,16 @@ internal sealed class FakeCloudProvider(int pageSize) : ICloudProvider
         list.Add(item);
     }
 
-    public void GenerateTree(int count)
-    {
-        for (var index = 0; index < count; index++)
+    public void GenerateTree(int count, RemoteItemId? root = null)
+        => sources[root ?? DefaultRoot] = new ItemSource(count, index =>
         {
             var isFolder = index % 10 == 0;
             var name = isFolder ? $"folder-{index}" : $"file-{index}.txt";
-            items.Add(new ProviderItem(new RemoteItemId($"item-{index}"), new RelativePath(name), isFolder ? ItemType.Folder : ItemType.File, isFolder ? 0 : index, DateTimeOffset.UnixEpoch.AddSeconds(index)));
-        }
-    }
+
+            return new ProviderItem(new RemoteItemId($"item-{index}"), new RelativePath(name), isFolder ? ItemType.Folder : ItemType.File, isFolder ? 0 : index, DateTimeOffset.UnixEpoch.AddSeconds(index));
+        });
+
+    public void FailRoot(RemoteItemId root, ProviderError failure) => failingRoots[root] = failure;
 
     public void ScriptFailures(params ProviderError[] failures)
     {
@@ -71,18 +88,40 @@ internal sealed class FakeCloudProvider(int pageSize) : ICloudProvider
         return Task.FromResult(result);
     }
 
-    public Task<Result<ProviderSnapshotPage, ProviderError>> GetSnapshotAsync(RemoteItemId root, CancellationToken cancellationToken)
+    public Task<Result<ProviderSnapshotPage, ProviderError>> GetSnapshotAsync(RemoteItemId root, string? resumeToken, CancellationToken cancellationToken)
     {
+        BeforePage?.Invoke(PagesServed + 1);
         cancellationToken.ThrowIfCancellationRequested();
 
-        if (scriptedFailures.TryDequeue(out var failure))
-        {
-            return Task.FromResult<Result<ProviderSnapshotPage, ProviderError>>(new Fail<ProviderError>(failure));
-        }
+        if (failingRoots.TryGetValue(root, out var rootFailure)) return Task.FromResult<Result<ProviderSnapshotPage, ProviderError>>(new Fail<ProviderError>(rootFailure));
 
-        var page = items.Skip(cursor).Take(pageSize).ToList();
-        cursor += page.Count;
+        if (scriptedFailures.TryDequeue(out var failure)) return Task.FromResult<Result<ProviderSnapshotPage, ProviderError>>(new Fail<ProviderError>(failure));
 
-        return Task.FromResult<Result<ProviderSnapshotPage, ProviderError>>(new Ok<ProviderSnapshotPage>(new ProviderSnapshotPage(page)));
+        var source = sources.GetValueOrDefault(root) ?? ItemSource.FromList([]);
+        var offset = resumeToken is null ? 0 : int.Parse(resumeToken);
+        var page = Enumerable.Range(offset, Math.Min(pageSize, Math.Max(0, source.Count - offset))).Select(source.At).ToList();
+        var next = offset + page.Count;
+        var last = next >= source.Count;
+        PagesServed++;
+        ItemsServed += page.Count;
+        ResumeTokensSeen.Add(resumeToken);
+
+        return Task.FromResult<Result<ProviderSnapshotPage, ProviderError>>(new Ok<ProviderSnapshotPage>(new ProviderSnapshotPage(page, last ? null : next.ToString(), last ? new DeltaToken($"delta-{root.Value}") : null)));
+    }
+
+    private sealed class ItemSource(int count, Func<int, ProviderItem> at)
+    {
+        private readonly List<ProviderItem>? list;
+
+        private ItemSource(List<ProviderItem> list)
+            : this(0, index => list[index]) => this.list = list;
+
+        public int Count => list?.Count ?? count;
+
+        public Func<int, ProviderItem> At => at;
+
+        public static ItemSource FromList(List<ProviderItem> list) => new(list);
+
+        public void Add(ProviderItem item) => list!.Add(item);
     }
 }

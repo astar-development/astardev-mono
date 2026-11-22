@@ -25,6 +25,9 @@ internal sealed class CloudSyncDbContext(DbContextOptions<CloudSyncDbContext> op
     /// <summary>Per-job provider bookmarks, stored in the <c>ProviderState</c> table.</summary>
     public DbSet<ProviderStateEntity> ProviderStates => Set<ProviderStateEntity>();
 
+    /// <summary>How far the initial crawl of each scope has got.</summary>
+    public DbSet<CrawlCheckpointEntity> CrawlCheckpoints => Set<CrawlCheckpointEntity>();
+
     /// <summary>Saves inside a <c>persistence.save</c> span; see <see cref="PersistenceTelemetry"/>.</summary>
     public override int SaveChanges(bool acceptAllChangesOnSuccess)
     {
@@ -64,6 +67,12 @@ internal sealed class CloudSyncDbContext(DbContextOptions<CloudSyncDbContext> op
         {
             scope.ToTable("SyncScopes").HasKey(entity => new { entity.SyncJobId, entity.RemoteRootId });
             scope.HasOne<SyncJobEntity>().WithMany().HasForeignKey(entity => entity.SyncJobId).OnDelete(DeleteBehavior.Cascade);
+        });
+
+        modelBuilder.Entity<CrawlCheckpointEntity>(checkpoint =>
+        {
+            checkpoint.ToTable("CrawlCheckpoints").HasKey(entity => new { entity.SyncJobId, entity.RemoteRootId });
+            checkpoint.HasOne<SyncScopeEntity>().WithOne().HasForeignKey<CrawlCheckpointEntity>(entity => new { entity.SyncJobId, entity.RemoteRootId }).OnDelete(DeleteBehavior.Cascade);
         });
 
         modelBuilder.Entity<ItemEntity>(item =>

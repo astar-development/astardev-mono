@@ -15,16 +15,17 @@ public sealed class FakeCloudProviderShould
         provider.GenerateTree(100);
         var seen = new List<ProviderItem>();
         var pageSizes = new List<int>();
+        string? resumeToken = null;
 
-        while (true)
+        do
         {
-            var page = await provider.GetSnapshotAsync(Scope, TestContext.Current.CancellationToken);
-            var items = page.Value.ShouldBeOfType<Ok<ProviderSnapshotPage>>().Value.Items;
-            if (items.Count == 0) break;
-
-            pageSizes.Add(items.Count);
-            seen.AddRange(items);
+            var page = await provider.GetSnapshotAsync(Scope, resumeToken, TestContext.Current.CancellationToken);
+            var served = page.Value.ShouldBeOfType<Ok<ProviderSnapshotPage>>().Value;
+            pageSizes.Add(served.Items.Count);
+            seen.AddRange(served.Items);
+            resumeToken = served.ResumeToken;
         }
+        while (resumeToken is not null);
 
         pageSizes.ShouldBe([40, 40, 20]);
         seen.Select(item => item.RemoteItemId).Distinct().Count().ShouldBe(100);
@@ -53,10 +54,10 @@ public sealed class FakeCloudProviderShould
         provider.GenerateTree(3);
         provider.ScriptFailures(new Transient("network drop"), new RateLimited(TimeSpan.FromSeconds(7)), new AuthenticationFailed("expired"));
 
-        var first = await provider.GetSnapshotAsync(Scope, TestContext.Current.CancellationToken);
-        var second = await provider.GetSnapshotAsync(Scope, TestContext.Current.CancellationToken);
-        var third = await provider.GetSnapshotAsync(Scope, TestContext.Current.CancellationToken);
-        var fourth = await provider.GetSnapshotAsync(Scope, TestContext.Current.CancellationToken);
+        var first = await provider.GetSnapshotAsync(Scope, null, TestContext.Current.CancellationToken);
+        var second = await provider.GetSnapshotAsync(Scope, null, TestContext.Current.CancellationToken);
+        var third = await provider.GetSnapshotAsync(Scope, null, TestContext.Current.CancellationToken);
+        var fourth = await provider.GetSnapshotAsync(Scope, null, TestContext.Current.CancellationToken);
 
         first.Value.ShouldBeOfType<Fail<ProviderError>>().Error.Value.ShouldBeOfType<Transient>();
         second.Value.ShouldBeOfType<Fail<ProviderError>>().Error.Value.ShouldBeOfType<RateLimited>().RetryAfter.ShouldBe(TimeSpan.FromSeconds(7));
@@ -92,7 +93,7 @@ public sealed class FakeCloudProviderShould
         using var cancellation = new CancellationTokenSource();
         await cancellation.CancelAsync();
 
-        await Should.ThrowAsync<OperationCanceledException>(() => provider.GetSnapshotAsync(Scope, cancellation.Token));
+        await Should.ThrowAsync<OperationCanceledException>(() => provider.GetSnapshotAsync(Scope, null, cancellation.Token));
     }
 
     [Fact]

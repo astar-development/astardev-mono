@@ -8,8 +8,6 @@ namespace AStarDev.CloudSync.TestsArchitecture;
 
 public sealed class PublicSurfaceArchitectureTestsShouldEnsure
 {
-    private static readonly string[] PlaceholderAnchor = ["Class1"];
-
     [Fact]
     public void the_domain_exposes_only_its_approved_public_types()
         => ShouldExposeExactly(typeof(ItemId).Assembly,
@@ -18,7 +16,7 @@ public sealed class PublicSurfaceArchitectureTestsShouldEnsure
     [Fact]
     public void the_ports_expose_only_their_approved_public_types()
         => ShouldExposeExactly(typeof(ICloudProvider).Assembly,
-            "AccountAlreadyExists", "AccountNotFound", "AuthenticationFailed", "IAccountStore", "ICloudProvider", "ISyncJobStore", "ISyncScopeStore", "Permanent", "ProviderAccount",
+            "AccountAlreadyExists", "AccountNotFound", "AuthenticationFailed", "CrawlCheckpoint", "IAccountStore", "ICloudProvider", "IItemIndexStore", "ISyncJobStore", "ISyncScopeStore", "Permanent", "ProviderAccount",
             "ProviderError", "ProviderItem", "ProviderSnapshotPage", "RateLimited", "StorageFailed", "StoreError", "SyncJobAlreadyExists", "SyncJobNotFound",
             "SyncScopeAlreadyExists", "SyncScopeNotFound", "Transient");
 
@@ -27,10 +25,10 @@ public sealed class PublicSurfaceArchitectureTestsShouldEnsure
         => ShouldExposeExactly(typeof(IPC.IIpcServer).Assembly,
             [
              "AccountConnected", "AccountDisconnected", "AccountState", "AccountView", "AccountsView", "AddSyncScope", "CommandOutcome", "CommandResult", "ConnectAccount",
-             "ConnectionFailed", "ConnectionLost", "CreateSyncJob", "DaemonState", "DaemonStatusChanged", "DaemonStatusView", "DisconnectAccount", "FrameTooLarge",
+             "ConnectionFailed", "ConnectionLost", "CrawlProgressChanged", "CreateSyncJob", "DaemonState", "DaemonStatusChanged", "DaemonStatusView", "DisconnectAccount", "FrameTooLarge",
              "GetAccounts", "GetDaemonStatus", "GetRemoteFolders", "GetRemoteRootSummary", "GetSyncJobs", "GetSyncScopes", "HandlerFailed", "ICommand",
              "IEvent", "IIpcClient", "IIpcServer", "IpcError", "IQuery`1", "ListenFailed", "MalformedFrame", "NotConnected", "RemoteFolderView", "RemoteFoldersView", "RemoteRootSummaryView",
-             "RemoveSyncScope", "SyncBootstrapMode", "SyncJobView", "SyncJobsView", "SyncScopeView", "SyncScopesView", "UnixSocketIpc"]);
+             "RemoveSyncScope", "StartSync", "StopSync", "SyncBootstrapMode", "SyncJobView", "SyncJobsView", "SyncScopeView", "SyncScopesView", "UnixSocketIpc"]);
 
     [Fact]
     public void the_daemon_exposes_no_public_types()
@@ -51,8 +49,8 @@ public sealed class PublicSurfaceArchitectureTestsShouldEnsure
         => ShouldExposeExactly(typeof(OneDrive.OneDriveServiceCollectionExtensions).Assembly, "OneDriveServiceCollectionExtensions");
 
     [Fact]
-    public void modules_without_real_members_expose_only_their_placeholder()
-        => ShouldExposeExactly(typeof(SyncEngine.Class1).Assembly, PlaceholderAnchor);
+    public void the_sync_engine_exposes_only_its_approved_public_types()
+        => ShouldExposeExactly(typeof(SyncEngine.SyncRunner).Assembly, "ICrawlProgressSink", "CrawlProgress", "SyncEngineServiceCollectionExtensions", "SyncRunner");
 
     [Fact]
     public void the_functional_paradigm_library_exposes_only_its_approved_public_types()

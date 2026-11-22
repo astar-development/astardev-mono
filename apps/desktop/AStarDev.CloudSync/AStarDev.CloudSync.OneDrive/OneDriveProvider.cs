@@ -32,8 +32,11 @@ internal sealed class OneDriveProvider(IOptions<OneDriveSettings> settings, ITok
         => new OneDriveDisconnector(store, holder).DisconnectAsync(cancellationToken);
 
     /// <inheritdoc/>
-    /// <remarks>Without a successful <see cref="ConnectAsync"/> first, Graph refuses the request and the result is <see cref="AuthenticationFailed"/>.</remarks>
-    public Task<Result<ProviderSnapshotPage, ProviderError>> GetSnapshotAsync(RemoteItemId root, CancellationToken cancellationToken)
+    /// <remarks>
+    /// Without a successful <see cref="ConnectAsync"/> first, Graph refuses the request and the result is <see cref="AuthenticationFailed"/>.
+    /// Lists one folder level and returns every page of it as a single page with no resume token and no delta token, so <paramref name="resumeToken"/> is ignored. Paging and deltas arrive with the delta slice.
+    /// </remarks>
+    public Task<Result<ProviderSnapshotPage, ProviderError>> GetSnapshotAsync(RemoteItemId root, string? resumeToken, CancellationToken cancellationToken)
         => enumerator.GetSnapshotAsync(root, cancellationToken);
 
     /// <inheritdoc/>
