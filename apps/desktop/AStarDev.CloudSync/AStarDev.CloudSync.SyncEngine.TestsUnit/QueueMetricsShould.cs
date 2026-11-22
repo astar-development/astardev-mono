@@ -41,4 +41,25 @@ public sealed class QueueMetricsShould
         completed.ShouldBe(1);
         failed.ShouldBe([(1L, "DownloadFile", "Transient")]);
     }
+
+    [Fact]
+    public void count_retries()
+    {
+        using var metrics = new QueueMetrics();
+        var retries = new List<(long Value, string Type, string Error)>();
+        using var listener = new MeterListener();
+        listener.InstrumentPublished = (instrument, meterListener) =>
+        {
+            if (instrument.Meter == metrics.Meter) meterListener.EnableMeasurementEvents(instrument);
+        };
+        listener.SetMeasurementEventCallback<long>((instrument, value, tags, _) =>
+        {
+            if (instrument.Name == "cloudsync.queue.operation.retries") retries.Add((value, (string)tags[0].Value!, (string)tags[1].Value!));
+        });
+        listener.Start();
+
+        metrics.RecordRetry(OperationType.UploadFile, "Transient");
+
+        retries.ShouldBe([(1L, "UploadFile", "Transient")]);
+    }
 }

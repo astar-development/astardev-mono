@@ -33,4 +33,9 @@ public interface IConflictStore
     /// <param name="cancellationToken">Cancelling before the write completes changes nothing.</param>
     /// <returns>Success, <see cref="ConflictNotFound"/> when none has the identity, or <see cref="StorageFailed"/>.</returns>
     Task<Result<Unit, StoreError>> UpdateStatusAsync(ConflictId id, ConflictStatus status, CancellationToken cancellationToken);
+
+    /// <summary>Counts the conflicts of every job that wait for the user.</summary>
+    /// <param name="cancellationToken">Cancelling abandons the read.</param>
+    /// <returns>The number of <see cref="ConflictStatus.Open"/> and <see cref="ConflictStatus.Deferred"/> conflicts, zero when none, or <see cref="StorageFailed"/>.</returns>
+    Task<Result<int, StoreError>> CountOpenAsync(CancellationToken cancellationToken);
 }

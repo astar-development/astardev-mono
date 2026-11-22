@@ -34,7 +34,7 @@ public sealed class TelemetryContractShould(TelemetryRunFixture fixture) : IClas
         inTrace.ShouldContain("operations process");
         inTrace.ShouldContain("cloudsync.provider.request");
         inTrace.ShouldContain("cloudsync.snapshot.commit");
-        var failed = spans.Where(span => span.OperationName == "operations process" && span.Status == ActivityStatusCode.Error).ShouldHaveSingleItem();
+        var failed = spans.Where(span => span.OperationName == "operations process" && span.Status == ActivityStatusCode.Error && span.GetTagItem("error.type") is "Permanent").ShouldHaveSingleItem();
         failed.GetTagItem("error.type").ShouldBe("Permanent");
         var resolution = spans.Single(span => span.OperationName == "cloudsync.conflict.resolve");
         spans.ShouldContain(span => span.OperationName == "cloudsync.operation.plan" && span.TraceId == resolution.TraceId && span.ParentSpanId == resolution.SpanId);

@@ -133,7 +133,10 @@ public sealed class OperationScheduler(IOperationStore store, IOperationExecutor
         var retryAtUtc = RetryDelay(operation, error) is { } delay ? timeProvider.GetUtcNow() + delay : (DateTimeOffset?)null;
         LogFailure(operation, error, retryAtUtc);
 
-        return await store.FailAsync(operation.Id, error.Value?.ToString() ?? string.Empty, retryAtUtc, cancellationToken);
+        var failed = await store.FailAsync(operation.Id, error.Value?.ToString() ?? string.Empty, retryAtUtc, cancellationToken);
+        if (failed is Ok<Unit> && retryAtUtc is not null) metrics.RecordRetry(operation.Type, error.Value?.GetType().Name ?? "unknown");
+
+        return failed;
     }
 
     private async Task<Result<Unit, StoreError>> CompleteAsync(Operation operation, CancellationToken cancellationToken)

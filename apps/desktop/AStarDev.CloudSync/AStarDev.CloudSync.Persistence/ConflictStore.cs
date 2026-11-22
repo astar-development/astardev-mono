@@ -87,5 +87,18 @@ internal sealed class ConflictStore(IDbContextFactory<CloudSyncDbContext> contex
         };
     }
 
+    /// <inheritdoc/>
+    public async Task<Result<int, StoreError>> CountOpenAsync(CancellationToken cancellationToken)
+    {
+        var outcome = await Try.RunAsync(async token =>
+        {
+            await using var context = await contextFactory.CreateDbContextAsync(token).ConfigureAwait(false);
+
+            return await context.Conflicts.AsNoTracking().CountAsync(row => row.Status == ConflictStatus.Open || row.Status == ConflictStatus.Deferred, token).ConfigureAwait(false);
+        }, cancellationToken).ConfigureAwait(false);
+
+        return outcome.ToResult(ToStorageFailure);
+    }
+
     private static StoreError ToStorageFailure(Exception exception) => new StorageFailed(exception.Message);
 }

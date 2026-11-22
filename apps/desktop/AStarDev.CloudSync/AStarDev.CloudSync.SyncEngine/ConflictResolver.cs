@@ -62,6 +62,11 @@ public sealed class ConflictResolver
         return outcomes;
     }
 
+    /// <summary>Reads the stored count of open and deferred conflicts into the <c>cloudsync.sync.conflicts.open</c> gauge, so it is correct after a restart. Resolving and detecting conflicts keeps it current afterwards.</summary>
+    /// <param name="cancellationToken">Cancelling abandons the read and surfaces as <see cref="OperationCanceledException"/>.</param>
+    /// <returns>Success, or the <see cref="StoreError"/> that stopped the read, in which case the gauge keeps its last value.</returns>
+    public Task<Result<Unit, StoreError>> RefreshOpenConflictCountAsync(CancellationToken cancellationToken) => SyncMetrics.Shared.RefreshOpenConflictsAsync(conflictStore, cancellationToken);
+
     private static Fail<ResolutionError> Stored(StoreError error) => new(new ResolutionStoreFailed(error));
 
     private static Fail<ResolutionError> Refusal(ConflictItemGone reason) => new(reason);
@@ -116,6 +121,7 @@ public sealed class ConflictResolver
         if (status.Value is Fail<StoreError> statusFailure) return Stored(statusFailure.Error);
 
         SyncMetrics.Shared.ConflictResolved(choice.ToString());
+        await SyncMetrics.Shared.RefreshOpenConflictsAsync(conflictStore, cancellationToken);
         SyncLog.ConflictResolved(logger, conflict.Id.Value, conflict.ItemId.Value, conflict.SyncJobId.Value, choice.ToString());
         var recorded = await RecordAsync(conflict with { Status = ConflictStatus.Resolved }, choice, copy, cancellationToken);
         if (copy is not null) await ReplanAsync(conflict.SyncJobId, cancellationToken);

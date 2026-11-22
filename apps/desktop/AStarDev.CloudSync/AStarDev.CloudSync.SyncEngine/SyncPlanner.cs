@@ -180,7 +180,7 @@ public sealed class SyncPlanner
         var entry = new JournalEntry(Guid.NewGuid(), conflict.CreatedUtc, ConflictDetectedEvent,conflict.Id.Value, payload);
         if (await journal.AppendAsync(entry, cancellationToken) is Fail<StoreError> failure) return failure;
 
-        SyncMetrics.Shared.ConflictOpened();
+        await SyncMetrics.Shared.RefreshOpenConflictsAsync(conflictStore, cancellationToken);
         SyncLog.ConflictDetected(logger, conflict.Id.Value, conflict.ItemId.Value, conflict.SyncJobId.Value, conflict.Type.ToString());
         await conflictEvents.DetectedAsync(conflict, cancellationToken);
 
