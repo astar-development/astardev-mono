@@ -19,6 +19,7 @@ public sealed class SyncPlanner
         [ConflictReason.KeepDelete] = ConflictType.KeepDelete
     };
 
+    private readonly ISyncJobStore jobStore;
     private readonly IItemStateStore itemStore;
     private readonly IKnownSnapshotStore knownStore;
     private readonly IOperationStore operationStore;
@@ -27,8 +28,9 @@ public sealed class SyncPlanner
     private readonly TimeProvider timeProvider;
     private readonly ILogger<SyncPlanner> logger;
 
-    internal SyncPlanner(IItemStateStore itemStore, IKnownSnapshotStore knownStore, IOperationStore operationStore, IConflictStore conflictStore, TimeProvider timeProvider, ILogger<SyncPlanner> logger)
+    internal SyncPlanner(ISyncJobStore jobStore, IItemStateStore itemStore, IKnownSnapshotStore knownStore, IOperationStore operationStore, IConflictStore conflictStore, TimeProvider timeProvider, ILogger<SyncPlanner> logger)
     {
+        this.jobStore = jobStore;
         this.itemStore = itemStore;
         this.knownStore = knownStore;
         this.operationStore = operationStore;
@@ -41,14 +43,15 @@ public sealed class SyncPlanner
     /// Plans the work for every item of the job. An item that already has a pending, running or dead-lettered operation is left alone, so planning again never queues the same work twice;
     /// an item in conflict gets one open conflict per reason however often it is planned.
     /// </summary>
-    /// <param name="jobId">The job to plan.</param>
+    /// <param name="jobId">The job to plan. Its stored bootstrap mode governs only the first plan, while the job has no baseline and no operation: Download copies remote content over local, Upload copies local over remote, and neither deletes the other side's extra items. Merge, and every later plan, use the normal rules, so differing content on both sides is a conflict.</param>
     /// <param name="cancellationToken">Cancelling stops planning and surfaces as <see cref="OperationCanceledException"/>; what was already queued stays queued.</param>
-    /// <returns>How many operations were queued and conflicts stored, or the <see cref="StoreError"/> that stopped planning.</returns>
+    /// <returns>How many operations were queued and conflicts stored, or the <see cref="StoreError"/> that stopped planning, including <see cref="SyncJobNotFound"/> when the job does not exist.</returns>
     public async Task<Result<PlanSummary, StoreError>> PlanAsync(SyncJobId jobId, CancellationToken cancellationToken)
     {
-        var outcome = await ThenAsync(itemStore.ListAsync(jobId, cancellationToken), rows =>
-            ThenAsync(knownStore.ListAsync(jobId, cancellationToken), known =>
-                ThenAsync(operationStore.ListAsync(cancellationToken), existing => PlanAllAsync(jobId, CanonicalStateBuilder.Build(rows, known), BusyItems(existing), cancellationToken))));
+        var outcome = await ThenAsync(jobStore.GetAsync(jobId, cancellationToken), job =>
+            ThenAsync(itemStore.ListAsync(jobId, cancellationToken), rows =>
+                ThenAsync(knownStore.ListAsync(jobId, cancellationToken), known =>
+                    ThenAsync(operationStore.ListAsync(cancellationToken), existing => PlanAllAsync(jobId, BootstrapModeFor(job, known, existing), CanonicalStateBuilder.Build(rows, known), BusyItems(existing), cancellationToken)))));
         if (outcome.Value is Ok<PlanSummary> ok) logger.LogInformation("Planned job {Job}: {Queued} operations queued, {Conflicts} conflicts stored", jobId.Value, ok.Value.Queued, ok.Value.Conflicts);
 
         return outcome;
@@ -64,16 +67,19 @@ public sealed class SyncPlanner
     private static HashSet<ItemId> BusyItems(IReadOnlyList<Operation> existing)
         => existing.Where(operation => operation.Status is OperationStatus.Pending or OperationStatus.Running or OperationStatus.DeadLetter).Select(operation => operation.ItemId).ToHashSet();
 
+    private static BootstrapMode BootstrapModeFor(SyncJob job, IReadOnlyList<KnownEntry> known, IReadOnlyList<Operation> existing)
+        => known.Count == 0 && existing.All(operation => operation.SyncJobId != job.Id) ? job.BootstrapMode : BootstrapMode.Merge;
+
     private static ConflictType ToConflictType(ConflictReason reason) => ConflictTypes[reason];
 
-    private async Task<Result<PlanSummary, StoreError>> PlanAllAsync(SyncJobId jobId, IReadOnlyList<CanonicalItemState> states, HashSet<ItemId> busy, CancellationToken cancellationToken)
+    private async Task<Result<PlanSummary, StoreError>> PlanAllAsync(SyncJobId jobId, BootstrapMode mode, IReadOnlyList<CanonicalItemState> states, HashSet<ItemId> busy, CancellationToken cancellationToken)
     {
         var total = new PlanSummary(0, 0);
 
         foreach (var state in states)
         {
             cancellationToken.ThrowIfCancellationRequested();
-            var outcome = reconciler.Reconcile(state) switch
+            var outcome = Decide(mode, state) switch
             {
                 Resolved resolved => await QueueAsync(jobId, state, resolved, busy, cancellationToken),
                 Conflicted conflicted => await RecordConflictAsync(jobId, state, conflicted, cancellationToken)
@@ -84,6 +90,9 @@ public sealed class SyncPlanner
 
         return new Ok<PlanSummary>(total);
     }
+
+    private SyncDecision Decide(BootstrapMode mode, CanonicalItemState state)
+        => mode != BootstrapMode.Merge && state.Known is null ? BootstrapResolver.Resolve(mode, state) : reconciler.Reconcile(state);
 
     private async Task<Result<PlanSummary, StoreError>> QueueAsync(SyncJobId jobId, CanonicalItemState state, Resolved decision, HashSet<ItemId> busy, CancellationToken cancellationToken)
     {

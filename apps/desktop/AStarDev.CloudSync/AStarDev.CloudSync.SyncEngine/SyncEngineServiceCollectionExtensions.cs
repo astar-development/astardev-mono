@@ -59,6 +59,7 @@ public static class SyncEngineServiceCollectionExtensions
             provider.GetRequiredService<TimeProvider>(),
             provider.GetRequiredService<ILogger<OperationScheduler>>()));
         services.AddSingleton(provider => new SyncPlanner(
+            provider.GetRequiredService<ISyncJobStore>(),
             provider.GetRequiredService<IItemStateStore>(),
             provider.GetRequiredService<IKnownSnapshotStore>(),
             provider.GetRequiredService<IOperationStore>(),
