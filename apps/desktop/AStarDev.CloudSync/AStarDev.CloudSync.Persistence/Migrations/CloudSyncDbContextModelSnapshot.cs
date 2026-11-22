@@ -15,7 +15,7 @@ internal sealed partial class CloudSyncDbContextModelSnapshot : ModelSnapshot
     // If you encounter a merge conflict in the line below, it means you need to
     // discard one of the migration branches and recreate its migrations on top of
     // the other branch. See https://aka.ms/efcore-docs-migrations-conflicts for more info.
-    public override string LastMigrationId => "20261122080901_AddOperations";
+    public override string LastMigrationId => "20261122090124_AddDeltaStates";
 
     protected override void BuildModel(ModelBuilder modelBuilder)
     {
@@ -67,9 +67,6 @@ internal sealed partial class CloudSyncDbContextModelSnapshot : ModelSnapshot
                 b.Property<bool>("Completed")
                     .HasColumnType("INTEGER");
 
-                b.Property<string>("DeltaToken")
-                    .HasColumnType("TEXT");
-
                 b.Property<long>("ItemsIndexed")
                     .HasColumnType("INTEGER");
 
@@ -82,6 +79,26 @@ internal sealed partial class CloudSyncDbContextModelSnapshot : ModelSnapshot
                 b.HasKey("SyncJobId", "RemoteRootId");
 
                 b.ToTable("CrawlCheckpoints");
+            });
+
+        modelBuilder.Entity("AStarDev.CloudSync.Persistence.DeltaStateEntity", b =>
+            {
+                b.Property<Guid>("SyncJobId")
+                    .HasColumnType("TEXT");
+
+                b.Property<string>("RemoteRootId")
+                    .HasColumnType("TEXT");
+
+                b.Property<string>("DeltaToken")
+                    .IsRequired()
+                    .HasColumnType("TEXT");
+
+                b.Property<long>("UpdatedUtc")
+                    .HasColumnType("INTEGER");
+
+                b.HasKey("SyncJobId", "RemoteRootId");
+
+                b.ToTable("DeltaStates");
             });
 
         modelBuilder.Entity("AStarDev.CloudSync.Persistence.ItemEntity", b =>
@@ -281,6 +298,15 @@ internal sealed partial class CloudSyncDbContextModelSnapshot : ModelSnapshot
                 b.HasOne("AStarDev.CloudSync.Persistence.SyncScopeEntity", null)
                     .WithOne()
                     .HasForeignKey("AStarDev.CloudSync.Persistence.CrawlCheckpointEntity", "SyncJobId", "RemoteRootId")
+                    .OnDelete(DeleteBehavior.Cascade)
+                    .IsRequired();
+            });
+
+        modelBuilder.Entity("AStarDev.CloudSync.Persistence.DeltaStateEntity", b =>
+            {
+                b.HasOne("AStarDev.CloudSync.Persistence.SyncScopeEntity", null)
+                    .WithOne()
+                    .HasForeignKey("AStarDev.CloudSync.Persistence.DeltaStateEntity", "SyncJobId", "RemoteRootId")
                     .OnDelete(DeleteBehavior.Cascade)
                     .IsRequired();
             });

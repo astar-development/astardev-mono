@@ -11,12 +11,14 @@ public sealed class SyncRunner : IAsyncDisposable
     private readonly Dictionary<SyncJobId, RunningCrawl> running = [];
     private readonly ISyncJobStore jobs;
     private readonly InitialCrawler crawler;
+    private readonly DeltaProcessingService deltas;
     private readonly ILogger<SyncRunner> logger;
 
-    internal SyncRunner(ISyncJobStore jobs, InitialCrawler crawler, ILogger<SyncRunner> logger)
+    internal SyncRunner(ISyncJobStore jobs, InitialCrawler crawler, DeltaProcessingService deltas, ILogger<SyncRunner> logger)
     {
         this.jobs = jobs;
         this.crawler = crawler;
+        this.deltas = deltas;
         this.logger = logger;
     }
 
@@ -74,6 +76,7 @@ public sealed class SyncRunner : IAsyncDisposable
         {
             var summary = await crawler.CrawlAsync(syncJobId, cancellationToken);
             logger.LogInformation("Crawl of job {Job} ended: {Summary}", syncJobId.Value, summary.Value);
+            await deltas.ProcessJobAsync(syncJobId, cancellationToken);
         }
         finally
         {

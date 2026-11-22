@@ -16,7 +16,11 @@ internal sealed class ItemIndexStore(IDbContextFactory<CloudSyncDbContext> conte
             await using var context = await contextFactory.CreateDbContextAsync(token).ConfigureAwait(false);
             var entity = await context.CrawlCheckpoints.AsNoTracking().SingleOrDefaultAsync(row => row.SyncJobId == scope.SyncJobId && row.RemoteRootId == scope.RemoteRootId, token).ConfigureAwait(false);
 
-            return entity?.ToCheckpoint() ?? CrawlCheckpoint.None;
+            if (entity is null) return CrawlCheckpoint.None;
+
+            var state = await context.DeltaStates.AsNoTracking().SingleOrDefaultAsync(row => row.SyncJobId == scope.SyncJobId && row.RemoteRootId == scope.RemoteRootId, token).ConfigureAwait(false);
+
+            return entity.ToCheckpoint(state?.DeltaToken);
         }, cancellationToken).ConfigureAwait(false);
 
         return outcome.ToResult(ToStorageFailure);
@@ -44,29 +48,121 @@ internal sealed class ItemIndexStore(IDbContextFactory<CloudSyncDbContext> conte
         };
     }
 
-    private static async Task UpsertItemsAsync(CloudSyncDbContext context, SyncJobId jobId, IReadOnlyList<ProviderItem> items, DateTimeOffset observedUtc, CancellationToken cancellationToken)
+    /// <inheritdoc/>
+    public async Task<Result<Unit, StoreError>> ApplyDeltaPageAsync(SyncScope scope, IReadOnlyList<ProviderChange> changes, DeltaToken? newToken, DateTimeOffset observedUtc, CancellationToken cancellationToken)
     {
-        var remoteIds = items.Select(item => item.RemoteItemId).Distinct().ToList();
-        var known = (await context.Items.Where(row => row.SyncJobId == jobId && remoteIds.Contains(row.RemoteItemId)).ToListAsync(cancellationToken).ConfigureAwait(false))
+        var outcome = await Try.RunAsync<Result<Unit, StoreError>>(async token =>
+        {
+            await using var context = await contextFactory.CreateDbContextAsync(token).ConfigureAwait(false);
+            if (!await context.SyncScopes.AnyAsync(row => row.SyncJobId == scope.SyncJobId && row.RemoteRootId == scope.RemoteRootId, token).ConfigureAwait(false)) return new Fail<StoreError>(new SyncScopeNotFound(scope));
+
+            await ApplyChangesAsync(context, scope.SyncJobId, changes, observedUtc, token).ConfigureAwait(false);
+            if (newToken is { } fresh) await UpsertDeltaStateAsync(context, scope, fresh, observedUtc, token).ConfigureAwait(false);
+            await context.SaveChangesAsync(token).ConfigureAwait(false);
+
+            return new Ok<Unit>(default);
+        }, cancellationToken).ConfigureAwait(false);
+
+        return outcome.ToResult(ToStorageFailure) switch
+        {
+            Ok<Result<Unit, StoreError>> ok => ok.Value,
+            Fail<StoreError> fail => fail
+        };
+    }
+
+    private static async Task<Dictionary<RemoteItemId, ItemEntity>> LoadKnownAsync(CloudSyncDbContext context, SyncJobId jobId, IEnumerable<RemoteItemId> ids, CancellationToken cancellationToken)
+    {
+        var remoteIds = ids.Distinct().ToList();
+
+        return (await context.Items.Where(row => row.SyncJobId == jobId && remoteIds.Contains(row.RemoteItemId)).ToListAsync(cancellationToken).ConfigureAwait(false))
             .GroupBy(row => row.RemoteItemId)
             .ToDictionary(group => group.Key, group => group.First());
+    }
 
-        foreach (var item in items)
+    private static async Task UpsertItemsAsync(CloudSyncDbContext context, SyncJobId jobId, IReadOnlyList<ProviderItem> items, DateTimeOffset observedUtc, CancellationToken cancellationToken)
+    {
+        var known = await LoadKnownAsync(context, jobId, items.Select(item => item.RemoteItemId), cancellationToken).ConfigureAwait(false);
+
+        foreach (var item in items) Upsert(context, jobId, known, item, observedUtc);
+    }
+
+    private static void Upsert(CloudSyncDbContext context, SyncJobId jobId, Dictionary<RemoteItemId, ItemEntity> known, ProviderItem item, DateTimeOffset observedUtc)
+    {
+        if (known.TryGetValue(item.RemoteItemId, out var existing))
         {
-            if (known.TryGetValue(item.RemoteItemId, out var existing))
-            {
-                existing.LocalPath = item.Path;
-                existing.UpdatedUtc = observedUtc;
-            }
-            else
-            {
-                existing = new ItemEntity { Id = new ItemId(Guid.NewGuid()), SyncJobId = jobId, ItemType = item.ItemType, RemoteItemId = item.RemoteItemId, LocalPath = item.Path, CreatedUtc = observedUtc, UpdatedUtc = observedUtc };
-                known[item.RemoteItemId] = existing;
-                context.Items.Add(existing);
-            }
-
-            context.ItemSnapshots.Add(new ItemSnapshotEntity { Id = new SnapshotId(Guid.NewGuid()), ItemId = existing.Id, Size = item.Size, ModifiedUtc = item.ModifiedUtc, ObservedUtc = observedUtc, SnapshotSource = SnapshotSource.Remote });
+            existing.LocalPath = item.Path;
+            existing.UpdatedUtc = observedUtc;
         }
+        else
+        {
+            existing = new ItemEntity { Id = new ItemId(Guid.NewGuid()), SyncJobId = jobId, ItemType = item.ItemType, RemoteItemId = item.RemoteItemId, LocalPath = item.Path, CreatedUtc = observedUtc, UpdatedUtc = observedUtc };
+            known[item.RemoteItemId] = existing;
+            context.Items.Add(existing);
+        }
+
+        context.ItemSnapshots.Add(new ItemSnapshotEntity { Id = new SnapshotId(Guid.NewGuid()), ItemId = existing.Id, Size = item.Size, ModifiedUtc = item.ModifiedUtc, ObservedUtc = observedUtc, SnapshotSource = SnapshotSource.Remote });
+    }
+
+    private static async Task ApplyChangesAsync(CloudSyncDbContext context, SyncJobId jobId, IReadOnlyList<ProviderChange> changes, DateTimeOffset observedUtc, CancellationToken cancellationToken)
+    {
+        var known = await LoadKnownAsync(context, jobId, changes.Select(change => change.RemoteItemId), cancellationToken).ConfigureAwait(false);
+
+        foreach (var change in changes)
+        {
+            switch (change.Kind)
+            {
+                case ChangeKind.Created:
+                case ChangeKind.Modified:
+                    if (change.Item is { } changed) Upsert(context, jobId, known, changed, observedUtc);
+                    break;
+                case ChangeKind.Renamed:
+                    if (change.Item is not { } renamed) break;
+                    if (known.TryGetValue(renamed.RemoteItemId, out var existing))
+                    {
+                        existing.LocalPath = renamed.Path;
+                        existing.UpdatedUtc = observedUtc;
+                    }
+                    else Upsert(context, jobId, known, renamed, observedUtc);
+                    break;
+                case ChangeKind.Deleted:
+                    if (known.Remove(change.RemoteItemId, out var gone)) await RemoveWithDescendantsAsync(context, known, gone, cancellationToken).ConfigureAwait(false);
+                    break;
+            }
+        }
+    }
+
+    private static async Task RemoveWithDescendantsAsync(CloudSyncDbContext context, Dictionary<RemoteItemId, ItemEntity> known, ItemEntity root, CancellationToken cancellationToken)
+    {
+        var doomed = new List<ItemEntity> { root };
+        var frontier = new List<ItemId?> { root.Id };
+
+        while (frontier.Count > 0)
+        {
+            var parents = frontier;
+            var children = await context.Items.Where(row => parents.Contains(row.ParentItemId)).ToListAsync(cancellationToken).ConfigureAwait(false);
+            doomed.AddRange(children);
+            frontier = children.Select(child => (ItemId?)child.Id).ToList();
+        }
+
+        var doomedIds = doomed.Select(item => item.Id).ToHashSet();
+        foreach (var pending in context.ChangeTracker.Entries<ItemSnapshotEntity>().Where(entry => entry.State == EntityState.Added && doomedIds.Contains(entry.Entity.ItemId)).ToList()) pending.State = EntityState.Detached;
+
+        foreach (var stale in known.Where(pair => doomedIds.Contains(pair.Value.Id)).Select(pair => pair.Key).ToList()) known.Remove(stale);
+
+        context.Items.RemoveRange(doomed);
+    }
+
+    private static async Task UpsertDeltaStateAsync(CloudSyncDbContext context, SyncScope scope, DeltaToken token, DateTimeOffset observedUtc, CancellationToken cancellationToken)
+    {
+        var row = await context.DeltaStates.SingleOrDefaultAsync(entity => entity.SyncJobId == scope.SyncJobId && entity.RemoteRootId == scope.RemoteRootId, cancellationToken).ConfigureAwait(false);
+        if (row is null)
+        {
+            row = new DeltaStateEntity { SyncJobId = scope.SyncJobId, RemoteRootId = scope.RemoteRootId };
+            context.DeltaStates.Add(row);
+        }
+
+        row.DeltaToken = token;
+        row.UpdatedUtc = observedUtc;
     }
 
     private static async Task UpsertCheckpointAsync(CloudSyncDbContext context, SyncScope scope, CrawlCheckpoint checkpoint, DateTimeOffset observedUtc, CancellationToken cancellationToken)
@@ -81,8 +177,8 @@ internal sealed class ItemIndexStore(IDbContextFactory<CloudSyncDbContext> conte
         row.ResumeToken = checkpoint.ResumeToken;
         row.ItemsIndexed = checkpoint.ItemsIndexed;
         row.Completed = checkpoint.Completed;
-        row.DeltaToken = checkpoint.DeltaToken;
         row.UpdatedUtc = observedUtc;
+        if (checkpoint.DeltaToken is { } token) await UpsertDeltaStateAsync(context, scope, token, observedUtc, cancellationToken).ConfigureAwait(false);
     }
 
     private static StoreError ToStorageFailure(Exception exception) => new StorageFailed(exception.Message);

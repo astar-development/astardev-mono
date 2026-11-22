@@ -28,6 +28,9 @@ internal sealed class CloudSyncDbContext(DbContextOptions<CloudSyncDbContext> op
     /// <summary>How far the initial crawl of each scope has got.</summary>
     public DbSet<CrawlCheckpointEntity> CrawlCheckpoints => Set<CrawlCheckpointEntity>();
 
+    /// <summary>The delta token of each scope.</summary>
+    public DbSet<DeltaStateEntity> DeltaStates => Set<DeltaStateEntity>();
+
     /// <summary>The durable operation queue.</summary>
     public DbSet<OperationEntity> Operations => Set<OperationEntity>();
 
@@ -76,6 +79,12 @@ internal sealed class CloudSyncDbContext(DbContextOptions<CloudSyncDbContext> op
         {
             checkpoint.ToTable("CrawlCheckpoints").HasKey(entity => new { entity.SyncJobId, entity.RemoteRootId });
             checkpoint.HasOne<SyncScopeEntity>().WithOne().HasForeignKey<CrawlCheckpointEntity>(entity => new { entity.SyncJobId, entity.RemoteRootId }).OnDelete(DeleteBehavior.Cascade);
+        });
+
+        modelBuilder.Entity<DeltaStateEntity>(state =>
+        {
+            state.ToTable("DeltaStates").HasKey(entity => new { entity.SyncJobId, entity.RemoteRootId });
+            state.HasOne<SyncScopeEntity>().WithOne().HasForeignKey<DeltaStateEntity>(entity => new { entity.SyncJobId, entity.RemoteRootId }).OnDelete(DeleteBehavior.Cascade);
         });
 
         modelBuilder.Entity<OperationEntity>(operation =>

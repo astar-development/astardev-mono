@@ -21,13 +21,11 @@ internal sealed class CrawlCheckpointEntity
     /// <summary>Whether the whole scope has been listed and stored.</summary>
     public bool Completed { get; set; }
 
-    /// <summary>The provider bookmark taken when the listing completed; <see langword="null"/> before that or when the provider gave none.</summary>
-    public DeltaToken? DeltaToken { get; set; }
-
     /// <summary>When the checkpoint was last written.</summary>
     public DateTimeOffset UpdatedUtc { get; set; }
 
     /// <summary>Builds the port's view of the stored row.</summary>
+    /// <param name="deltaToken">The scope's stored delta token, <see langword="null"/> when it has none.</param>
     /// <returns>An immutable checkpoint with the same values.</returns>
-    public CrawlCheckpoint ToCheckpoint() => new(ResumeToken, ItemsIndexed, Completed, DeltaToken);
+    public CrawlCheckpoint ToCheckpoint(DeltaToken? deltaToken) => new(ResumeToken, ItemsIndexed, Completed, deltaToken);
 }
