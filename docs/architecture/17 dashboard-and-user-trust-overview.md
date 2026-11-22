@@ -39,6 +39,17 @@ CloudSync is a trust system. The dashboard continually answers: can I trust Clou
 6. Current Activity
 7. Recent Events
 
+## Shell and Layout
+
+The window is a slim icon rail on the left, the dashboard in the content area and a permanent status bar at the bottom. The dashboard opens with a stats strip, then the cards in information hierarchy order.
+
+```text
+Stats strip : overall status | providers | queue running | conflicts
+Cards       : Trust Status, Sync Progress, Providers, Queue, Attention Required, Current Activity, Recent Events
+```
+
+The strip repeats the answers to the four questions at a glance and never replaces the cards. Per-account storage, counts and activity are not shown until the IPC carries them.
+
 ## Primary Dashboard Wireframe
 
 ```text
