@@ -34,6 +34,15 @@ internal sealed class CloudSyncDbContext(DbContextOptions<CloudSyncDbContext> op
     /// <summary>The durable operation queue.</summary>
     public DbSet<OperationEntity> Operations => Set<OperationEntity>();
 
+    /// <summary>The last reconciled state of each item.</summary>
+    public DbSet<KnownSnapshotEntity> KnownSnapshots => Set<KnownSnapshotEntity>();
+
+    /// <summary>Baseline changes waiting for their operation to succeed.</summary>
+    public DbSet<StagedKnownEntity> StagedKnownSnapshots => Set<StagedKnownEntity>();
+
+    /// <summary>Disagreements waiting for the user.</summary>
+    public DbSet<ConflictEntity> Conflicts => Set<ConflictEntity>();
+
     /// <summary>Saves inside a <c>persistence.save</c> span; see <see cref="PersistenceTelemetry"/>.</summary>
     public override int SaveChanges(bool acceptAllChangesOnSuccess)
     {
@@ -95,6 +104,29 @@ internal sealed class CloudSyncDbContext(DbContextOptions<CloudSyncDbContext> op
             operation.HasOne<SyncJobEntity>().WithMany().HasForeignKey(entity => entity.SyncJobId).OnDelete(DeleteBehavior.Cascade);
             operation.HasIndex(entity => new { entity.Status, entity.Priority, entity.CreatedUtc });
             operation.HasIndex(entity => new { entity.ItemId, entity.Status });
+        });
+
+        modelBuilder.Entity<KnownSnapshotEntity>(known =>
+        {
+            known.ToTable("KnownSnapshots").HasKey(entity => entity.ItemId);
+            known.HasOne<SyncJobEntity>().WithMany().HasForeignKey(entity => entity.SyncJobId).OnDelete(DeleteBehavior.Cascade);
+            known.HasIndex(entity => entity.SyncJobId);
+        });
+
+        modelBuilder.Entity<StagedKnownEntity>(staged =>
+        {
+            staged.ToTable("StagedKnownSnapshots").HasKey(entity => entity.OperationId);
+            staged.HasOne<SyncJobEntity>().WithMany().HasForeignKey(entity => entity.SyncJobId).OnDelete(DeleteBehavior.Cascade);
+        });
+
+        modelBuilder.Entity<ConflictEntity>(conflict =>
+        {
+            conflict.ToTable("Conflicts").HasKey(entity => entity.Id);
+            conflict.Property(entity => entity.Type).HasConversion<string>();
+            conflict.Property(entity => entity.Status).HasConversion<string>();
+            conflict.HasOne<SyncJobEntity>().WithMany().HasForeignKey(entity => entity.SyncJobId).OnDelete(DeleteBehavior.Cascade);
+            conflict.HasIndex(entity => new { entity.SyncJobId, entity.Status, entity.CreatedUtc });
+            conflict.HasIndex(entity => new { entity.ItemId, entity.Type, entity.Status });
         });
 
         modelBuilder.Entity<ItemEntity>(item =>

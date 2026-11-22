@@ -11,13 +11,13 @@ public sealed class PublicSurfaceArchitectureTestsShouldEnsure
     [Fact]
     public void the_domain_exposes_only_its_approved_public_types()
         => ShouldExposeExactly(typeof(ItemId).Assembly,
-            "Account", "AccountId", "AccountStatus", "BootstrapMode", "CanonicalItemState", "ContentFingerprint", "CTag", "DeltaToken", "ETag", "ItemId", "ItemType", "KnownSnapshot", "LocalIdentity", "LocalSnapshot", "Operation", "OperationId", "OperationPriority", "OperationStatus", "OperationType", "RelativePath", "RemoteItemId", "RemoteSnapshot", "SnapshotId", "SyncJob", "SyncJobId", "SyncScope");
+            "Account", "AccountId", "AccountStatus", "BootstrapMode", "CanonicalItemState", "Conflict", "ConflictId", "ConflictStatus", "ConflictType", "ContentFingerprint", "CTag", "DeltaToken", "ETag", "ItemId", "ItemType", "KnownSnapshot", "LocalIdentity", "LocalSnapshot", "Operation", "OperationId", "OperationPriority", "OperationStatus", "OperationType", "RelativePath", "RemoteItemId", "RemoteSnapshot", "SnapshotId", "SyncJob", "SyncJobId", "SyncScope");
 
     [Fact]
     public void the_ports_expose_only_their_approved_public_types()
         => ShouldExposeExactly(typeof(ICloudProvider).Assembly,
-            "AccountAlreadyExists", "AccountNotFound", "AuthenticationFailed", "ChangeKind", "CrawlCheckpoint", "IAccountStore", "ICloudProvider", "IItemIndexStore", "ILocalObservationStore", "InvalidDeltaToken", "IOperationStore", "ISyncJobStore", "ISyncScopeStore", "OperationNotDeadLettered", "OperationNotRunning", "Permanent", "ProviderAccount",
-            "ProviderChange", "ProviderDeltaPage", "ProviderError", "ProviderItem", "ProviderSnapshotPage", "RateLimited", "StorageFailed", "StoreError", "SyncJobAlreadyExists", "SyncJobNotFound",
+            "AccountAlreadyExists", "AccountNotFound", "AuthenticationFailed", "ChangeKind", "CrawlCheckpoint", "IAccountStore", "ICloudProvider", "IConflictStore", "IItemIndexStore", "IItemStateStore", "IKnownSnapshotStore", "ILocalObservationStore", "InvalidDeltaToken", "IOperationStore", "KnownEntry", "ISyncJobStore", "ISyncScopeStore", "OperationNotDeadLettered", "OperationNotRunning", "Permanent", "ProviderAccount",
+            "ProviderChange", "ProviderDeltaPage", "ProviderError", "ProviderItem", "ProviderSnapshotPage", "RateLimited", "StorageFailed", "StoredItem", "StoreError", "SyncJobAlreadyExists", "SyncJobNotFound",
             "SyncScopeAlreadyExists", "SyncScopeNotFound", "Transient");
 
     [Fact]
@@ -50,7 +50,7 @@ public sealed class PublicSurfaceArchitectureTestsShouldEnsure
 
     [Fact]
     public void the_sync_engine_exposes_only_its_approved_public_types()
-        => ShouldExposeExactly(typeof(SyncEngine.SyncRunner).Assembly, "ICrawlProgressSink", "CrawlProgress", "DeltaPollingOptions", "IOperationExecutor", "LocalObservationOptions", "LocalObservationRunner", "OperationScheduler", "OperationSchedulerOptions", "SyncEngineServiceCollectionExtensions", "SyncRunner");
+        => ShouldExposeExactly(typeof(SyncEngine.SyncRunner).Assembly, "ICrawlProgressSink", "CrawlProgress", "DeltaPollingOptions", "IOperationExecutor", "LocalObservationOptions", "LocalObservationRunner", "OperationScheduler", "OperationSchedulerOptions", "PlanSummary", "SyncEngineServiceCollectionExtensions", "SyncPlanner", "SyncRunner");
 
     [Fact]
     public void the_functional_paradigm_library_exposes_only_its_approved_public_types()
