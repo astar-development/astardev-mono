@@ -53,6 +53,19 @@ internal sealed class DaemonTestHost(IHost host, string socketPath, string datab
         return job;
     }
 
+    public async Task<Operation> AddOperationAsync(SyncJob job, OperationStatus status, CancellationToken cancellationToken)
+    {
+        var operation = new Operation(new OperationId(Guid.NewGuid()), job.Id, new ItemId(Guid.NewGuid()), OperationType.UploadFile, OperationPriority.Background, OperationStatus.Pending, 0, DateTimeOffset.UnixEpoch, null, DateTimeOffset.UnixEpoch);
+        var store = Services.GetRequiredService<IOperationStore>();
+        await store.EnqueueAsync(operation, cancellationToken);
+        if (status == OperationStatus.Pending) return operation;
+
+        await store.ClaimNextAsync(DateTimeOffset.UtcNow, 1, cancellationToken);
+        if (status == OperationStatus.DeadLetter) await store.FailAsync(operation.Id, "forbidden", null, cancellationToken);
+
+        return operation;
+    }
+
     public Task StartAsync(CancellationToken cancellationToken) => host.StartAsync(cancellationToken);
 
     public Task StopAsync(CancellationToken cancellationToken) => host.StopAsync(cancellationToken);

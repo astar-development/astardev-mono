@@ -50,7 +50,7 @@ public sealed class PublicSurfaceArchitectureTestsShouldEnsure
 
     [Fact]
     public void the_sync_engine_exposes_only_its_approved_public_types()
-        => ShouldExposeExactly(typeof(SyncEngine.SyncRunner).Assembly, "ICrawlProgressSink", "CrawlProgress", "DeltaPollingOptions", "IOperationExecutor", "OperationSchedulerOptions", "SyncEngineServiceCollectionExtensions", "SyncRunner");
+        => ShouldExposeExactly(typeof(SyncEngine.SyncRunner).Assembly, "ICrawlProgressSink", "CrawlProgress", "DeltaPollingOptions", "IOperationExecutor", "OperationScheduler", "OperationSchedulerOptions", "SyncEngineServiceCollectionExtensions", "SyncRunner");
 
     [Fact]
     public void the_functional_paradigm_library_exposes_only_its_approved_public_types()

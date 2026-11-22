@@ -60,4 +60,15 @@ public interface IOperationStore
     /// <param name="cancellationToken">Cancelling abandons the read.</param>
     /// <returns>The operations in claim order (priority, then age), or <see cref="StorageFailed"/>.</returns>
     Task<Result<IReadOnlyList<Operation>, StoreError>> ListAsync(CancellationToken cancellationToken);
+
+    /// <summary>Puts every operation left <see cref="OperationStatus.Running"/> back to <see cref="OperationStatus.Pending"/> for the daemon to run again after a restart. The attempt already counted stays counted and the next attempt time is kept, which is already past because the operation was claimed.</summary>
+    /// <param name="reason">Kept as <see cref="Operation.LastError"/> of each requeued operation.</param>
+    /// <param name="cancellationToken">Cancelling before the write completes requeues nothing.</param>
+    /// <returns>How many operations were requeued, zero when none was running, or <see cref="StorageFailed"/>.</returns>
+    Task<Result<int, StoreError>> RequeueRunningAsync(string reason, CancellationToken cancellationToken);
+
+    /// <summary>Counts the stored operations of each status.</summary>
+    /// <param name="cancellationToken">Cancelling abandons the read.</param>
+    /// <returns>The count per status; a status with no operation is absent. <see cref="StorageFailed"/> on a database failure.</returns>
+    Task<Result<IReadOnlyDictionary<OperationStatus, int>, StoreError>> CountByStatusAsync(CancellationToken cancellationToken);
 }

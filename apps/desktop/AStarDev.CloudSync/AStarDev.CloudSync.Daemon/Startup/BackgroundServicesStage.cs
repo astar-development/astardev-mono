@@ -8,7 +8,7 @@ using Microsoft.Extensions.Logging;
 namespace AStarDev.CloudSync.Daemon.Startup;
 
 /// <summary>Stage 5: start the background work. Today that is the crawl of every enabled job, which continues from its checkpoints; the operation scheduler, workers and delta processing arrive in later slices.</summary>
-internal sealed class BackgroundServicesStage(ISyncJobStore jobs, SyncRunner runner, IDatabaseState databaseState, ILogger<BackgroundServicesStage> logger) : IStartupStage
+internal sealed class BackgroundServicesStage(ISyncJobStore jobs, SyncRunner runner, OperationScheduler scheduler, IDatabaseState databaseState, ILogger<BackgroundServicesStage> logger) : IStartupStage
 {
     /// <inheritdoc/>
     public string Name => ApplicationConstants.BackgroundServicesStageName;
@@ -21,6 +21,8 @@ internal sealed class BackgroundServicesStage(ISyncJobStore jobs, SyncRunner run
     public async Task<Result<Unit, StartupError>> ExecuteAsync(CancellationToken cancellationToken)
     {
         if (databaseState.Mode == DatabaseMode.Recovery) return new Ok<Unit>(default);
+
+        scheduler.Start();
 
         return await jobs.ListAsync(cancellationToken) switch
         {

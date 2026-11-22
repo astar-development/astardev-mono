@@ -7,6 +7,7 @@ using Microsoft.Extensions.DependencyInjection;
 
 namespace AStarDev.CloudSync.TestsIntegration;
 
+[Collection("Operation scheduler metrics")]
 public sealed class OperationQueueShould
 {
     private static readonly DateTimeOffset Start = new(2026, 11, 22, 0, 0, 0, TimeSpan.Zero);
@@ -86,6 +87,63 @@ public sealed class OperationQueueShould
         var listed = Claimed(await host.Services.GetRequiredService<IOperationStore>().ListAsync(Token));
 
         listed.ShouldBe([running with { Status = OperationStatus.Running, Attempts = 1 }, pending]);
+    }
+
+    [Fact]
+    public async Task requeue_running_operations_after_a_restart()
+    {
+        await using var host = DatabaseTestHost.Create();
+        var job = await SeedJobAsync(host);
+        var store = host.Services.GetRequiredService<IOperationStore>();
+        var interrupted = NewOperation(job, new ItemId(Guid.NewGuid()), OperationPriority.UserInitiated, 0);
+        var waiting = NewOperation(job, new ItemId(Guid.NewGuid()), OperationPriority.Background, 1);
+        await EnqueueAsync(store, interrupted, waiting);
+        Claimed(await store.ClaimNextAsync(Start.AddHours(1), 1, Token)).Single().Id.ShouldBe(interrupted.Id);
+
+        await host.RestartAsync();
+        await host.Services.GetRequiredService<IDatabaseInitialiser>().InitialiseAsync(Token);
+        var restarted = host.Services.GetRequiredService<IOperationStore>();
+        var requeued = await restarted.RequeueRunningAsync("interrupted by a restart", Token);
+        var listed = Claimed(await restarted.ListAsync(Token));
+        var claimedAgain = Claimed(await restarted.ClaimNextAsync(Start.AddHours(1), 5, Token));
+
+        requeued.Value.ShouldBeOfType<Ok<int>>().Value.ShouldBe(1);
+        listed.ShouldBe([interrupted with { Attempts = 1, LastError = "interrupted by a restart" }, waiting]);
+        claimedAgain.Select(operation => operation.Id).ShouldBe([interrupted.Id, waiting.Id]);
+    }
+
+    [Fact]
+    public async Task count_operations_by_status()
+    {
+        await using var host = DatabaseTestHost.Create();
+        var job = await SeedJobAsync(host);
+        var store = host.Services.GetRequiredService<IOperationStore>();
+        var dead = NewOperation(job, new ItemId(Guid.NewGuid()), OperationPriority.Background, 0);
+        var running = NewOperation(job, new ItemId(Guid.NewGuid()), OperationPriority.Background, 1);
+        var pending = NewOperation(job, new ItemId(Guid.NewGuid()), OperationPriority.Background, 2);
+        await EnqueueAsync(store, dead, running, pending);
+        Claimed(await store.ClaimNextAsync(Start.AddHours(1), 2, Token)).Count.ShouldBe(2);
+        (await store.FailAsync(dead.Id, "no", null, Token)).Value.ShouldBeOfType<Ok<Unit>>();
+
+        var counts = (await store.CountByStatusAsync(Token)).Value.ShouldBeOfType<Ok<IReadOnlyDictionary<OperationStatus, int>>>().Value;
+
+        counts[OperationStatus.DeadLetter].ShouldBe(1);
+        counts[OperationStatus.Running].ShouldBe(1);
+        counts[OperationStatus.Pending].ShouldBe(1);
+        counts.GetValueOrDefault(OperationStatus.Completed).ShouldBe(0);
+    }
+
+    [Fact]
+    public async Task honour_cancellation_when_requeueing_and_counting()
+    {
+        await using var host = DatabaseTestHost.Create();
+        await SeedJobAsync(host);
+        var store = host.Services.GetRequiredService<IOperationStore>();
+        using var cancelled = new CancellationTokenSource();
+        await cancelled.CancelAsync();
+
+        await Should.ThrowAsync<OperationCanceledException>(() => store.RequeueRunningAsync("x", cancelled.Token));
+        await Should.ThrowAsync<OperationCanceledException>(() => store.CountByStatusAsync(cancelled.Token));
     }
 
     [Fact]
