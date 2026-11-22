@@ -10,7 +10,8 @@ public sealed class RenameDetectionShould
 
     public static TheoryData<bool, string?, string?, string?, string?, long, long, int, int, bool> Rules => new()
     {
-        { true, "id1", "id1", null, null, 10, 99, 0, 5, true },
+        { true, "id1", "id1", null, null, 10, 10, 0, 5, true },
+        { true, "id1", "id1", null, null, 10, 99, 0, 5, false },
         { true, "id1", "id2", "h", "h", 10, 10, 0, 0, false },
         { true, null, null, "h", "h", 10, 10, 0, 0, true },
         { true, "id1", null, "h", "h", 10, 10, 0, 0, true },
@@ -36,6 +37,34 @@ public sealed class RenameDetectionShould
 
         (renames.Count == 1).ShouldBe(expected);
         if (expected) renames[0].ShouldBe(new DetectedRename(First, created.Path));
+    }
+
+    [Fact]
+    public void prefer_identity_over_fingerprint()
+    {
+        var deleted = new DeletedItem(First, Evidence("/a/f.txt", 10, 0, "h", "dev1:ino1"));
+        var sameIdentity = Evidence("/b/f.txt", 10, 0, "edited", "dev1:ino1");
+        var sameFingerprint = Evidence("/c/f.txt", 10, 0, "h", null);
+
+        var renames = RenameDetector.DetectLocal([deleted], [sameFingerprint, sameIdentity]);
+
+        renames.ShouldBe([new DetectedRename(First, sameIdentity.Path)]);
+    }
+
+    [Fact]
+    public void not_trust_a_reused_identity_with_a_different_size()
+    {
+        var deleted = new DeletedItem(First, Evidence("/a/f.txt", 10, 0, "h", "dev1:ino1"));
+
+        RenameDetector.DetectLocal([deleted], [Evidence("/b/g.txt", 99, 0, "other", "dev1:ino1")]).ShouldBeEmpty();
+    }
+
+    [Fact]
+    public void not_trust_an_identity_from_another_device()
+    {
+        var deleted = new DeletedItem(First, Evidence("/a/f.txt", 10, 0, "h", "dev1:ino1"));
+
+        RenameDetector.DetectLocal([deleted], [Evidence("/b/f.txt", 10, 0, "h", "dev2:ino1")]).ShouldBeEmpty();
     }
 
     [Fact]

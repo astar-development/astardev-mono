@@ -26,6 +26,9 @@ internal sealed class ItemSnapshotEntity
     /// <summary>The provider's metadata version marker; <see langword="null"/> for a local observation.</summary>
     public string? CTag { get; set; }
 
+    /// <summary>The filesystem identity text of a local observation; <see langword="null"/> for a remote observation or when none could be read.</summary>
+    public string? LocalIdentity { get; set; }
+
     /// <summary>When the observation was taken.</summary>
     public DateTimeOffset ObservedUtc { get; set; }
 

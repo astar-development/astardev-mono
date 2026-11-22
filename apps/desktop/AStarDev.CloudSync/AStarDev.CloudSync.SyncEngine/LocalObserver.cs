@@ -108,7 +108,7 @@ internal sealed class LocalObserver(ILocalFileSystem fileSystem, ILocalObservati
     {
         var present = new List<LocalSnapshot>();
 
-        foreach (var file in disk.Where(file => !stored.TryGetValue(file.Path, out var last) || last.Size != file.Size || !SameInstant(last.ModifiedUtc, file.ModifiedUtc)))
+        foreach (var file in disk.Where(file => !stored.TryGetValue(file.Path, out var last) || last.Size != file.Size || !SameInstant(last.ModifiedUtc, file.ModifiedUtc) || last.Identity != file.Identity))
         {
             switch (await fileSystem.FingerprintAsync(job.LocalRootPath, file.Path, cancellationToken))
             {

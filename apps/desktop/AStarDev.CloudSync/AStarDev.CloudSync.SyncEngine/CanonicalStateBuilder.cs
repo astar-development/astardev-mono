@@ -8,7 +8,7 @@ internal static class CanonicalStateBuilder
 {
     /// <summary>
     /// Merges the rows into logical items. A local-only row joins the remote row at its path, or at the baseline path of a remotely renamed row, so one item never yields both an upload and a download.
-    /// A baseline whose row was removed by a remote delete joins the local-only row at its path. A known item missing locally and a new local file that rename detection proves the same item become one renamed item.
+    /// A baseline whose row was removed by a remote delete joins the local-only row at its path. A known item missing locally and a new local file that rename detection proves the same item become one renamed item; the missing item's last filesystem identity comes from the rows stored at its baseline path.
     /// </summary>
     /// <param name="items">Every stored file row of the job.</param>
     /// <param name="known">The baselines of the job.</param>
@@ -29,7 +29,7 @@ internal static class CanonicalStateBuilder
         }
 
         var logical = anchored.Concat(orphans).Concat(standalone).ToList();
-        ApplyLocalRenames(logical, standalone, baselines);
+        ApplyLocalRenames(logical, standalone, baselines, items.Where(item => item.LastLocalIdentity is not null).GroupBy(item => item.Path).ToDictionary(group => group.Key, group => group.First().LastLocalIdentity!.Value));
 
         return logical.Select(item => new CanonicalItemState(item.Id, baselines.GetValueOrDefault(item.Id), item.Local, item.Remote)).ToList();
     }
@@ -47,11 +47,11 @@ internal static class CanonicalStateBuilder
         if (baselines.ContainsKey(localOnly.ItemId) && !baselines.ContainsKey(target.Id)) target.Id = localOnly.ItemId;
     }
 
-    private static void ApplyLocalRenames(List<Logical> logical, List<Logical> standalone, Dictionary<ItemId, KnownSnapshot> baselines)
+    private static void ApplyLocalRenames(List<Logical> logical, List<Logical> standalone, Dictionary<ItemId, KnownSnapshot> baselines, Dictionary<RelativePath, LocalIdentity> lastIdentities)
     {
         var deleted = logical
             .Where(item => item.Local is null && item.Remote is not null && baselines.ContainsKey(item.Id))
-            .Select(item => new DeletedItem(item.Id, ToEvidence(baselines[item.Id])))
+            .Select(item => new DeletedItem(item.Id, ToEvidence(baselines[item.Id], lastIdentities)))
             .ToList();
         var created = standalone
             .Where(item => item.Local is not null && item.Remote is null && !baselines.ContainsKey(item.Id))
@@ -66,9 +66,10 @@ internal static class CanonicalStateBuilder
         }
     }
 
-    private static RenameEvidence ToEvidence(KnownSnapshot snapshot) => new(snapshot.Path, snapshot.Size, snapshot.ModifiedUtc, snapshot.Fingerprint, null);
+    private static RenameEvidence ToEvidence(KnownSnapshot snapshot, Dictionary<RelativePath, LocalIdentity> lastIdentities)
+        => new(snapshot.Path, snapshot.Size, snapshot.ModifiedUtc, snapshot.Fingerprint, lastIdentities.TryGetValue(snapshot.Path, out var identity) ? identity.Value : null);
 
-    private static RenameEvidence ToEvidence(LocalSnapshot snapshot) => new(snapshot.Path, snapshot.Size, snapshot.ModifiedUtc, snapshot.Fingerprint, null);
+    private static RenameEvidence ToEvidence(LocalSnapshot snapshot) => new(snapshot.Path, snapshot.Size, snapshot.ModifiedUtc, snapshot.Fingerprint, snapshot.Identity?.Value);
 
     private sealed class Logical(ItemId id, RelativePath path, LocalSnapshot? local, RemoteSnapshot? remote)
     {

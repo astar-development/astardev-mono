@@ -75,7 +75,7 @@ public sealed class LocalObservationShould : IDisposable
     public async Task rescan_after_watcher_overflow()
     {
         Write("seed.txt", "seed");
-        var fileSystem = new OverflowingFileSystem(new PhysicalLocalFileSystem());
+        var fileSystem = new OverflowingFileSystem(new PhysicalLocalFileSystem(new UnixLocalIdentityReader()));
         await using var host = CreateHost(fileSystem);
         var job = await SeedAsync(host);
         using var cancellation = CancellationTokenSource.CreateLinkedTokenSource(Token);

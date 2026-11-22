@@ -31,12 +31,14 @@ internal sealed class ItemStateStore(IDbContextFactory<CloudSyncDbContext> conte
     private static StoredItem ToStoredItem(ItemEntity item, Dictionary<(ItemId, SnapshotSource), ItemSnapshotEntity> snapshots)
     {
         var local = snapshots.TryGetValue((item.Id, SnapshotSource.Local), out var seen) && seen.Size != ILocalObservationStore.DeletedSize
-            ? new LocalSnapshot(item.LocalPath, seen.Size, seen.ModifiedUtc, null, seen.Hash is { } hash ? new ContentFingerprint(hash) : null)
+            ? new LocalSnapshot(item.LocalPath, seen.Size, seen.ModifiedUtc, ToIdentity(seen), seen.Hash is { } hash ? new ContentFingerprint(hash) : null)
             : null;
         var remote = snapshots.TryGetValue((item.Id, SnapshotSource.Remote), out var reported)
             ? new RemoteSnapshot(item.RemoteItemId, item.LocalPath, reported.Size, reported.ModifiedUtc, reported.ETag ?? new ETag(string.Empty), reported.CTag is { } tag ? new CTag(tag) : null, reported.Hash is { } digest ? new ContentFingerprint(digest) : null)
             : null;
 
-        return new StoredItem(item.Id, item.RemoteItemId, item.LocalPath, local, remote);
+        return new StoredItem(item.Id, item.RemoteItemId, item.LocalPath, local, remote, snapshots.TryGetValue((item.Id, SnapshotSource.Local), out var last) ? ToIdentity(last) : null);
     }
+
+    private static LocalIdentity? ToIdentity(ItemSnapshotEntity snapshot) => snapshot.LocalIdentity is { } text ? new LocalIdentity(text) : null;
 }

@@ -23,7 +23,7 @@ internal sealed class LocalObservationStore(IDbContextFactory<CloudSyncDbContext
             return rows.GroupBy(row => row.LocalPath)
                 .Select(group => group.MaxBy(row => row.Snapshot.ObservedUtc)!)
                 .Where(row => row.Snapshot.Size != ILocalObservationStore.DeletedSize)
-                .Select(row => new LocalSnapshot(row.LocalPath, row.Snapshot.Size, row.Snapshot.ModifiedUtc, null, row.Snapshot.Hash is { } hash ? new ContentFingerprint(hash) : null))
+                .Select(row => new LocalSnapshot(row.LocalPath, row.Snapshot.Size, row.Snapshot.ModifiedUtc, row.Snapshot.LocalIdentity is { } identity ? new LocalIdentity(identity) : null, row.Snapshot.Hash is { } hash ? new ContentFingerprint(hash) : null))
                 .ToList();
         }, cancellationToken).ConfigureAwait(false);
 
@@ -82,7 +82,7 @@ internal sealed class LocalObservationStore(IDbContextFactory<CloudSyncDbContext
         }
         else item.UpdatedUtc = observedUtc;
 
-        AddSnapshot(context, latest, item, snapshot.Size, snapshot.ModifiedUtc, snapshot.Fingerprint?.Value, observedUtc);
+        AddSnapshot(context, latest, item, snapshot.Size, snapshot.ModifiedUtc, snapshot.Fingerprint?.Value, snapshot.Identity?.Value, observedUtc);
     }
 
     private static void AddDeleted(CloudSyncDbContext context, Dictionary<RelativePath, ItemEntity> known, Dictionary<ItemId, ItemSnapshotEntity> latest, RelativePath path, DateTimeOffset observedUtc)
@@ -90,13 +90,13 @@ internal sealed class LocalObservationStore(IDbContextFactory<CloudSyncDbContext
         if (!known.TryGetValue(path, out var item) || !latest.TryGetValue(item.Id, out var last) || last.Size == ILocalObservationStore.DeletedSize) return;
 
         item.UpdatedUtc = observedUtc;
-        AddSnapshot(context, latest, item, ILocalObservationStore.DeletedSize, last.ModifiedUtc, null, observedUtc);
+        AddSnapshot(context, latest, item, ILocalObservationStore.DeletedSize, last.ModifiedUtc, null, last.LocalIdentity, observedUtc);
     }
 
-    private static void AddSnapshot(CloudSyncDbContext context, Dictionary<ItemId, ItemSnapshotEntity> latest, ItemEntity item, long size, DateTimeOffset modifiedUtc, string? hash, DateTimeOffset observedUtc)
+    private static void AddSnapshot(CloudSyncDbContext context, Dictionary<ItemId, ItemSnapshotEntity> latest, ItemEntity item, long size, DateTimeOffset modifiedUtc, string? hash, string? identity, DateTimeOffset observedUtc)
     {
         var ordered = latest.TryGetValue(item.Id, out var last) && last.ObservedUtc >= observedUtc ? last.ObservedUtc.AddTicks(1) : observedUtc;
-        var row = new ItemSnapshotEntity { Id = new SnapshotId(Guid.NewGuid()), ItemId = item.Id, Size = size, ModifiedUtc = modifiedUtc, Hash = hash, ObservedUtc = ordered, SnapshotSource = SnapshotSource.Local };
+        var row = new ItemSnapshotEntity { Id = new SnapshotId(Guid.NewGuid()), ItemId = item.Id, Size = size, ModifiedUtc = modifiedUtc, Hash = hash, LocalIdentity = identity, ObservedUtc = ordered, SnapshotSource = SnapshotSource.Local };
         latest[item.Id] = row;
         context.ItemSnapshots.Add(row);
     }

@@ -41,6 +41,7 @@ public static class SyncEngineServiceCollectionExtensions
         services.AddOptions<DeltaPollingOptions>().BindConfiguration(DeltaPollingOptions.ConfigurationSection);
         services.AddSingleton(provider => new SyncRunner(provider.GetRequiredService<ISyncJobStore>(), provider.GetRequiredService<InitialCrawler>(), provider.GetRequiredService<DeltaProcessingService>(), provider.GetRequiredService<IOptions<DeltaPollingOptions>>(), provider.GetRequiredService<TimeProvider>(), provider.GetRequiredService<ILogger<SyncRunner>>()));
         services.AddOptions<LocalObservationOptions>().BindConfiguration(LocalObservationOptions.ConfigurationSection);
+        services.TryAddSingleton<ILocalIdentityReader, UnixLocalIdentityReader>();
         services.TryAddSingleton<ILocalFileSystem, PhysicalLocalFileSystem>();
         services.AddSingleton(provider => new LocalObserver(provider.GetRequiredService<ILocalFileSystem>(), provider.GetRequiredService<ILocalObservationStore>(), provider.GetRequiredService<IOptions<LocalObservationOptions>>(), provider.GetRequiredService<TimeProvider>(), provider.GetRequiredService<ILogger<LocalObserver>>()));
         services.AddSingleton(provider => new LocalObservationRunner(provider.GetRequiredService<ISyncJobStore>(), provider.GetRequiredService<LocalObserver>(), provider.GetRequiredService<ILogger<LocalObservationRunner>>()));
