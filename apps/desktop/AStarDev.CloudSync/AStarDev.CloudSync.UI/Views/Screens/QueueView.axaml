@@ -18,6 +18,32 @@
             </ItemsControl.ItemTemplate>
         </ItemsControl>
         <TextBlock DockPanel.Dock="Top" Text="{Binding ConflictsNote}" Foreground="{DynamicResource Text.Secondary.Brush}" TextWrapping="Wrap" Margin="0,8,0,0" />
+        <StackPanel DockPanel.Dock="Top" IsVisible="{Binding HasDeadLetters}" Spacing="8" Margin="0,8,0,0">
+            <TextBlock Text="{Binding DeadLettersHeading}" FontWeight="SemiBold" Foreground="{DynamicResource Text.Primary.Brush}" />
+            <ItemsControl ItemsSource="{Binding DeadLetters}">
+                <ItemsControl.ItemTemplate>
+                    <DataTemplate x:DataType="vm:DeadLetterRowViewModel">
+                        <Border Classes="card" Margin="0,0,0,8">
+                            <StackPanel Spacing="4">
+                                <TextBlock Text="{Binding TypeText}" FontWeight="SemiBold" Foreground="{DynamicResource Text.Primary.Brush}" />
+                                <TextBlock Text="{Binding ItemText}" Foreground="{DynamicResource Text.Secondary.Brush}" />
+                                <TextBlock Text="{Binding AttemptsText}" Foreground="{DynamicResource Text.Secondary.Brush}" />
+                                <TextBlock Text="{Binding ErrorText}" TextWrapping="Wrap" Foreground="{DynamicResource Trust.Degraded.Brush}" />
+                                <StackPanel Orientation="Horizontal" Spacing="8">
+                                    <TextBlock Text="{Binding DateText}" Foreground="{DynamicResource Text.Secondary.Brush}" />
+                                    <TextBlock Text="{Binding TimeText}" Foreground="{DynamicResource Text.Secondary.Brush}" />
+                                </StackPanel>
+                                <StackPanel Orientation="Horizontal" Spacing="8">
+                                    <Button Content="{Binding $parent[UserControl].((vm:QueueViewModel)DataContext).RetryText}" Command="{Binding RetryCommand}" />
+                                    <Button Content="{Binding $parent[UserControl].((vm:QueueViewModel)DataContext).IgnoreText}" Command="{Binding IgnoreCommand}" />
+                                </StackPanel>
+                            </StackPanel>
+                        </Border>
+                    </DataTemplate>
+                </ItemsControl.ItemTemplate>
+            </ItemsControl>
+        </StackPanel>
+        <TextBlock DockPanel.Dock="Top" Text="{Binding ErrorMessage}" IsVisible="{Binding ErrorMessage, Converter={x:Static ObjectConverters.IsNotNull}}" TextWrapping="Wrap" Foreground="{DynamicResource Trust.Degraded.Brush}" Margin="0,8,0,0" />
         <views:OperationListView />
     </DockPanel>
 </UserControl>

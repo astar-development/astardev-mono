@@ -39,6 +39,23 @@ public interface IOperationStore
     /// <returns>Success, <see cref="OperationNotRunning"/> when it is missing or not running, or <see cref="StorageFailed"/>.</returns>
     Task<Result<Unit, StoreError>> FailAsync(OperationId id, string error, DateTimeOffset? retryAtUtc, CancellationToken cancellationToken);
 
+    /// <summary>Lists the operations that gave up after their retries and are waiting for a decision.</summary>
+    /// <param name="cancellationToken">Cancelling abandons the read.</param>
+    /// <returns>The <see cref="OperationStatus.DeadLetter"/> operations in claim order (priority, then age); empty when there are none. <see cref="StorageFailed"/> on a database failure.</returns>
+    Task<Result<IReadOnlyList<Operation>, StoreError>> ListDeadLettersAsync(CancellationToken cancellationToken);
+
+    /// <summary>Puts a dead-lettered operation back to <see cref="OperationStatus.Pending"/> with its attempts reset to zero, so it is claimed again. Its last error is kept until the next failure replaces it.</summary>
+    /// <param name="id">The operation to requeue.</param>
+    /// <param name="cancellationToken">Cancelling before the write completes leaves the operation dead-lettered.</param>
+    /// <returns>Success, <see cref="OperationNotDeadLettered"/> when it is missing or in another status, or <see cref="StorageFailed"/>.</returns>
+    Task<Result<Unit, StoreError>> RequeueDeadLetterAsync(OperationId id, CancellationToken cancellationToken);
+
+    /// <summary>Deletes a dead-lettered operation, so it is never run and no longer listed.</summary>
+    /// <param name="id">The operation to drop.</param>
+    /// <param name="cancellationToken">Cancelling before the write completes leaves the operation dead-lettered.</param>
+    /// <returns>Success, <see cref="OperationNotDeadLettered"/> when it is missing or in another status, or <see cref="StorageFailed"/>.</returns>
+    Task<Result<Unit, StoreError>> DiscardDeadLetterAsync(OperationId id, CancellationToken cancellationToken);
+
     /// <summary>Lists every stored operation whatever its status.</summary>
     /// <param name="cancellationToken">Cancelling abandons the read.</param>
     /// <returns>The operations in claim order (priority, then age), or <see cref="StorageFailed"/>.</returns>

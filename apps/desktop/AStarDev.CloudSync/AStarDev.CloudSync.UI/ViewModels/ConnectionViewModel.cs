@@ -32,6 +32,12 @@ public sealed partial class ConnectionViewModel(Func<IIpcClient> createClient, T
     /// </summary>
     public ObservableCollection<ActivityView> Activities { get; } = [];
 
+    /// <summary>
+    /// The operations that gave up and wait for a retry or ignore decision: read once on each connect, then replaced by the Queue screen after each decision. Shown as received.
+    /// Not cleared when the link drops, so a reconnect replaces it rather than flashing empty.
+    /// </summary>
+    public ObservableCollection<DeadLetterView> DeadLetters { get; } = [];
+
     /// <summary>Banner text for <see cref="State"/>, so the view binds a ready-made label instead of converting the enum.</summary>
     public string StatusText => State switch
     {
@@ -94,6 +100,7 @@ public sealed partial class ConnectionViewModel(Func<IIpcClient> createClient, T
     {
         postToUi(() => DaemonStatus = status);
         if (await client.QueryAsync(new GetActivities(), cancellationToken) is Ok<ActivitiesView> activities) postToUi(() => Replace(activities.Value.Activities));
+        if (await client.QueryAsync(new GetDeadLetters(), cancellationToken) is Ok<DeadLettersView> deadLetters) postToUi(() => ReplaceDeadLetters(deadLetters.Value.DeadLetters));
 
         return await client.SubscribeAsync(cancellationToken);
     }
@@ -109,6 +116,12 @@ public sealed partial class ConnectionViewModel(Func<IIpcClient> createClient, T
     {
         Activities.Clear();
         foreach (var activity in activities) Activities.Add(activity);
+    }
+
+    internal void ReplaceDeadLetters(IReadOnlyList<DeadLetterView> deadLetters)
+    {
+        DeadLetters.Clear();
+        foreach (var deadLetter in deadLetters) DeadLetters.Add(deadLetter);
     }
 
     private void SetState(ConnectionState state) => postToUi(() => State = state);

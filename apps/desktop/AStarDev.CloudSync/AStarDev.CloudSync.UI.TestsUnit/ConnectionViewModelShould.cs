@@ -61,6 +61,22 @@ public sealed class ConnectionViewModelShould
     }
 
     [Fact]
+    public async Task load_the_dead_letters_on_connect()
+    {
+        var dead = new DeadLetterView(Guid.NewGuid(), Guid.NewGuid(), "UploadFile", 5, "access denied", DateTimeOffset.UnixEpoch);
+        var client = new FakeIpcClient([], available: true) { DeadLettersReply = new Ok<DeadLettersView>(new DeadLettersView([dead])) };
+        var viewModel = Create(client);
+        using var source = CancellationTokenSource.CreateLinkedTokenSource(Token);
+
+        var run = viewModel.RunAsync(source.Token);
+        await WaitForAsync(() => viewModel.DeadLetters.Count == 1);
+        await source.CancelAsync();
+        await Should.ThrowAsync<OperationCanceledException>(() => run);
+
+        viewModel.DeadLetters.ShouldBe([dead]);
+    }
+
+    [Fact]
     public async Task reconnect_when_the_daemon_returns()
     {
         var first = new FakeIpcClient([], available: true);
@@ -89,7 +105,7 @@ public sealed class ConnectionViewModelShould
         await source.CancelAsync();
         await Should.ThrowAsync<OperationCanceledException>(() => run);
 
-        calls.ShouldBe(["connect", "query", "query", "subscribe"]);
+        calls.ShouldBe(["connect", "query", "query", "query", "subscribe"]);
         viewModel.DaemonStatus.ShouldBe(FakeIpcClient.Status);
     }
 

@@ -92,6 +92,49 @@ internal sealed class OperationStore(IDbContextFactory<CloudSyncDbContext> conte
     }
 
     /// <inheritdoc/>
+    public async Task<Result<IReadOnlyList<Operation>, StoreError>> ListDeadLettersAsync(CancellationToken cancellationToken)
+    {
+        var outcome = await Try.RunAsync<IReadOnlyList<Operation>>(async token =>
+        {
+            await using var context = await contextFactory.CreateDbContextAsync(token).ConfigureAwait(false);
+            var rows = await context.Operations.AsNoTracking().Where(row => row.Status == OperationStatus.DeadLetter).OrderBy(row => row.Priority).ThenBy(row => row.CreatedUtc).ToListAsync(token).ConfigureAwait(false);
+
+            return rows.Select(row => row.ToOperation()).ToList();
+        }, cancellationToken).ConfigureAwait(false);
+
+        return outcome.ToResult(ToStorageFailure);
+    }
+
+    /// <inheritdoc/>
+    public async Task<Result<Unit, StoreError>> RequeueDeadLetterAsync(OperationId id, CancellationToken cancellationToken)
+    {
+        var outcome = await Try.RunAsync<Result<Unit, StoreError>>(async token =>
+        {
+            await using var context = await contextFactory.CreateDbContextAsync(token).ConfigureAwait(false);
+            var changed = await context.Operations.Where(row => row.Id == id && row.Status == OperationStatus.DeadLetter)
+                .ExecuteUpdateAsync(setters => setters.SetProperty(row => row.Status, OperationStatus.Pending).SetProperty(row => row.Attempts, 0), token).ConfigureAwait(false);
+
+            return changed == 0 ? new Fail<StoreError>(new OperationNotDeadLettered(id)) : new Ok<Unit>(default);
+        }, cancellationToken).ConfigureAwait(false);
+
+        return Flatten(outcome);
+    }
+
+    /// <inheritdoc/>
+    public async Task<Result<Unit, StoreError>> DiscardDeadLetterAsync(OperationId id, CancellationToken cancellationToken)
+    {
+        var outcome = await Try.RunAsync<Result<Unit, StoreError>>(async token =>
+        {
+            await using var context = await contextFactory.CreateDbContextAsync(token).ConfigureAwait(false);
+            var changed = await context.Operations.Where(row => row.Id == id && row.Status == OperationStatus.DeadLetter).ExecuteDeleteAsync(token).ConfigureAwait(false);
+
+            return changed == 0 ? new Fail<StoreError>(new OperationNotDeadLettered(id)) : new Ok<Unit>(default);
+        }, cancellationToken).ConfigureAwait(false);
+
+        return Flatten(outcome);
+    }
+
+    /// <inheritdoc/>
     public async Task<Result<IReadOnlyList<Operation>, StoreError>> ListAsync(CancellationToken cancellationToken)
     {
         var outcome = await Try.RunAsync<IReadOnlyList<Operation>>(async token =>
