@@ -322,7 +322,7 @@ public sealed class OperationQueueShould
 
         scheduler.Start();
         scheduler.Start();
-        while (executor.Executed.Count < 2) await Task.Delay(10, Token);
+        await WaitUntilAllCompletedAsync(store);
         await scheduler.StopAsync(Token);
         await scheduler.StopAsync(Token);
 
@@ -346,6 +346,13 @@ public sealed class OperationQueueShould
 
     private static async Task RunOnceAsync(OperationScheduler scheduler, bool expectProcessed)
         => (await scheduler.RunOnceAsync(Token)).Value.ShouldBeOfType<Ok<bool>>().Value.ShouldBe(expectProcessed);
+
+    private static async Task WaitUntilAllCompletedAsync(IOperationStore store)
+    {
+        using var timeout = CancellationTokenSource.CreateLinkedTokenSource(Token);
+        timeout.CancelAfter(TimeSpan.FromSeconds(30));
+        while (Claimed(await store.ListAsync(timeout.Token)).Any(operation => operation.Status != OperationStatus.Completed)) await Task.Delay(10, timeout.Token);
+    }
 
     private static async Task DrainAsync(OperationScheduler scheduler)
     {

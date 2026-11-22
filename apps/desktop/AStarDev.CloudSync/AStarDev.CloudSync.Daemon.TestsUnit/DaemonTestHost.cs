@@ -45,9 +45,9 @@ internal sealed class DaemonTestHost(IHost host, string socketPath, string datab
         return account;
     }
 
-    public async Task<SyncJob> AddJobAsync(Account account, string localRoot, CancellationToken cancellationToken)
+    public async Task<SyncJob> AddJobAsync(Account account, string localRoot, CancellationToken cancellationToken, bool enabled = true)
     {
-        var job = new SyncJob(new SyncJobId(Guid.NewGuid()), account.Id, "OneDrive", localRoot, new RemoteItemId("root"), BootstrapMode.Merge, true, DateTimeOffset.UnixEpoch, DateTimeOffset.UnixEpoch);
+        var job = new SyncJob(new SyncJobId(Guid.NewGuid()), account.Id, "OneDrive", localRoot, new RemoteItemId("root"), BootstrapMode.Merge, enabled, DateTimeOffset.UnixEpoch, DateTimeOffset.UnixEpoch);
         await Services.GetRequiredService<ISyncJobStore>().AddAsync(job, cancellationToken);
 
         return job;
