@@ -6,11 +6,31 @@
              x:Class="AStarDev.CloudSync.UI.Views.Screens.DashboardView"
              x:DataType="screens:DashboardViewModel">
     <ScrollViewer>
-        <StackPanel Margin="16" Spacing="12">
+        <StackPanel Margin="20" Spacing="16">
             <TextBlock Text="{Binding Title}" FontSize="24" FontWeight="SemiBold" Foreground="{DynamicResource Text.Primary.Brush}" />
             <TextBlock Text="{Binding SampleDataNotice}" Foreground="{DynamicResource Text.Secondary.Brush}" TextWrapping="Wrap" />
 
-            <Border Background="{DynamicResource Surface.Raised.Brush}" BorderBrush="{DynamicResource Border.Brush}" BorderThickness="1" Padding="20">
+            <Border Classes="card" Padding="0">
+                <UniformGrid Rows="1" Columns="4">
+                    <StackPanel Margin="20,14" Spacing="2" DataContext="{Binding Health}" x:DataType="vm:SyncHealthPresentation">
+                        <views:StatusIndicatorView DataContext="{Binding Indicator}" />
+                        <TextBlock Text="{Binding Headline}" FontSize="18" FontWeight="SemiBold" Foreground="{DynamicResource Accent.Brush}" TextWrapping="Wrap" />
+                    </StackPanel>
+                    <StackPanel Margin="20,14" Spacing="2">
+                        <TextBlock Text="{Binding Providers.Count}" FontSize="22" FontWeight="SemiBold" Foreground="{DynamicResource Text.Primary.Brush}" />
+                        <TextBlock Text="{Binding ProvidersHeading}" Foreground="{DynamicResource Text.Secondary.Brush}" />
+                    </StackPanel>
+                    <StackPanel Margin="20,14" Spacing="2">
+                        <TextBlock Text="{Binding RunningText}" FontSize="14" FontWeight="SemiBold" Foreground="{DynamicResource Text.Primary.Brush}" />
+                        <TextBlock Text="{Binding QueueHeading}" Foreground="{DynamicResource Text.Secondary.Brush}" />
+                    </StackPanel>
+                    <StackPanel Margin="20,14" Spacing="2">
+                        <TextBlock Text="{Binding ConflictsText}" FontSize="14" FontWeight="SemiBold" Foreground="{DynamicResource Text.Primary.Brush}" />
+                        <TextBlock Text="{Binding AttentionHeading}" Foreground="{DynamicResource Text.Secondary.Brush}" />
+                    </StackPanel>
+                </UniformGrid>
+            </Border>
+            <Border Classes="card">
                 <StackPanel Spacing="8" DataContext="{Binding Health}" x:DataType="vm:SyncHealthPresentation">
                     <views:StatusIndicatorView DataContext="{Binding Indicator}" />
                     <TextBlock Text="{Binding Headline}" FontSize="28" FontWeight="Bold" Foreground="{DynamicResource Text.Primary.Brush}" TextWrapping="Wrap" />
@@ -23,7 +43,7 @@
                 <TextBlock Text="{Binding LastQueueActivityText}" Foreground="{DynamicResource Text.Secondary.Brush}" />
             </StackPanel>
 
-            <Border Background="{DynamicResource Surface.Raised.Brush}" BorderBrush="{DynamicResource Border.Brush}" BorderThickness="1" Padding="12">
+            <Border Classes="card">
                 <StackPanel Spacing="4">
                     <TextBlock Text="{Binding ProgressHeading}" FontWeight="SemiBold" Foreground="{DynamicResource Text.Primary.Brush}" />
                     <TextBlock Text="{Binding ItemsAnalysedText}" Foreground="{DynamicResource Text.Primary.Brush}" />
@@ -43,7 +63,7 @@
                 </StackPanel>
             </Border>
 
-            <Border Background="{DynamicResource Surface.Raised.Brush}" BorderBrush="{DynamicResource Border.Brush}" BorderThickness="1" Padding="12">
+            <Border Classes="card">
                 <StackPanel Spacing="4">
                     <TextBlock Text="{Binding ProvidersHeading}" FontWeight="SemiBold" Foreground="{DynamicResource Text.Primary.Brush}" />
                     <ItemsControl ItemsSource="{Binding Providers}">
@@ -57,7 +77,7 @@
                 </StackPanel>
             </Border>
 
-            <Border Background="{DynamicResource Surface.Raised.Brush}" BorderBrush="{DynamicResource Border.Brush}" BorderThickness="1" Padding="12">
+            <Border Classes="card">
                 <StackPanel Spacing="4">
                     <TextBlock Text="{Binding QueueHeading}" FontWeight="SemiBold" Foreground="{DynamicResource Text.Primary.Brush}" />
                     <TextBlock Text="{Binding PendingText}" Foreground="{DynamicResource Text.Primary.Brush}" />
@@ -68,7 +88,7 @@
                 </StackPanel>
             </Border>
 
-            <Border Background="{DynamicResource Surface.Raised.Brush}" BorderBrush="{DynamicResource Border.Brush}" BorderThickness="1" Padding="12">
+            <Border Classes="card">
                 <StackPanel Spacing="4">
                     <TextBlock Text="{Binding AttentionHeading}" FontWeight="SemiBold" Foreground="{DynamicResource Text.Primary.Brush}" />
                     <TextBlock Text="{Binding ConflictsText}" Foreground="{DynamicResource Text.Primary.Brush}" />
@@ -78,14 +98,14 @@
                 </StackPanel>
             </Border>
 
-            <Border Background="{DynamicResource Surface.Raised.Brush}" BorderBrush="{DynamicResource Border.Brush}" BorderThickness="1" Padding="12">
+            <Border Classes="card">
                 <StackPanel Spacing="4">
                     <TextBlock Text="{Binding ActivityHeading}" FontWeight="SemiBold" Foreground="{DynamicResource Text.Primary.Brush}" />
                     <ItemsControl ItemsSource="{Binding Activities}" />
                 </StackPanel>
             </Border>
 
-            <Border Background="{DynamicResource Surface.Raised.Brush}" BorderBrush="{DynamicResource Border.Brush}" BorderThickness="1" Padding="12">
+            <Border Classes="card">
                 <StackPanel Spacing="4">
                     <TextBlock Text="{Binding EventsHeading}" FontWeight="SemiBold" Foreground="{DynamicResource Text.Primary.Brush}" />
                     <ItemsControl ItemsSource="{Binding Events}" />

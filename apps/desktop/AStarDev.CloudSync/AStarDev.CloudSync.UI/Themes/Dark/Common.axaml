@@ -5,9 +5,10 @@
   <SolidColorBrush x:Key="Trust.Degraded.Brush" Color="#FFB300" />
   <SolidColorBrush x:Key="Trust.Attention.Brush" Color="#FF7043" />
   <SolidColorBrush x:Key="Trust.Critical.Brush" Color="#EF5350" />
-  <SolidColorBrush x:Key="Surface.Brush" Color="#1E1E1E" />
-  <SolidColorBrush x:Key="Surface.Raised.Brush" Color="#2B2B2B" />
-  <SolidColorBrush x:Key="Border.Brush" Color="#3C3C3C" />
-  <SolidColorBrush x:Key="Text.Primary.Brush" Color="#EDEDED" />
-  <SolidColorBrush x:Key="Text.Secondary.Brush" Color="#A0A0A0" />
+  <SolidColorBrush x:Key="Surface.Brush" Color="#14171C" />
+  <SolidColorBrush x:Key="Surface.Raised.Brush" Color="#1A1E25" />
+  <SolidColorBrush x:Key="Border.Brush" Color="#2A2F38" />
+  <SolidColorBrush x:Key="Text.Primary.Brush" Color="#F0F2F5" />
+  <SolidColorBrush x:Key="Text.Secondary.Brush" Color="#9AA3AF" />
+  <SolidColorBrush x:Key="Accent.Brush" Color="#3B82F6" />
 </ResourceDictionary>

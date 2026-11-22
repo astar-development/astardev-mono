@@ -15,7 +15,7 @@
     <Panel>
     <DockPanel>
         <views:StatusBarView DockPanel.Dock="Bottom" DataContext="{Binding StatusBar}" />
-        <ListBox DockPanel.Dock="Left" ItemsSource="{Binding Destinations}" SelectedItem="{Binding SelectedDestination, Mode=TwoWay}" Background="{DynamicResource Navigation.Rail.Brush}">
+        <ListBox Classes="rail" DockPanel.Dock="Left" Width="64" Padding="0,8" ItemsSource="{Binding Destinations}" SelectedItem="{Binding SelectedDestination, Mode=TwoWay}" Background="{DynamicResource Navigation.Rail.Brush}">
             <ListBox.ItemTemplate>
                 <DataTemplate x:DataType="vm:DestinationViewModel">
                     <TextBlock Text="{Binding Glyph}" FontSize="22" HorizontalAlignment="Center" ToolTip.Tip="{Binding Title}" AutomationProperties.Name="{Binding Title}" />
