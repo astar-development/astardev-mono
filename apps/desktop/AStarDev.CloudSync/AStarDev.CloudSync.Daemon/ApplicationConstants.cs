@@ -17,6 +17,14 @@ internal static class ApplicationConstants
 
     public static string ProcessStartStageName => "Process start";
 
+    public static string InstanceNameSuffix => ".instance";
+
+    public static string AlreadyRunningText => "Another CloudSync daemon is already running for this user. This one will not start.";
+
+    public static string NotAnsweringText => "Another CloudSync daemon holds the instance lock but did not answer. This one will not start.";
+
+    public static string InstanceLockUnavailableText => "The single-instance lock could not be created, so one daemon per user cannot be enforced. This one will not start.";
+
     public static string InfrastructureInitialisationStageName => "Infrastructure initialisation";
 
     public static string StateRecoveryStageName => "State recovery";
