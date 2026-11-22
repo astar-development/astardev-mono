@@ -15,7 +15,7 @@ internal sealed partial class CloudSyncDbContextModelSnapshot : ModelSnapshot
     // If you encounter a merge conflict in the line below, it means you need to
     // discard one of the migration branches and recreate its migrations on top of
     // the other branch. See https://aka.ms/efcore-docs-migrations-conflicts for more info.
-    public override string LastMigrationId => "20261122061433_AddCrawlCheckpoints";
+    public override string LastMigrationId => "20261122080901_AddOperations";
 
     protected override void BuildModel(ModelBuilder modelBuilder)
     {
@@ -159,6 +159,51 @@ internal sealed partial class CloudSyncDbContextModelSnapshot : ModelSnapshot
                 b.ToTable("ItemSnapshots");
             });
 
+        modelBuilder.Entity("AStarDev.CloudSync.Persistence.OperationEntity", b =>
+            {
+                b.Property<Guid>("Id")
+                    .HasColumnType("TEXT");
+
+                b.Property<int>("Attempts")
+                    .HasColumnType("INTEGER");
+
+                b.Property<long>("CreatedUtc")
+                    .HasColumnType("INTEGER");
+
+                b.Property<Guid>("ItemId")
+                    .HasColumnType("TEXT");
+
+                b.Property<string>("LastError")
+                    .HasColumnType("TEXT");
+
+                b.Property<long>("NextAttemptUtc")
+                    .HasColumnType("INTEGER");
+
+                b.Property<int>("Priority")
+                    .HasColumnType("INTEGER");
+
+                b.Property<string>("Status")
+                    .IsRequired()
+                    .HasColumnType("TEXT");
+
+                b.Property<Guid>("SyncJobId")
+                    .HasColumnType("TEXT");
+
+                b.Property<string>("Type")
+                    .IsRequired()
+                    .HasColumnType("TEXT");
+
+                b.HasKey("Id");
+
+                b.HasIndex("SyncJobId");
+
+                b.HasIndex("ItemId", "Status");
+
+                b.HasIndex("Status", "Priority", "CreatedUtc");
+
+                b.ToTable("Operations");
+            });
+
         modelBuilder.Entity("AStarDev.CloudSync.Persistence.ProviderStateEntity", b =>
             {
                 b.Property<Guid>("SyncJobId")
@@ -259,6 +304,15 @@ internal sealed partial class CloudSyncDbContextModelSnapshot : ModelSnapshot
                 b.HasOne("AStarDev.CloudSync.Persistence.ItemEntity", null)
                     .WithMany()
                     .HasForeignKey("ItemId")
+                    .OnDelete(DeleteBehavior.Cascade)
+                    .IsRequired();
+            });
+
+        modelBuilder.Entity("AStarDev.CloudSync.Persistence.OperationEntity", b =>
+            {
+                b.HasOne("AStarDev.CloudSync.Persistence.SyncJobEntity", null)
+                    .WithMany()
+                    .HasForeignKey("SyncJobId")
                     .OnDelete(DeleteBehavior.Cascade)
                     .IsRequired();
             });

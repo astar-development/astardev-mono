@@ -31,6 +31,7 @@ public static class PersistenceServiceCollectionExtensions
         services.AddSingleton<ISyncJobStore, SyncJobStore>();
         services.AddSingleton<ISyncScopeStore, SyncScopeStore>();
         services.AddSingleton<IItemIndexStore, ItemIndexStore>();
+        services.AddSingleton<IOperationStore, OperationStore>();
         services.AddHealthChecks().AddCheck<DatabaseHealthCheck>(ApplicationConstants.DatabaseHealthCheckName);
 
         return services;

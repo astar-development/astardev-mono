@@ -12,6 +12,7 @@ internal static class StronglyTypedIdConverters
         [typeof(SyncJobId)] = new ValueConverter<SyncJobId, Guid>(id => id.Value, value => new SyncJobId(value)),
         [typeof(ItemId)] = new ValueConverter<ItemId, Guid>(id => id.Value, value => new ItemId(value)),
         [typeof(SnapshotId)] = new ValueConverter<SnapshotId, Guid>(id => id.Value, value => new SnapshotId(value)),
+        [typeof(OperationId)] = new ValueConverter<OperationId, Guid>(id => id.Value, value => new OperationId(value)),
         [typeof(RemoteItemId)] = new ValueConverter<RemoteItemId, string>(id => id.Value, value => new RemoteItemId(value)),
         [typeof(RelativePath)] = new ValueConverter<RelativePath, string>(path => path.Value, value => new RelativePath(value)),
         [typeof(DeltaToken)] = new ValueConverter<DeltaToken, string>(token => token.Value, value => new DeltaToken(value)),

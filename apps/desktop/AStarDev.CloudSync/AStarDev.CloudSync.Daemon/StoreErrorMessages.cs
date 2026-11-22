@@ -14,6 +14,7 @@ internal static class StoreErrorMessages
         SyncJobAlreadyExists => "A sync job already exists. This version supports a single job.",
         SyncScopeAlreadyExists => "That folder is already selected.",
         SyncScopeNotFound => "That folder is not selected.",
+        OperationNotRunning => "That operation is not running.",
         StorageFailed e => $"The {subject} could not be {failedAction} because the database failed: {e.Message}"
     };
 }
