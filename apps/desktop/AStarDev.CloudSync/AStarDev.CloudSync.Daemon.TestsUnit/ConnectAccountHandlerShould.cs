@@ -1,3 +1,4 @@
+using System.Diagnostics;
 using AStarDev.CloudSync.Domain;
 using AStarDev.CloudSync.IPC;
 using AStarDev.CloudSync.Ports;
@@ -144,6 +145,28 @@ public sealed class ConnectAccountHandlerShould
         var reply = result.Value.ShouldBeOfType<Ok<CommandResult>>().Value;
         reply.Outcome.ShouldBe(CommandOutcome.Rejected);
         reply.Message!.ShouldContain("client id");
+    }
+
+    [Fact]
+    public async Task include_the_trace_id_in_a_failure()
+    {
+        var provider = new StubCloudProvider { ConnectResult = new Fail<ProviderError>(new Transient("offline")) };
+        await using var host = DaemonTestHost.CreateWith(provider);
+        var handler = host.Services.GetRequiredService<ConnectAccountHandler>();
+        using var source = new ActivitySource("ConnectAccountHandlerShould");
+        using var listener = new ActivityListener
+        {
+            ShouldListenTo = candidate => candidate.Name == source.Name,
+            Sample = (ref ActivityCreationOptions<ActivityContext> _) => ActivitySamplingResult.AllData
+        };
+        ActivitySource.AddActivityListener(listener);
+        using var activity = source.StartActivity("connect");
+
+        var result = await handler.HandleAsync(new ConnectAccount(), Token);
+
+        var reply = result.Value.ShouldBeOfType<Ok<CommandResult>>().Value;
+        reply.Outcome.ShouldBe(CommandOutcome.Rejected);
+        reply.TraceId.ShouldBe(activity!.TraceId.ToString());
     }
 
     [Fact]

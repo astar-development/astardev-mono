@@ -21,6 +21,10 @@ public sealed partial class AccountsViewModel(Func<IIpcClient> createClient) : V
     [ObservableProperty]
     public partial string? ErrorMessage { get; set; }
 
+    /// <summary>The daemon trace that handled the last failed request. <see langword="null"/> when it sent none and after a request that worked.</summary>
+    [ObservableProperty]
+    public partial string? ErrorTraceId { get; set; }
+
     /// <summary>
     /// Asks the daemon for the accounts. Failures land in <see cref="ErrorMessage"/>; cancellation surfaces as <see cref="OperationCanceledException"/>.
     /// Also exposed to the view as <c>RefreshCommand</c>.
@@ -77,7 +81,7 @@ public sealed partial class AccountsViewModel(Func<IIpcClient> createClient) : V
         => await client.SendAsync(command, cancellationToken) switch
         {
             Ok<CommandResult> { Value.Outcome: CommandOutcome.Accepted } => await ListAsync(client, cancellationToken),
-            Ok<CommandResult> rejected => new Fail<ConnectFailure>(new ConnectFailure(rejected.Value.Message ?? ApplicationConstants.RequestRejectedText)),
+            Ok<CommandResult> rejected => new Fail<ConnectFailure>(ConnectFailure.Rejected(rejected.Value, ApplicationConstants.RequestRejectedText)),
             Fail<IpcError> fail => new Fail<ConnectFailure>(ConnectFailure.From(fail.Error))
         };
 
@@ -96,8 +100,10 @@ public sealed partial class AccountsViewModel(Func<IIpcClient> createClient) : V
                 Accounts.Clear();
                 foreach (var account in ok.Value.Accounts) Accounts.Add(new AccountCardViewModel(account, this));
                 ErrorMessage = null;
+                ErrorTraceId = null;
                 break;
             case Fail<ConnectFailure> fail:
+                ErrorTraceId = fail.Error.TraceId.Match(id => (string?)id, () => null);
                 ErrorMessage = fail.Error.Message;
                 break;
         }
