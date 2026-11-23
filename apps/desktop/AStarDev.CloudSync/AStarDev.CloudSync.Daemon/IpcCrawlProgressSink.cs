@@ -1,3 +1,4 @@
+using AStarDev.CloudSync.Errors;
 using AStarDev.CloudSync.IPC;
 using AStarDev.CloudSync.SyncEngine;
 using AStarDev.FunctionalParadigm;
@@ -15,13 +16,13 @@ internal sealed class IpcCrawlProgressSink(IIpcServer server, ActivityTracker tr
         var activity = await tracker.ApplyAsync(progress, cancellationToken);
         await PublishAsync(new CrawlProgressChanged(progress.SyncJobId.Value, progress.RemoteRootId.Value, progress.ItemsIndexed, progress.Completed, progress.Delta ? CrawlPhase.Syncing : CrawlPhase.Crawling, progress.ItemsTotal), cancellationToken);
         await PublishAsync(new ActivityChanged(activity), cancellationToken);
-        if (await status.PublishIfChangedAsync(cancellationToken) is Fail<IpcError> fail) DaemonLog.PublishFailed(logger, nameof(SyncStatusChanged), fail.Error.Value);
-        if (await dashboard.PublishIfChangedAsync(cancellationToken) is Fail<IpcError> dashboardFail) DaemonLog.PublishFailed(logger, nameof(DashboardChanged), dashboardFail.Error.Value);
+        if (await status.PublishIfChangedAsync(cancellationToken) is Fail<IpcError> fail) DaemonLog.PublishFailed(logger, nameof(SyncStatusChanged), fail.Error.Value, ErrorInfo.CodeOf(fail.Error.Value));
+        if (await dashboard.PublishIfChangedAsync(cancellationToken) is Fail<IpcError> dashboardFail) DaemonLog.PublishFailed(logger, nameof(DashboardChanged), dashboardFail.Error.Value, ErrorInfo.CodeOf(dashboardFail.Error.Value));
     }
 
     private async Task PublishAsync<TEvent>(TEvent @event, CancellationToken cancellationToken)
         where TEvent : IEvent
     {
-        if (await server.PublishAsync(@event, cancellationToken) is Fail<IpcError> fail) DaemonLog.PublishFailed(logger, typeof(TEvent).Name, fail.Error.Value);
+        if (await server.PublishAsync(@event, cancellationToken) is Fail<IpcError> fail) DaemonLog.PublishFailed(logger, typeof(TEvent).Name, fail.Error.Value, ErrorInfo.CodeOf(fail.Error.Value));
     }
 }

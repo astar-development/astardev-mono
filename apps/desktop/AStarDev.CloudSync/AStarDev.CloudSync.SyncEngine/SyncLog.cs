@@ -1,3 +1,4 @@
+using AStarDev.CloudSync.Errors;
 using Microsoft.Extensions.Logging;
 
 namespace AStarDev.CloudSync.SyncEngine;
@@ -22,9 +23,9 @@ internal static partial class SyncLog
     [LoggerMessage(EventId = 1105, Level = LogLevel.Information, Message = "Delta processing finished for {RemoteItemId} of job {SyncJobId}: {Changes} changes applied")]
     internal static partial void DeltaProcessingFinished(ILogger logger, string remoteItemId, Guid syncJobId, int changes);
 
-    [LoggerMessage(EventId = 1106, Level = LogLevel.Error, Message = "Delta token of {RemoteItemId} of job {SyncJobId} is invalid; listing the scope again")]
-    internal static partial void DeltaTokenInvalid(ILogger logger, string remoteItemId, Guid syncJobId);
+    [LoggerMessage(EventId = 1106, Level = LogLevel.Error, Message = "Delta token of {RemoteItemId} of job {SyncJobId} is invalid; listing the scope again ({ErrorCode})")]
+    internal static partial void DeltaTokenInvalid(ILogger logger, string remoteItemId, Guid syncJobId, ErrorCode errorCode);
 
-    [LoggerMessage(EventId = 1107, Level = LogLevel.Warning, Message = "Temporary file lock: {RelativePath} of job {SyncJobId} could not be read and is left for the next scan: {Reason}")]
-    internal static partial void TemporaryFileLock(ILogger logger, string relativePath, Guid syncJobId, string reason);
+    [LoggerMessage(EventId = 1107, Level = LogLevel.Warning, Message = "Temporary file lock: {RelativePath} of job {SyncJobId} could not be read and is left for the next scan: {Reason} ({ErrorCode})")]
+    internal static partial void TemporaryFileLock(ILogger logger, string relativePath, Guid syncJobId, string reason, ErrorCode errorCode);
 }

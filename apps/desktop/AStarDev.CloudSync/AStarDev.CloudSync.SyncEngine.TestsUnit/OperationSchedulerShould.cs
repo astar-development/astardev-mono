@@ -17,7 +17,19 @@ public sealed class OperationSchedulerShould
         scheduler.Start();
         await WaitForAsync(logger, TestContext.Current.CancellationToken);
 
-        logger.Entries.ShouldContain((1203, LogLevel.Error));
+        logger.Entries.ShouldContain(entry => entry.EventId == 1203 && entry.Level == LogLevel.Error);
+    }
+
+    [Fact]
+    public async Task include_the_error_code_when_logging_a_failure()
+    {
+        var logger = new RecordingLogger<OperationScheduler>();
+        await using var scheduler = new OperationScheduler(new FailingOperationStore(), new NoOperationExecutor(), Options.Create(new OperationSchedulerOptions { PollInterval = TimeSpan.FromMinutes(1) }), TimeProvider.System, logger);
+
+        scheduler.Start();
+        await WaitForAsync(logger, TestContext.Current.CancellationToken);
+
+        logger.Entries.ShouldContain(entry => entry.EventId == 1203 && entry.Message.Contains("CS-PORTS-0008", StringComparison.Ordinal));
     }
 
     private static async Task WaitForAsync(RecordingLogger<OperationScheduler> logger, CancellationToken cancellationToken)

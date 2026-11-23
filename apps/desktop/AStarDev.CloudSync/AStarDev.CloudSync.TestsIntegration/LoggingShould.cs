@@ -72,6 +72,39 @@ public sealed class LoggingShould
     }
 
     [Fact]
+    public async Task include_the_error_code_on_operation_failures()
+    {
+        var logs = new CapturingLoggerProvider();
+        var outcomes = new Dictionary<int, Result<Unit, ProviderError>>
+        {
+            [0] = new Fail<ProviderError>(new RateLimited(TimeSpan.FromSeconds(30))),
+            [1] = new Fail<ProviderError>(new Transient("network dropped")),
+            [2] = new Fail<ProviderError>(new Permanent("forbidden")),
+            [3] = new Fail<ProviderError>(new AuthenticationFailed("expired"))
+        };
+        var ranks = new Dictionary<ItemId, int>();
+        var executor = new ScriptedOperationExecutor(operation => outcomes[ranks[operation.ItemId]]);
+        await using var host = await CreateHostAsync(logs, executor);
+        var job = await AddJobAsync(host);
+        var store = host.Services.GetRequiredService<IOperationStore>();
+        foreach (var rank in outcomes.Keys)
+        {
+            var operation = Queued(job, rank);
+            ranks[operation.ItemId] = rank;
+            await store.EnqueueAsync(operation, Token);
+        }
+
+        var scheduler = host.Services.GetRequiredService<OperationScheduler>();
+        foreach (var _ in outcomes) await scheduler.RunOnceAsync(Token);
+
+        var messages = OperationLogs(logs).ToLookup(entry => entry.EventId, entry => entry.Message);
+        messages[1004].Single().ShouldContain("CS-PORTS-0001");
+        messages[1003].Single().ShouldContain("CS-PORTS-0002");
+        messages[1005].Single().ShouldContain("CS-PORTS-0004");
+        messages[1006].Single().ShouldContain("CS-PORTS-0003");
+    }
+
+    [Fact]
     public async Task log_rate_limit_as_a_warning()
     {
         var logs = new CapturingLoggerProvider();

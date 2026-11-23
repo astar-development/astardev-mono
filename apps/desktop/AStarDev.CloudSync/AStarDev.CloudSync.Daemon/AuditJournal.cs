@@ -1,4 +1,5 @@
 using System.Text.Json;
+using AStarDev.CloudSync.Errors;
 using AStarDev.CloudSync.Ports;
 using AStarDev.FunctionalParadigm;
 using Microsoft.Extensions.Logging;
@@ -16,9 +17,9 @@ internal sealed partial class AuditJournal(IEventJournal journal, TimeProvider t
     public async Task RecordAsync(string eventType, Guid aggregateId, object details, CancellationToken cancellationToken)
     {
         var entry = new JournalEntry(Guid.NewGuid(), timeProvider.GetUtcNow(), eventType, aggregateId, JsonSerializer.Serialize(details));
-        if (await journal.AppendAsync(entry, cancellationToken) is { Value: Fail<StoreError> fail }) RecordingFailed(logger, eventType, StoreErrorMessages.Describe(fail.Error, "recorded", "audit entry"));
+        if (await journal.AppendAsync(entry, cancellationToken) is { Value: Fail<StoreError> fail }) RecordingFailed(logger, eventType, StoreErrorMessages.Describe(fail.Error, "recorded", "audit entry"), ErrorInfo.CodeOf(fail.Error.Value));
     }
 
-    [LoggerMessage(EventId = 6001, Level = LogLevel.Warning, Message = "Recording audit entry {EventType} failed: {Message}")]
-    private static partial void RecordingFailed(ILogger logger, string eventType, string message);
+    [LoggerMessage(EventId = 6001, Level = LogLevel.Warning, Message = "Recording audit entry {EventType} failed: {Message} ({ErrorCode})")]
+    private static partial void RecordingFailed(ILogger logger, string eventType, string message, ErrorCode errorCode);
 }

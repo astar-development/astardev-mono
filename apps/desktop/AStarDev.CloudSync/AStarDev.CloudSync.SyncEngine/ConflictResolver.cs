@@ -1,5 +1,6 @@
 using System.Text.Json;
 using AStarDev.CloudSync.Domain;
+using AStarDev.CloudSync.Errors;
 using AStarDev.CloudSync.Ports;
 using AStarDev.FunctionalParadigm;
 using Microsoft.Extensions.Logging;
@@ -206,7 +207,7 @@ public sealed class ConflictResolver
 
     private async Task ReplanAsync(SyncJobId jobId, CancellationToken cancellationToken)
     {
-        if (await planner.PlanAsync(jobId, cancellationToken) is { Value: Fail<StoreError> failure }) EngineLog.PlanningAfterKeepBothFailed(logger, jobId.Value, failure.Error.Value);
+        if (await planner.PlanAsync(jobId, cancellationToken) is { Value: Fail<StoreError> failure }) EngineLog.PlanningAfterKeepBothFailed(logger, jobId.Value, failure.Error.Value, ErrorInfo.CodeOf(failure.Error.Value));
     }
 
     private sealed record Loaded(SyncJob Job, CanonicalItemState State, IReadOnlyList<StoredItem> Items);

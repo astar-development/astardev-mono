@@ -1,4 +1,5 @@
 using AStarDev.CloudSync.Domain;
+using AStarDev.CloudSync.Errors;
 using AStarDev.CloudSync.IPC;
 using AStarDev.CloudSync.Ports;
 using AStarDev.FunctionalParadigm;
@@ -18,7 +19,7 @@ internal sealed class RemoveSyncScopeHandler(ISyncScopeStore store, AuditJournal
         => await store.RemoveAsync(new SyncScope(new SyncJobId(command.SyncJobId), new RemoteItemId(command.RemoteRootId)), cancellationToken) switch
         {
             Ok<Unit> => await RecordAsync(command, cancellationToken),
-            Fail<StoreError> fail => Reject(StoreErrorMessages.Describe(fail.Error, "removed", "folder selection"))
+            Fail<StoreError> fail => Reject(StoreErrorMessages.Describe(fail.Error, "removed", "folder selection"), ErrorInfo.CodeOf(fail.Error.Value))
         };
 
     private async Task<Result<CommandResult, IpcError>> RecordAsync(RemoveSyncScope command, CancellationToken cancellationToken)
@@ -28,9 +29,9 @@ internal sealed class RemoveSyncScopeHandler(ISyncScopeStore store, AuditJournal
         return new Ok<CommandResult>(new CommandResult(CommandOutcome.Accepted));
     }
 
-    private Ok<CommandResult> Reject(string message)
+    private Ok<CommandResult> Reject(string message, ErrorCode errorCode)
     {
-        DaemonLog.RemoveSyncScopeFailed(logger, message);
+        DaemonLog.RemoveSyncScopeFailed(logger, message, errorCode);
 
         return new Ok<CommandResult>(new CommandResult(CommandOutcome.Rejected, message));
     }

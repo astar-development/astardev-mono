@@ -138,7 +138,7 @@ internal sealed class UnixSocketIpcClient(string socketPath, Action<IpcError>? o
             Fail<IpcError> encodeFailure => encodeFailure
         };
         IpcTelemetry.CompleteRequest(activity, ApplicationConstants.ClientSide, kind, type, started, result);
-        if (result is Fail<IpcError> failed) IpcLog.RequestFailed(log, ApplicationConstants.ClientSide, kind, type, failed.Error.Describe());
+        if (result is Fail<IpcError> failed) IpcLog.RequestFailed(log, ApplicationConstants.ClientSide, kind, type, failed.Error.Describe(), failed.Error.Info().Code);
 
         return result;
     }

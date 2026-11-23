@@ -1,4 +1,5 @@
 using AStarDev.CloudSync.Domain;
+using AStarDev.CloudSync.Errors;
 using AStarDev.CloudSync.IPC;
 using AStarDev.CloudSync.Ports;
 using AStarDev.FunctionalParadigm;
@@ -18,21 +19,21 @@ internal sealed class DisconnectAccountHandler(ICloudProvider provider, IAccount
         => await store.GetAsync(new AccountId(command.AccountId), cancellationToken) switch
         {
             Ok<Account> account => await ForgetTokenAsync(account.Value, cancellationToken),
-            Fail<StoreError> fail => Reject(StoreErrorMessages.Describe(fail.Error, "removed"))
+            Fail<StoreError> fail => Reject(StoreErrorMessages.Describe(fail.Error, "removed"), ErrorInfo.CodeOf(fail.Error.Value))
         };
 
     private async Task<Result<CommandResult, IpcError>> ForgetTokenAsync(Account account, CancellationToken cancellationToken)
         => await provider.DisconnectAsync(account.AccountIdentifier, cancellationToken) switch
         {
             Ok<Unit> => await RemoveAsync(account, cancellationToken),
-            Fail<ProviderError> fail => Reject(ProviderErrorMessages.Describe(fail.Error))
+            Fail<ProviderError> fail => Reject(ProviderErrorMessages.Describe(fail.Error), ErrorInfo.CodeOf(fail.Error.Value))
         };
 
     private async Task<Result<CommandResult, IpcError>> RemoveAsync(Account account, CancellationToken cancellationToken)
         => await store.RemoveAsync(account.Id, cancellationToken) switch
         {
             Ok<Unit> => await AnnounceAsync(account, cancellationToken),
-            Fail<StoreError> fail => Reject(StoreErrorMessages.Describe(fail.Error, "removed"))
+            Fail<StoreError> fail => Reject(StoreErrorMessages.Describe(fail.Error, "removed"), ErrorInfo.CodeOf(fail.Error.Value))
         };
 
     private async Task<Result<CommandResult, IpcError>> AnnounceAsync(Account account, CancellationToken cancellationToken)
@@ -47,9 +48,9 @@ internal sealed class DisconnectAccountHandler(ICloudProvider provider, IAccount
         };
     }
 
-    private Ok<CommandResult> Reject(string message)
+    private Ok<CommandResult> Reject(string message, ErrorCode errorCode)
     {
-        DaemonLog.DisconnectAccountFailed(logger, message);
+        DaemonLog.DisconnectAccountFailed(logger, message, errorCode);
 
         return new Ok<CommandResult>(new CommandResult(CommandOutcome.Rejected, message));
     }

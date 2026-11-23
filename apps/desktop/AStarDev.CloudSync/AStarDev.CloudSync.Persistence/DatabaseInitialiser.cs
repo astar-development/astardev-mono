@@ -69,7 +69,7 @@ internal sealed class DatabaseInitialiser(IOptions<DatabaseOptions> options, IDb
     private Result<Unit, DatabaseError> EnterRecovery(string reason)
     {
         state.EnterRecovery(reason);
-        PersistenceLog.DatabaseCorrupt(logger, Path.GetFileName(options.Value.Path), reason);
+        PersistenceLog.DatabaseCorrupt(logger, Path.GetFileName(options.Value.Path), reason, PersistenceErrorCodes.DatabaseUnavailable);
 
         return new Ok<Unit>(default);
     }

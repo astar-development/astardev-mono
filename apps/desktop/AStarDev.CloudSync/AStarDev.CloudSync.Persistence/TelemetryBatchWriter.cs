@@ -1,4 +1,5 @@
 using System.Threading.Channels;
+using AStarDev.CloudSync.Errors;
 using AStarDev.CloudSync.Ports;
 using AStarDev.FunctionalParadigm;
 using Microsoft.Extensions.Hosting;
@@ -43,7 +44,7 @@ internal sealed class TelemetryBatchWriter(ITelemetryStore store, TimeProvider t
         if (batch.Count == 0) return;
 
         var result = await store.AppendAsync(batch, cancellationToken).ConfigureAwait(false);
-        if (result.Value is Fail<StoreError> failure) Drop(batch.Count, failure.Error.Value.ToString() ?? string.Empty);
+        if (result.Value is Fail<StoreError> failure) Drop(batch.Count, failure.Error.Value.ToString() ?? string.Empty, ErrorInfo.CodeOf(failure.Error.Value));
 
         await FlushAsync(cancellationToken).ConfigureAwait(false);
     }
@@ -58,9 +59,9 @@ internal sealed class TelemetryBatchWriter(ITelemetryStore store, TimeProvider t
         }
     }
 
-    private void Drop(int count, string reason)
+    private void Drop(int count, string reason, ErrorCode errorCode)
     {
         Interlocked.Add(ref dropped, count);
-        PersistenceLog.TelemetryBatchDropped(logger, count, reason);
+        PersistenceLog.TelemetryBatchDropped(logger, count, reason, errorCode);
     }
 }

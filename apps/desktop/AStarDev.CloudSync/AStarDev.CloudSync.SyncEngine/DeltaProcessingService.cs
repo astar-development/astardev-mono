@@ -1,4 +1,5 @@
 using AStarDev.CloudSync.Domain;
+using AStarDev.CloudSync.Errors;
 using AStarDev.CloudSync.Observability;
 using AStarDev.CloudSync.Ports;
 using AStarDev.FunctionalParadigm;
@@ -42,9 +43,9 @@ internal sealed class DeltaProcessingService(ICloudProvider provider, IItemIndex
         using var span = WorkflowTelemetry.StartDeltaScope(scope.SyncJobId, scope.RemoteRootId);
         using var correlation = CorrelationScope.Begin(logger, syncJobId: scope.SyncJobId.Value.ToString(), remoteItemId: scope.RemoteRootId.Value);
         var outcome = await ApplyPagesAsync(scope, token, cancellationToken);
-        if (IsInvalidToken(outcome))
+        if (outcome is Fail<DeltaError> { Error.Value: DeltaProviderFailed { Error.Value: InvalidDeltaToken invalid } })
         {
-            outcome = await ReindexAsync(scope, cancellationToken);
+            outcome = await ReindexAsync(scope, invalid.Code, cancellationToken);
             if (outcome is Ok<int>) SyncLog.DeltaTokenRefreshed(logger, scope.RemoteRootId.Value, scope.SyncJobId.Value);
         }
 
@@ -63,11 +64,9 @@ internal sealed class DeltaProcessingService(ICloudProvider provider, IItemIndex
         return outcome;
     }
 
-    private static bool IsInvalidToken(Result<int, DeltaError> outcome) => outcome is Fail<DeltaError> { Error.Value: DeltaProviderFailed { Error.Value: InvalidDeltaToken } };
-
-    private async Task<Result<int, DeltaError>> ReindexAsync(SyncScope scope, CancellationToken cancellationToken)
+    private async Task<Result<int, DeltaError>> ReindexAsync(SyncScope scope, ErrorCode errorCode, CancellationToken cancellationToken)
     {
-        SyncLog.DeltaTokenInvalid(logger, scope.RemoteRootId.Value, scope.SyncJobId.Value);
+        SyncLog.DeltaTokenInvalid(logger, scope.RemoteRootId.Value, scope.SyncJobId.Value, errorCode);
 
         if (await index.ResetScopeAsync(scope, cancellationToken) is Fail<StoreError> reset) return new Fail<DeltaError>(new DeltaStoreFailed(reset.Error));
 
@@ -85,7 +84,7 @@ internal sealed class DeltaProcessingService(ICloudProvider provider, IItemIndex
     {
         foreach (var scope in selected)
         {
-            if (await ProcessScopeAsync(scope, cancellationToken) is Fail<DeltaError> failed) EngineLog.DeltaProcessingStopped(logger, scope.RemoteRootId.Value, scope.SyncJobId.Value, failed.Error.Value);
+            if (await ProcessScopeAsync(scope, cancellationToken) is Fail<DeltaError> failed) EngineLog.DeltaProcessingStopped(logger, scope.RemoteRootId.Value, scope.SyncJobId.Value, failed.Error.Value, ErrorInfo.CodeOf(failed.Error.Value));
         }
 
         return new Ok<Unit>(default);

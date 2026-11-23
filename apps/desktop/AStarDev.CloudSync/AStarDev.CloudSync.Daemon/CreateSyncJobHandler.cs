@@ -1,4 +1,5 @@
 using AStarDev.CloudSync.Domain;
+using AStarDev.CloudSync.Errors;
 using AStarDev.CloudSync.IPC;
 using AStarDev.CloudSync.Ports;
 using AStarDev.FunctionalParadigm;
@@ -33,7 +34,7 @@ internal sealed class CreateSyncJobHandler(IAccountStore accounts, ISyncJobStore
         => await accounts.GetAsync(new AccountId(command.AccountId), cancellationToken) switch
         {
             Ok<Account> account => await StoreAsync(account.Value, command, cancellationToken),
-            Fail<StoreError> fail => Respond(CommandOutcome.Rejected, StoreErrorMessages.Describe(fail.Error, "saved", "sync job"))
+            Fail<StoreError> fail => Respond(CommandOutcome.Rejected, StoreErrorMessages.Describe(fail.Error, "saved", "sync job"), ErrorInfo.CodeOf(fail.Error.Value))
         };
 
     private async Task<Result<CommandResult, IpcError>> StoreAsync(Account account, CreateSyncJob command, CancellationToken cancellationToken)
@@ -44,7 +45,7 @@ internal sealed class CreateSyncJobHandler(IAccountStore accounts, ISyncJobStore
         return await jobs.AddAsync(job, cancellationToken) switch
         {
             Ok<Unit> => Accept(job),
-            Fail<StoreError> fail => Respond(CommandOutcome.Rejected, StoreErrorMessages.Describe(fail.Error, "saved", "sync job"))
+            Fail<StoreError> fail => Respond(CommandOutcome.Rejected, StoreErrorMessages.Describe(fail.Error, "saved", "sync job"), ErrorInfo.CodeOf(fail.Error.Value))
         };
     }
 
@@ -55,9 +56,9 @@ internal sealed class CreateSyncJobHandler(IAccountStore accounts, ISyncJobStore
         return new Ok<CommandResult>(new CommandResult(CommandOutcome.Accepted));
     }
 
-    private Ok<CommandResult> Respond(CommandOutcome outcome, string message)
+    private Ok<CommandResult> Respond(CommandOutcome outcome, string message, ErrorCode errorCode = default)
     {
-        DaemonLog.CreateSyncJobFailed(logger, message);
+        DaemonLog.CreateSyncJobFailed(logger, message, errorCode);
 
         return new Ok<CommandResult>(new CommandResult(outcome, message));
     }

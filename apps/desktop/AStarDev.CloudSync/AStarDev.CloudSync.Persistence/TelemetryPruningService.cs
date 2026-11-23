@@ -1,3 +1,4 @@
+using AStarDev.CloudSync.Errors;
 using AStarDev.CloudSync.Ports;
 using AStarDev.FunctionalParadigm;
 using Microsoft.Extensions.Hosting;
@@ -25,7 +26,7 @@ internal sealed class TelemetryPruningService(ITelemetryStore store, ISettingsSt
                 PersistenceLog.TelemetryPruned(logger, ok.Value, days);
                 break;
             case Fail<StoreError> failure:
-                PersistenceLog.TelemetryPruneFailed(logger, failure.Error.Value.ToString() ?? string.Empty);
+                PersistenceLog.TelemetryPruneFailed(logger, failure.Error.Value.ToString() ?? string.Empty, ErrorInfo.CodeOf(failure.Error.Value));
                 break;
         }
     }
