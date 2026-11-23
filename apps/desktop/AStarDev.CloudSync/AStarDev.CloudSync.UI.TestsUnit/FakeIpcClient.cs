@@ -31,6 +31,8 @@ internal sealed class FakeIpcClient(List<string> calls, bool available) : IIpcCl
 
     public Func<GetLogs, Result<LogsView, IpcError>> LogsReply { get; set; } = _ => new Ok<LogsView>(new LogsView([]));
 
+    public Func<GetAudit, Result<AuditView, IpcError>> AuditReply { get; set; } = _ => new Ok<AuditView>(new AuditView([]));
+
     public List<GetRemoteFolders> FolderQueries { get; } = [];
 
     private readonly List<Delegate> eventHandlers = [];
@@ -80,6 +82,7 @@ internal sealed class FakeIpcClient(List<string> calls, bool available) : IIpcCl
             GetSyncStatus => (Result<TResult, IpcError>)(object)SyncStatusReply,
             GetHistory => (Result<TResult, IpcError>)(object)HistoryReply,
             GetConflicts conflicts => (Result<TResult, IpcError>)(object)ConflictsReply(conflicts),
+            GetAudit audit => (Result<TResult, IpcError>)(object)AuditReply(audit),
             GetLogs logs => (Result<TResult, IpcError>)(object)LogsReply(logs),
             GetSyncScopes scopes => (Result<TResult, IpcError>)(object)ScopesReply(scopes),
             GetRemoteFolders folders => (Result<TResult, IpcError>)(object)Record(folders),

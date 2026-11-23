@@ -140,15 +140,13 @@ public sealed class HistoryViewModelShould
     }
 
     [Fact]
-    public void start_on_the_history_tab_and_offer_an_audit_tab_flagged_as_pending()
+    public void not_offer_an_audit_tab()
     {
         using var host = OperationScreensHost.Create();
 
         var history = host.Screen<HistoryViewModel>();
 
-        history.TabIndex.ShouldBe(0);
-        history.AuditTabText.ShouldNotStartWith("!");
-        history.HistoryTabText.ShouldNotStartWith("!");
-        history.AuditPendingText.ShouldNotStartWith("!");
+        typeof(HistoryViewModel).GetProperties().Select(property => property.Name).Intersect(["TabIndex", "AuditTabText", "AuditPendingText"]).ShouldBeEmpty();
+        history.Title.ShouldNotStartWith("!");
     }
 }

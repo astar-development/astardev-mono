@@ -26,6 +26,14 @@ public sealed class ScreenRegistrationShould
     }
 
     [Fact]
+    public void register_an_audit_screen()
+    {
+        using var host = CreateHost();
+
+        host.Services.GetServices<IScreen>().Select(screen => screen.Id).ShouldContain(ScreenId.Audit);
+    }
+
+    [Fact]
     public void give_every_screen_a_localised_title_and_glyph()
     {
         using var host = CreateHost();

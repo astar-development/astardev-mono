@@ -11,6 +11,7 @@ public static class ScreenIds
         ScreenId.Conflicts,
         ScreenId.Activity,
         ScreenId.History,
+        ScreenId.Audit,
         ScreenId.Providers,
         ScreenId.Settings
     ];

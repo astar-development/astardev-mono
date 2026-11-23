@@ -306,7 +306,7 @@ Defines the navigation rail, screens, status bar and tray lifecycle.
 
 Key Decisions:
 
-- Seven destinations: Dashboard, Queue, Conflicts, Activity, History, Providers, Settings.
+- Eight destinations: Dashboard, Queue, Conflicts, Activity, History, Audit, Providers, Settings.
 - Closing the window minimises to the tray.
 
 ---

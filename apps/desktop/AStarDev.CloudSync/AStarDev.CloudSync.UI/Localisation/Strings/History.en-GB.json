@@ -1,7 +1,4 @@
 {
   "History.Title": "History",
-  "History.Glyph": "📜",
-  "History.Tab.History": "History",
-  "History.Tab.Audit": "Audit",
-  "History.Audit.Pending": "Audit is a placeholder. The navigation design has no Audit destination, so whether it lives here is pending confirmation."
+  "History.Glyph": "📜"
 }

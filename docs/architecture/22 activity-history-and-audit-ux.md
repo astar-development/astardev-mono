@@ -30,6 +30,8 @@ Records significant completed events and allows review of previous synchronisati
 
 Audit prioritises accountability and recoverability rather than troubleshooting alone.
 
+Audit is its own navigation destination, a peer of Activity and History (document 19). It is not a tab of History. It lists the recorded audit entries, newest first.
+
 ## Event Visibility
 
 Every significant user-visible operation generates a meaningful event with timestamp and outcome.

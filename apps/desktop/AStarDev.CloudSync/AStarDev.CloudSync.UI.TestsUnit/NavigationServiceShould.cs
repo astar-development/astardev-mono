@@ -31,6 +31,17 @@ public sealed class NavigationServiceShould
     }
 
     [Fact]
+    public void navigate_to_the_audit_screen()
+    {
+        var navigation = new NavigationService(AllScreens());
+
+        var result = navigation.Navigate(ScreenId.Audit);
+
+        result.Value.ShouldBeOfType<Ok<Unit>>();
+        navigation.Current.Id.ShouldBe(ScreenId.Audit);
+    }
+
+    [Fact]
     public void treat_a_blank_target_as_no_target()
     {
         var navigation = new NavigationService(AllScreens());
