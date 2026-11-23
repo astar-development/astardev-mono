@@ -10,7 +10,7 @@ internal sealed class PersistenceTestHost(IHost host, string databasePath) : IAs
 
     public IServiceProvider Services => host.Services;
 
-    public static PersistenceTestHost Create(Action<IConfigurationManager>? configure = null)
+    public static PersistenceTestHost Create(Action<IConfigurationManager>? configure = null, Action<IServiceCollection>? configureServices = null)
     {
         var databasePath = Path.Combine(Path.GetTempPath(), $"cloudsync-persistence-{Guid.NewGuid():N}", "cloudsync.db");
         var builder = Host.CreateApplicationBuilder();
@@ -18,6 +18,7 @@ internal sealed class PersistenceTestHost(IHost host, string databasePath) : IAs
         builder.Configuration[$"{TelemetryDatabaseOptions.ConfigurationSection}:{nameof(TelemetryDatabaseOptions.Path)}"] = Path.Combine(Path.GetDirectoryName(databasePath)!, "telemetry.db");
         configure?.Invoke(builder.Configuration);
         builder.Services.AddCloudSyncPersistence();
+        configureServices?.Invoke(builder.Services);
 
         return new PersistenceTestHost(builder.Build(), databasePath);
     }

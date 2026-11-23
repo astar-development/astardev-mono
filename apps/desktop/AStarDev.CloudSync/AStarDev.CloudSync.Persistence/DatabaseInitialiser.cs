@@ -36,7 +36,7 @@ internal sealed class DatabaseInitialiser(IOptions<DatabaseOptions> options, IDb
         if (migration.Value is Failure<Unit> migrationFailure) return new Fail<DatabaseError>(new MigrationFailed(migrationFailure.Exception.Message));
 
         state.MarkNormal();
-        logger.LogInformation("Database {Database} passed its integrity check and is up to date", Path.GetFileName(options.Value.Path));
+        PersistenceLog.DatabaseReady(logger, Path.GetFileName(options.Value.Path));
 
         return new Ok<Unit>(default);
     }
@@ -69,7 +69,7 @@ internal sealed class DatabaseInitialiser(IOptions<DatabaseOptions> options, IDb
     private Result<Unit, DatabaseError> EnterRecovery(string reason)
     {
         state.EnterRecovery(reason);
-        logger.LogCritical("Database {Database} failed its integrity check, entering recovery mode and leaving the file untouched: {Reason}", Path.GetFileName(options.Value.Path), reason);
+        PersistenceLog.DatabaseCorrupt(logger, Path.GetFileName(options.Value.Path), reason);
 
         return new Ok<Unit>(default);
     }
