@@ -42,6 +42,34 @@ public sealed class LoggingShould : IDisposable
     }
 
     [Fact]
+    public async Task log_through_the_generated_messages()
+    {
+        var logs = new EventCapturingLoggerProvider();
+        var provider = new StubCloudProvider { ConnectResult = new Fail<ProviderError>(new AuthenticationFailed("expired")) };
+        await using var host = DaemonTestHost.Create(configureServices: services => services.RemoveAll<ICloudProvider>().AddSingleton<ICloudProvider>(provider).AddSingleton<ILoggerProvider>(logs));
+        await host.InitialiseDatabaseAsync(Token);
+
+        await host.Services.GetRequiredService<ConnectAccountHandler>().HandleAsync(new ConnectAccount(), Token);
+
+        var entry = logs.Entries.Single(candidate => candidate.Category.EndsWith(nameof(ConnectAccountHandler), StringComparison.Ordinal));
+        entry.EventId.ShouldBeInRange(6002, 6999);
+    }
+
+    [Fact]
+    public async Task keep_personal_data_out_of_logs()
+    {
+        var logs = new EventCapturingLoggerProvider();
+        var provider = new StubCloudProvider { ConnectResult = new Ok<ProviderAccount>(new ProviderAccount("ada-id", DisplayName)) };
+        await using var host = DaemonTestHost.Create(configureServices: services => services.RemoveAll<ICloudProvider>().AddSingleton<ICloudProvider>(provider).AddSingleton<ILoggerProvider>(logs));
+        await host.InitialiseDatabaseAsync(Token);
+
+        await host.Services.GetRequiredService<ConnectAccountHandler>().HandleAsync(new ConnectAccount(), Token);
+
+        logs.Entries.ShouldContain(entry => entry.EventId >= 6002 && entry.EventId < 7000);
+        logs.Entries.ShouldNotContain(entry => entry.Message.Contains(DisplayName, StringComparison.Ordinal));
+    }
+
+    [Fact]
     public async Task not_log_the_full_database_path()
     {
         var logs = new TraceCapturingLoggerProvider();

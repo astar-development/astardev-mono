@@ -30,7 +30,7 @@ internal sealed class RemoveSyncScopeHandler(ISyncScopeStore store, AuditJournal
 
     private Ok<CommandResult> Reject(string message)
     {
-        logger.LogWarning("Removing a sync scope failed: {Message}", message);
+        DaemonLog.RemoveSyncScopeFailed(logger, message);
 
         return new Ok<CommandResult>(new CommandResult(CommandOutcome.Rejected, message));
     }

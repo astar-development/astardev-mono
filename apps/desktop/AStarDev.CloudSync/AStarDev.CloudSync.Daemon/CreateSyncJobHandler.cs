@@ -50,14 +50,14 @@ internal sealed class CreateSyncJobHandler(IAccountStore accounts, ISyncJobStore
 
     private Ok<CommandResult> Accept(SyncJob job)
     {
-        logger.LogInformation("Created sync job {Job} in {Mode} mode", job.Id.Value, job.BootstrapMode);
+        DaemonLog.SyncJobCreated(logger, job.Id.Value, job.BootstrapMode);
 
         return new Ok<CommandResult>(new CommandResult(CommandOutcome.Accepted));
     }
 
     private Ok<CommandResult> Respond(CommandOutcome outcome, string message)
     {
-        logger.LogWarning("Creating a sync job failed: {Message}", message);
+        DaemonLog.CreateSyncJobFailed(logger, message);
 
         return new Ok<CommandResult>(new CommandResult(outcome, message));
     }

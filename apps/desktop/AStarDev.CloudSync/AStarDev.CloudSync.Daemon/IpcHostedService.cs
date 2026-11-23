@@ -56,7 +56,7 @@ internal sealed class IpcHostedService(IIpcServer server, ConnectAccountHandler 
 
     private Task<Result<DaemonStatusView, IpcError>> AnswerStatus(DaemonStatusView status)
     {
-        logger.LogInformation("Answering {Query} with daemon state {State}", nameof(GetDaemonStatus), status.State);
+        DaemonLog.AnsweringDaemonStatus(logger, nameof(GetDaemonStatus), status.State);
 
         return Task.FromResult<Result<DaemonStatusView, IpcError>>(new Ok<DaemonStatusView>(status));
     }
