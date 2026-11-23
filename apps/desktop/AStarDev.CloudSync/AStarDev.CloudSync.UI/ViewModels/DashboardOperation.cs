@@ -10,5 +10,8 @@ internal enum DashboardOperation
     Upload,
 
     /// <summary>A file or folder is being renamed.</summary>
-    Rename
+    Rename,
+
+    /// <summary>A file or folder is being deleted.</summary>
+    Delete
 }

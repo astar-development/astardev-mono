@@ -1,8 +1,13 @@
+using AStarDev.CloudSync.IPC;
+using AStarDev.FunctionalParadigm;
+
 namespace AStarDev.CloudSync.UI.ViewModels;
 
-/// <summary>Where the dashboard gets its numbers. A later slice implements it over IPC and registers it; the view and view model do not change.</summary>
+/// <summary>Where the dashboard gets its numbers.</summary>
 internal interface IDashboardSource
 {
-    /// <summary>The current dashboard values. Always returns a complete snapshot; zero counts and empty lists mean there is nothing to report.</summary>
-    public DashboardSnapshot GetSnapshot();
+    /// <summary>Reads the current dashboard values.</summary>
+    /// <param name="cancellationToken">Cancelling abandons the read and surfaces as <see cref="OperationCanceledException"/>.</param>
+    /// <returns>A complete snapshot, or the <see cref="IpcError"/> that stopped the read, for example <see cref="ConnectionFailed"/> while the daemon is stopped.</returns>
+    public Task<Result<DashboardSnapshot, IpcError>> GetSnapshotAsync(CancellationToken cancellationToken);
 }

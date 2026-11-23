@@ -1,3 +1,6 @@
+using AStarDev.CloudSync.IPC;
+using AStarDev.FunctionalParadigm;
+
 namespace AStarDev.CloudSync.UI.ViewModels;
 
 /// <summary>The wireframe sample values of doc 17. The dashboard labels them as sample data until a real source replaces this one.</summary>
@@ -6,11 +9,13 @@ internal sealed class PlaceholderDashboardSource : IDashboardSource
     private static readonly DateTimeOffset Reconciled = new(2026, 1, 1, 14, 32, 11, TimeSpan.Zero);
 
     /// <inheritdoc/>
-    public DashboardSnapshot GetSnapshot() => new(
+    public Task<Result<DashboardSnapshot, IpcError>> GetSnapshotAsync(CancellationToken cancellationToken) => Task.FromResult<Result<DashboardSnapshot, IpcError>>(new Ok<DashboardSnapshot>(Snapshot));
+
+    private static DashboardSnapshot Snapshot { get; } = new(
         SyncHealth.Active,
-        Reconciled,
-        Reconciled.AddSeconds(47),
-        Reconciled.AddSeconds(51),
+        Option.Some(Reconciled),
+        Option.Some(Reconciled.AddSeconds(47)),
+        Option.Some(Reconciled.AddSeconds(51)),
         183442,
         702144,
         ReconciliationStage.EnumerateRemoteState,

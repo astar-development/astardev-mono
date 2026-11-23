@@ -1,4 +1,5 @@
 using System.Windows.Input;
+using AStarDev.CloudSync.IPC;
 using AStarDev.CloudSync.UI.Localisation;
 using AStarDev.CloudSync.UI.Navigation;
 using AStarDev.CloudSync.UI.ViewModels;
@@ -11,13 +12,13 @@ public sealed class DashboardViewModelShould
 {
     private sealed class FixedSource(DashboardSnapshot snapshot) : IDashboardSource
     {
-        public DashboardSnapshot GetSnapshot() => snapshot;
+        public Task<Result<DashboardSnapshot, IpcError>> GetSnapshotAsync(CancellationToken cancellationToken) => Task.FromResult<Result<DashboardSnapshot, IpcError>>(new Ok<DashboardSnapshot>(snapshot));
     }
 
     private static readonly DateTimeOffset Moment = new(2026, 11, 21, 14, 32, 11, TimeSpan.Zero);
 
     private static DashboardSnapshot Snapshot(SyncHealth health, int conflicts = 0, int errors = 0, int warnings = 0) => new(
-        health, Moment, Moment, Moment, 183442, 702144, ReconciliationStage.EnumerateRemoteState, 4232, TimeSpan.FromMinutes(17),
+        health, Option.Some(Moment), Option.Some(Moment), Option.Some(Moment), 183442, 702144, ReconciliationStage.EnumerateRemoteState, 4232, TimeSpan.FromMinutes(17),
         [("OneDrive", SyncHealth.Healthy)], 1245, 8, 181223, 0, conflicts, errors, warnings, [(DashboardOperation.Download, "Documents/Design.md")], [DashboardEvent.QueueDrained]);
 
     private static LocalisationService RealLocalisation(CultureService culture)
@@ -27,17 +28,20 @@ public sealed class DashboardViewModelShould
         return new LocalisationService(culture, new Dictionary<string, IReadOnlyDictionary<string, string>> { ["en-GB"] = strings }, "en-GB");
     }
 
+    private static ConnectionViewModel Connected(FakeIpcClient? client = null)
+        => new(() => client ?? new FakeIpcClient([], available: false), TimeSpan.FromSeconds(1), TimeSpan.FromSeconds(1)) { State = ConnectionState.Connected };
+
     private static (DashboardViewModel Dashboard, NavigationService Navigation) Create(DashboardSnapshot? snapshot = null)
     {
         var culture = new CultureService("en-GB");
         var navigation = new NavigationService(Enum.GetValues<ScreenId>().Select(id => new FakeScreen(id)).ToArray());
 
-        return (new DashboardViewModel(RealLocalisation(culture), culture, () => navigation, new FixedSource(snapshot ?? Snapshot(SyncHealth.Active))), navigation);
+        return (new DashboardViewModel(RealLocalisation(culture), culture, () => navigation, new FixedSource(snapshot ?? Snapshot(SyncHealth.Active)), Connected()), navigation);
     }
 
     private static IEnumerable<string> AllTexts(DashboardViewModel dashboard) =>
     [
-        dashboard.Title, dashboard.Glyph, dashboard.SampleDataNotice, dashboard.Health.Headline, dashboard.Health.Summary, dashboard.Health.Indicator.Text,
+        dashboard.Title, dashboard.Glyph, dashboard.DisconnectedNotice, dashboard.Health.Headline, dashboard.Health.Summary, dashboard.Health.Indicator.Text,
         dashboard.LastReconciliationText, dashboard.LastProviderPollText, dashboard.LastQueueActivityText,
         dashboard.ProgressHeading, dashboard.ItemsAnalysedText, dashboard.PhaseText, dashboard.ThroughputText, dashboard.EstimatedRemainingText,
         dashboard.ProvidersHeading, dashboard.QueueHeading, dashboard.PendingText, dashboard.RunningText, dashboard.CompletedText, dashboard.FailedText,
@@ -87,23 +91,11 @@ public sealed class DashboardViewModelShould
     }
 
     [Fact]
-    public void label_every_text_as_sample_data_with_no_missing_localisation()
+    public void have_no_missing_localisation()
     {
         var (dashboard, _) = Create();
 
         AllTexts(dashboard).ShouldAllBe(text => !string.IsNullOrWhiteSpace(text) && !text.StartsWith("!", StringComparison.Ordinal));
-        dashboard.SampleDataNotice.ShouldContain("ample");
-    }
-
-    [Fact]
-    public void use_the_placeholder_source_when_none_is_given()
-    {
-        var culture = new CultureService("en-GB");
-
-        var dashboard = new DashboardViewModel(RealLocalisation(culture), culture, () => new NavigationService([new FakeScreen(ScreenId.Dashboard)]));
-
-        dashboard.ConflictsText.ShouldContain("1");
-        dashboard.Id.ShouldBe(ScreenId.Dashboard);
     }
 
     [Fact]
@@ -121,7 +113,7 @@ public sealed class DashboardViewModelShould
     {
         var culture = new CultureService("en-GB");
         var navigation = new NavigationService([new FakeScreen(ScreenId.Dashboard)]);
-        var connection = new ConnectionViewModel(() => new FakeIpcClient([], available: false), TimeSpan.FromSeconds(1), TimeSpan.FromSeconds(1));
+        var connection = Connected();
         var dashboard = new DashboardViewModel(RealLocalisation(culture), culture, () => navigation, new FixedSource(Snapshot(SyncHealth.Active, conflicts: 7)), connection);
         var changed = new List<string?>();
         dashboard.PropertyChanged += (_, args) => changed.Add(args.PropertyName);
@@ -151,7 +143,7 @@ public sealed class DashboardViewModelShould
     public void deep_link_the_queue_providers_and_recent_events()
     {
         var (dashboard, navigation) = Create();
-        var cases = new (ICommand Command, ScreenId Expected)[]
+        var cases = new (System.Windows.Input.ICommand Command, ScreenId Expected)[]
         {
             (dashboard.OpenQueueCommand, ScreenId.Queue),
             (dashboard.OpenProvidersCommand, ScreenId.Providers),
@@ -163,5 +155,70 @@ public sealed class DashboardViewModelShould
             command.Execute(null);
             navigation.Current.Id.ShouldBe(expected);
         }
+    }
+
+    [Fact]
+    public void show_the_snapshot_from_the_daemon()
+    {
+        var (dashboard, _) = Create();
+
+        dashboard.IsDisconnected.ShouldBeFalse();
+        dashboard.ItemsAnalysedText.ShouldContain("183,442");
+        dashboard.Providers.Select(provider => provider.Text).ShouldBe(["OneDrive - Healthy"]);
+    }
+
+    [Fact]
+    public async Task apply_pushed_changes()
+    {
+        var client = new FakeIpcClient([], available: true);
+        var connection = new ConnectionViewModel(() => client, TimeSpan.FromSeconds(1), TimeSpan.FromSeconds(1));
+        var culture = new CultureService("en-GB");
+        using var dashboard = new DashboardViewModel(RealLocalisation(culture), culture, () => new NavigationService([new FakeScreen(ScreenId.Dashboard)]), new FixedSource(Snapshot(SyncHealth.Active)), connection);
+        using var source = new CancellationTokenSource();
+        var run = connection.RunAsync(source.Token);
+        await WaitForAsync(() => connection.State == ConnectionState.Connected);
+
+        client.Raise(new DashboardChanged(new DashboardView(ProviderHealthState.Healthy, DashboardStage.ExecuteQueue, null, null, null, 5, 10, null, null, [], 3, 0, 0, 0, 0, 0, 0, [new DashboardOperationView("DownloadFile", "a.txt")], ["QueueDrained"])));
+
+        dashboard.PendingText.ShouldBe("Pending : 3");
+        dashboard.ItemsAnalysedText.ShouldContain("5 / 10");
+        dashboard.Activities.ShouldBe(["Download: a.txt"]);
+        dashboard.Events.ShouldBe(["Queue drained"]);
+        await source.CancelAsync();
+        await Should.ThrowAsync<OperationCanceledException>(() => run);
+    }
+
+    [Fact]
+    public void show_disconnected_when_the_daemon_link_is_down()
+    {
+        var culture = new CultureService("en-GB");
+        var connection = Connected();
+        using var dashboard = new DashboardViewModel(RealLocalisation(culture), culture, () => new NavigationService([new FakeScreen(ScreenId.Dashboard)]), new FixedSource(Snapshot(SyncHealth.Active)), connection);
+        dashboard.IsDisconnected.ShouldBeFalse();
+
+        connection.State = ConnectionState.Disconnected;
+
+        dashboard.IsDisconnected.ShouldBeTrue();
+        dashboard.Health.Headline.ShouldBe("SYNC HAS STOPPED");
+        dashboard.ItemsAnalysedText.ShouldContain("0 / 0");
+        dashboard.DisconnectedNotice.ShouldNotBeNullOrWhiteSpace();
+    }
+
+    [Fact]
+    public async Task honour_cancellation_when_refreshing()
+    {
+        var culture = new CultureService("en-GB");
+        using var dashboard = new DashboardViewModel(RealLocalisation(culture), culture, () => new NavigationService([new FakeScreen(ScreenId.Dashboard)]), new IpcDashboardSource(() => new FakeIpcClient([], available: true)), new ConnectionViewModel(() => new FakeIpcClient([], available: false), TimeSpan.FromSeconds(1), TimeSpan.FromSeconds(1)));
+        using var cancelled = new CancellationTokenSource();
+        await cancelled.CancelAsync();
+
+        await Should.ThrowAsync<OperationCanceledException>(() => dashboard.RefreshAsync(cancelled.Token));
+    }
+
+    private static async Task WaitForAsync(Func<bool> condition)
+    {
+        var deadline = DateTime.UtcNow.AddSeconds(5);
+        while (!condition() && DateTime.UtcNow < deadline) await Task.Delay(10, TestContext.Current.CancellationToken);
+        condition().ShouldBeTrue();
     }
 }

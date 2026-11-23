@@ -8,7 +8,7 @@
     <ScrollViewer>
         <StackPanel Margin="20" Spacing="16">
             <TextBlock Text="{Binding Title}" FontSize="24" FontWeight="SemiBold" Foreground="{DynamicResource Text.Primary.Brush}" />
-            <TextBlock Text="{Binding SampleDataNotice}" Foreground="{DynamicResource Text.Secondary.Brush}" TextWrapping="Wrap" />
+            <TextBlock Text="{Binding DisconnectedNotice}" IsVisible="{Binding IsDisconnected}" Foreground="{DynamicResource Text.Secondary.Brush}" TextWrapping="Wrap" />
 
             <Border Classes="card" Padding="0">
                 <UniformGrid Rows="1" Columns="4">

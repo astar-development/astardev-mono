@@ -54,6 +54,7 @@ internal static class UiServiceCollectionExtensions
             return () => UnixSocketIpc.CreateClient(socketPath);
         });
         services.AddSingleton(provider => new ConnectionViewModel(provider.GetRequiredService<Func<IIpcClient>>(), InitialRetryDelay, MaxRetryDelay, action => Dispatcher.UIThread.Post(action)));
+        services.AddSingleton<IDashboardSource>(provider => new IpcDashboardSource(provider.GetRequiredService<Func<IIpcClient>>()));
         services.AddSingleton(provider => new ConnectViewModel(provider.GetRequiredService<Func<IIpcClient>>()));
         services.AddSingleton(provider => new AccountsViewModel(provider.GetRequiredService<Func<IIpcClient>>()));
         services.AddSingleton<AvaloniaShell>();

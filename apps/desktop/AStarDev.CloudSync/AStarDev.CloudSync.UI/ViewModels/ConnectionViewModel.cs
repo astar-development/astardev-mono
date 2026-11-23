@@ -121,6 +121,7 @@ public sealed partial class ConnectionViewModel(Func<IIpcClient> createClient, T
             EventReceived?.Invoke(resolved);
             Remove(resolved.ConflictId);
         }));
+        client.OnEvent<DashboardChanged>(changed => postToUi(() => EventReceived?.Invoke(changed)));
         client.OnEvent<CrawlProgressChanged>(progress => postToUi(() => EventReceived?.Invoke(progress)));
 
         var connected = await client.ConnectAsync(cancellationToken);
