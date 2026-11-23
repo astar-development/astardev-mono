@@ -9,7 +9,7 @@ namespace AStarDev.CloudSync.SyncEngine;
 
 /// <summary>
 /// Runs the initial crawl of a job in the background, at most one run per job, then applies the provider's changes every <see cref="DeltaPollingOptions.Interval"/> once every scope has crawled; a scope that failed is crawled again each round.
-/// Stops on request or when the process shuts down.
+/// Starting a job that already runs wakes it, so a scope added meanwhile crawls at once. Stops on request or when the process shuts down.
 /// </summary>
 public sealed class SyncRunner : IAsyncDisposable
 {
@@ -34,7 +34,7 @@ public sealed class SyncRunner : IAsyncDisposable
     /// <summary>Starts crawling the job's selected scopes, continuing from the stored checkpoints. Returns before the crawl finishes; progress arrives through <see cref="ICrawlProgressSink"/>.</summary>
     /// <param name="syncJobId">The job to crawl.</param>
     /// <param name="cancellationToken">Cancelling abandons the start, not a crawl already running.</param>
-    /// <returns>Success once the crawl runs, also when it was already running, so calling twice is safe; <see cref="SyncJobNotFound"/> when the job does not exist; or <see cref="StorageFailed"/>.</returns>
+    /// <returns>Success once the crawl runs, also when it was already running, in which case the next crawl round begins at once instead of after the polling interval, so calling twice is safe; <see cref="SyncJobNotFound"/> when the job does not exist; or <see cref="StorageFailed"/>.</returns>
     public async Task<Result<Unit, StoreError>> StartAsync(SyncJobId syncJobId, CancellationToken cancellationToken)
         => await jobs.GetAsync(syncJobId, cancellationToken) switch
         {
@@ -70,17 +70,23 @@ public sealed class SyncRunner : IAsyncDisposable
     {
         lock (running)
         {
-            if (running.ContainsKey(syncJobId)) return new Ok<Unit>(default);
+            if (running.TryGetValue(syncJobId, out var current))
+            {
+                current.Wake();
+
+                return new Ok<Unit>(default);
+            }
 
             SyncLog.SyncStarted(logger, syncJobId.Value);
             var cancellation = new CancellationTokenSource();
-            running[syncJobId] = new RunningCrawl(cancellation, Task.Run(() => RunAsync(syncJobId, cancellation.Token), CancellationToken.None));
+            var wake = new SemaphoreSlim(0, 1);
+            running[syncJobId] = new RunningCrawl(cancellation, wake, Task.Run(() => RunAsync(syncJobId, wake, cancellation.Token), CancellationToken.None));
         }
 
         return new Ok<Unit>(default);
     }
 
-    private async Task RunAsync(SyncJobId syncJobId, CancellationToken cancellationToken)
+    private async Task RunAsync(SyncJobId syncJobId, SemaphoreSlim wake, CancellationToken cancellationToken)
     {
         SyncMetrics.Shared.JobStarted();
         using var scope = CorrelationScope.Begin(logger, syncJobId: syncJobId.Value.ToString());
@@ -99,7 +105,7 @@ public sealed class SyncRunner : IAsyncDisposable
                     await deltas.ProcessJobAsync(syncJobId, cancellationToken);
                 }
 
-                await Task.Delay(options.Interval > TimeSpan.Zero ? options.Interval : TimeSpan.FromSeconds(1), timeProvider, cancellationToken);
+                await SleepAsync(wake, cancellationToken);
             }
         }
         finally
@@ -109,5 +115,20 @@ public sealed class SyncRunner : IAsyncDisposable
         }
     }
 
-    private sealed record RunningCrawl(CancellationTokenSource Cancellation, Task Task);
+    private async Task SleepAsync(SemaphoreSlim wake, CancellationToken cancellationToken)
+    {
+        using var sleep = CancellationTokenSource.CreateLinkedTokenSource(cancellationToken);
+        var elapsed = Task.Delay(options.Interval > TimeSpan.Zero ? options.Interval : TimeSpan.FromSeconds(1), timeProvider, sleep.Token);
+        await Task.WhenAny(elapsed, wake.WaitAsync(sleep.Token));
+        await sleep.CancelAsync();
+        cancellationToken.ThrowIfCancellationRequested();
+    }
+
+    private sealed record RunningCrawl(CancellationTokenSource Cancellation, SemaphoreSlim WakeSignal, Task Task)
+    {
+        public void Wake()
+        {
+            if (WakeSignal.CurrentCount == 0) WakeSignal.Release();
+        }
+    }
 }
