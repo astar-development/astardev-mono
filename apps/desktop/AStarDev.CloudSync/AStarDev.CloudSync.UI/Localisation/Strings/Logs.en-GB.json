@@ -1,4 +1,26 @@
 {
   "Logs.Title": "Logs",
-  "Logs.Glyph": "📄"
+  "Logs.Glyph": "📄",
+  "Logs.Level.Label": "Level",
+  "Logs.Level.0": "Trace and above",
+  "Logs.Level.1": "Debug and above",
+  "Logs.Level.2": "Information and above",
+  "Logs.Level.3": "Warnings and above",
+  "Logs.Level.4": "Errors and above",
+  "Logs.Level.5": "Critical only",
+  "Logs.Level.Name.0": "Trace",
+  "Logs.Level.Name.1": "Debug",
+  "Logs.Level.Name.2": "Information",
+  "Logs.Level.Name.3": "Warning",
+  "Logs.Level.Name.4": "Error",
+  "Logs.Level.Name.5": "Critical",
+  "Logs.Window.Label": "Period",
+  "Logs.Window.All": "All time",
+  "Logs.Window.Hour": "Last hour",
+  "Logs.Window.Day": "Last 24 hours",
+  "Logs.Text.Label": "Search",
+  "Logs.Refresh": "Refresh",
+  "Logs.Empty": "No log entries match.",
+  "Logs.Row": "{date} {time}  {level}  {source}",
+  "Logs.Unavailable": "The logs could not be read."
 }

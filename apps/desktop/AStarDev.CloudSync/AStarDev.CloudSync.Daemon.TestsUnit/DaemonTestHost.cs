@@ -23,6 +23,7 @@ internal sealed class DaemonTestHost(IHost host, string socketPath, string datab
         var builder = Host.CreateApplicationBuilder();
         builder.Configuration[$"{ApplicationConstants.IpcConfigurationSection}:{nameof(IpcOptions.SocketPath)}"] = socketPath;
         builder.Configuration[$"{DatabaseOptions.ConfigurationSection}:{nameof(DatabaseOptions.Path)}"] = databasePath;
+        builder.Configuration[$"{TelemetryDatabaseOptions.ConfigurationSection}:{nameof(TelemetryDatabaseOptions.Path)}"] = Path.Combine(Path.GetDirectoryName(databasePath)!, "telemetry.db");
         foreach (var pair in configuration ?? new Dictionary<string, string?>()) builder.Configuration[pair.Key] = pair.Value;
         builder.Services.AddCloudSyncDaemon();
         configureServices?.Invoke(builder.Services);
