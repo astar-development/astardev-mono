@@ -53,6 +53,10 @@ Architecture docs in `docs/architecture/` = source of truth; start at `00 archit
 - Cancellation not failure: `OperationCanceledException` propagates.
 - No nulls inside the application: an absent value is `Option<T>`, never `null`. `null` is allowed only at an external edge: a public API (public type or member of a module's approved surface, such as a `string? name` parameter or a nullable return) may accept or return `null`, and converts it at once with `Option.FromNullable`. Internal and private members never take, return or store `null`. Framework contracts that force it (events, `Exception.InnerException`) are the only other exception.
 
+## Logging
+
+- Log with `[LoggerMessage]` source-generated methods in a `<Module>Log` class, never `logger.LogX(...)` directly. The event id comes from the module's 1000-block (SyncEngine 1000, IPC 2000, OneDrive 3000, Persistence 4000, Observability 5000, Daemon 6000, UI 7000, SingleInstance 8000); `LogEventIdsArchitectureTestsShouldEnsure` enforces it. See `docs/runbooks/cloudsync-observability.md`.
+
 ## Async
 
 - Every async method takes `CancellationToken cancellationToken` as LAST parameter, passes it to everything awaited, honours it, has test proving cancellation.

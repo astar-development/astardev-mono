@@ -53,6 +53,23 @@ IPC requests continue the caller's trace: the UI's client span is the parent of 
 State transition log events: 1100 sync started, 1101 sync completed, 1102 conflict detected, 1103 conflict resolved, 1104 delta token refreshed,
 1105 delta processing finished, 1106 delta token invalid, 1001 to 1006 operation lifecycle (1002 completed, 1005 failed and dead-lettered).
 
+### Log event ids
+
+Every log message is a `[LoggerMessage]` method in its module's block of event ids. A new message takes the next free id in the block.
+
+| Module | Block |
+|--------|-------|
+| SyncEngine | 1000 to 1999 |
+| IPC | 2000 to 2999 |
+| OneDrive | 3000 to 3999 |
+| Persistence | 4000 to 4999 |
+| Observability | 5000 to 5999 |
+| Daemon | 6000 to 6999 |
+| UI | 7000 to 7999 |
+| SingleInstance | 8000 to 8999 |
+
+`LogEventIdsArchitectureTestsShouldEnsure` fails the build when an id is used twice or sits outside its module's block.
+
 ## Metrics
 
 | Instrument | Meaning |
