@@ -74,6 +74,7 @@ internal static class DaemonServiceCollectionExtensions
         services.AddSingleton<HistoryQuery>();
         services.AddSingleton<LogsQuery>();
         services.AddSingleton<TracesQuery>();
+        services.AddSingleton<DiagnosticsQuery>();
         services.AddHealthChecks().AddCheck<ProviderHealthCheck>(ApplicationConstants.ProviderHealthCheckName);
         services.AddHealthChecks().AddCheck<QueueHealthCheck>(ApplicationConstants.QueueHealthCheckName);
         services.AddHostedService<IpcHostedService>();

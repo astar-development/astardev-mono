@@ -17,6 +17,8 @@ internal static class ApplicationConstants
 
     public static string UnknownVersion => "unknown";
 
+    public static string DaemonVersion { get; } = typeof(ApplicationConstants).Assembly.GetName().Version?.ToString() ?? UnknownVersion;
+
     public static string ProcessStartStageName => "Process start";
 
     public static string InstanceNameSuffix => ".instance";

@@ -33,6 +33,8 @@ internal sealed class FakeIpcClient(List<string> calls, bool available) : IIpcCl
 
     public Func<GetTraces, Result<TracesView, IpcError>> TracesReply { get; set; } = _ => new Ok<TracesView>(new TracesView([]));
 
+    public Result<DiagnosticsView, IpcError> DiagnosticsReply { get; set; } = new Ok<DiagnosticsView>(new DiagnosticsView(DaemonState.Running, "1.0.0", DateTimeOffset.UnixEpoch, []));
+
     public Func<GetAudit, Result<AuditView, IpcError>> AuditReply { get; set; } = _ => new Ok<AuditView>(new AuditView([]));
 
     public Func<IQuery<ExportView>, Result<ExportView, IpcError>> ExportReply { get; set; } = _ => new Ok<ExportView>(new ExportView(""));
@@ -92,6 +94,7 @@ internal sealed class FakeIpcClient(List<string> calls, bool available) : IIpcCl
             GetAudit audit => (Result<TResult, IpcError>)(object)AuditReply(audit),
             GetLogs logs => (Result<TResult, IpcError>)(object)LogsReply(logs),
             GetTraces traces => (Result<TResult, IpcError>)(object)TracesReply(traces),
+            GetDiagnostics => (Result<TResult, IpcError>)(object)DiagnosticsReply,
             GetSettings => (Result<TResult, IpcError>)(object)SettingsReply,
             GetSyncScopes scopes => (Result<TResult, IpcError>)(object)ScopesReply(scopes),
             GetRemoteFolders folders => (Result<TResult, IpcError>)(object)Record(folders),
