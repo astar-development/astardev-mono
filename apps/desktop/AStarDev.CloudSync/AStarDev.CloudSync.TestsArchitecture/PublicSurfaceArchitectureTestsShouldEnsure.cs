@@ -17,7 +17,7 @@ public sealed class PublicSurfaceArchitectureTestsShouldEnsure
     public void the_ports_expose_only_their_approved_public_types()
         => ShouldExposeExactly(typeof(ICloudProvider).Assembly,
             "AccountAlreadyExists", "AccountNotFound", "AuthenticationFailed", "ChangeKind", "ConflictNotFound", "CrawlCheckpoint", "IAccountStore", "ICloudProvider", "IConflictStore", "IEventJournal", "IItemIndexStore", "IItemStateStore", "IKnownSnapshotStore", "ILocalObservationStore", "InvalidDeltaToken", "InvalidSettingValue", "IOperationStore", "ISettingsStore", "JournalEntry", "KnownEntry", "ISyncJobStore", "ISyncScopeStore", "ITelemetryStore", "ITelemetryWriter", "OperationNotDeadLettered", "OperationNotRunning", "Permanent", "ProviderAccount",
-            "ProviderChange", "ProviderDeltaPage", "ProviderError", "ProviderItem", "ProviderSnapshotPage", "RateLimited", "SettingNames", "StorageFailed", "StoredItem", "StoreError", "SyncJobAlreadyExists", "SyncJobNotFound", "UploadRequest",
+            "ProviderChange", "ProviderDeltaPage", "ProviderDriveInfo", "ProviderError", "ProviderItem", "ProviderSnapshotPage", "RateLimited", "SettingNames", "StorageFailed", "StoredItem", "StoreError", "SyncJobAlreadyExists", "SyncJobNotFound", "UploadRequest",
             "SyncScopeAlreadyExists", "SyncScopeNotFound", "TelemetryEntry", "TelemetryKind", "TelemetryQuery", "Transient", "UnknownSetting");
 
     [Fact]
@@ -25,7 +25,7 @@ public sealed class PublicSurfaceArchitectureTestsShouldEnsure
         => ShouldExposeExactly(typeof(IPC.IIpcServer).Assembly,
             [
              "AccountConnected", "AccountDisconnected", "AccountState", "AccountView", "AccountsView", "ActivitiesView", "ActivityChanged", "ActivityState", "ActivityView", "AddSyncScope", "CommandOutcome", "CommandResult", "ConflictChoice", "ConflictDetected", "ConflictResolved", "ConflictSideView", "ConflictView", "ConflictsView", "ConnectAccount",
-             "ConnectionFailed", "ConnectionLost", "CrawlProgressChanged", "CreateSyncJob", "DaemonState", "DaemonStatusChanged", "DaemonStatusView", "DeadLetterView", "DeadLettersView", "DisconnectAccount", "FrameTooLarge",
+             "ConnectionFailed", "ConnectionLost", "CrawlPhase", "CrawlProgressChanged", "CreateSyncJob", "DaemonState", "DaemonStatusChanged", "DaemonStatusView", "DeadLetterView", "DeadLettersView", "DisconnectAccount", "FrameTooLarge",
              "GetAccounts", "GetActivities", "GetConflicts", "GetDaemonStatus", "GetDeadLetters", "GetRemoteFolders", "GetRemoteRootSummary", "GetSettings", "GetSyncJobs", "GetSyncScopes", "GetSyncStatus", "HandlerFailed", "ICommand",
              "IEvent", "IgnoreOperation", "IIpcClient", "IIpcServer", "IpcError", "IQuery`1", "ListenFailed", "MalformedFrame", "NotConnected", "ProviderHealthState", "RemoteFolderView", "RemoteFoldersView", "RemoteRootSummaryView",
              "RemoveSyncScope", "ResolveConflict", "RetryOperation", "SetSetting", "SettingsView", "StartSync", "StopSync", "SyncBootstrapMode", "SyncJobView", "SyncJobsView", "SyncScopeView", "SyncScopesView", "SyncStatusChanged", "SyncStatusView", "UnixSocketIpc"]);

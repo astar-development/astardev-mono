@@ -13,7 +13,7 @@ internal sealed class IpcCrawlProgressSink(IIpcServer server, ActivityTracker tr
     public async Task ReportAsync(CrawlProgress progress, CancellationToken cancellationToken)
     {
         var activity = await tracker.ApplyAsync(progress, cancellationToken);
-        await PublishAsync(new CrawlProgressChanged(progress.SyncJobId.Value, progress.RemoteRootId.Value, progress.ItemsIndexed, progress.Completed), cancellationToken);
+        await PublishAsync(new CrawlProgressChanged(progress.SyncJobId.Value, progress.RemoteRootId.Value, progress.ItemsIndexed, progress.Completed, progress.Delta ? CrawlPhase.Syncing : CrawlPhase.Crawling, progress.ItemsTotal, progress.ItemsPerSecond, progress.EstimatedRemaining), cancellationToken);
         await PublishAsync(new ActivityChanged(activity), cancellationToken);
         if (await status.PublishIfChangedAsync(cancellationToken) is Fail<IpcError> fail) logger.LogWarning("Publishing {Event} failed: {Error}", nameof(SyncStatusChanged), fail.Error.Value);
     }

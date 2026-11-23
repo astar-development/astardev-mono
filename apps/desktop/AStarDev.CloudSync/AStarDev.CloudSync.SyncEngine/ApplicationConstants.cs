@@ -10,4 +10,6 @@ internal static class ApplicationConstants
     public static TimeSpan RetryBaseDelay { get; } = TimeSpan.FromSeconds(2);
 
     public static TimeSpan ProgressInterval { get; } = TimeSpan.FromMilliseconds(500);
+
+    public static TimeSpan ThroughputWindow { get; } = TimeSpan.FromSeconds(10);
 }

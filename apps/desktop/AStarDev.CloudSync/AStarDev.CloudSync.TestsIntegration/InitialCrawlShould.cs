@@ -137,8 +137,26 @@ public sealed class InitialCrawlShould
 
         await CrawlAsync(host, job);
 
-        sink.Reports.Last().ShouldBe(new CrawlProgress(job.Id, Docs, 120, true, 120));
+        var last = sink.Reports.Last();
+        (last.ItemsIndexed, last.Completed, last.ItemsTotal).ShouldBe((120, true, 120));
         sink.Reports.Count(report => report.Completed).ShouldBe(1);
+    }
+
+    [Fact]
+    public async Task report_progress_with_a_total_and_an_estimate()
+    {
+        var provider = new FakeCloudProvider(pageSize: 50);
+        provider.GenerateTree(120, Docs);
+        var sink = new RecordingProgressSink();
+        await using var host = CreateHost(provider, sink);
+        var job = await SeedAsync(host, Docs);
+
+        await CrawlAsync(host, job);
+
+        var last = sink.Reports.Last();
+        last.ItemsTotal.ShouldBe(120);
+        last.ItemsPerSecond.ShouldNotBeNull().ShouldBeGreaterThan(0);
+        last.EstimatedRemaining.ShouldBe(TimeSpan.Zero);
     }
 
     [Fact]
