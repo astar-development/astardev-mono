@@ -15,7 +15,7 @@ public sealed class OnboardingViewModelShould
     private static readonly SyncJobView Job = new(Guid.NewGuid(), Account.Id, "OneDrive", "/home/ada/OneDrive", SyncBootstrapMode.Merge);
     private static CancellationToken Token => TestContext.Current.CancellationToken;
 
-    private sealed record Rig(OnboardingViewModel Onboarding, FakeIpcClient Client, FakeNavigationService Navigation, ConnectViewModel Connect, ScopeSelectionViewModel Selection, AccountsViewModel Accounts);
+    private sealed record Rig(OnboardingViewModel Onboarding, FakeIpcClient Client, FakeNavigationService Navigation, ConnectViewModel Connect, ScopeSelectionViewModel Selection, AccountsViewModel Accounts, ConnectionViewModel Connection);
 
     private static LocalisationService RealLocalisation()
     {
@@ -33,9 +33,9 @@ public sealed class OnboardingViewModelShould
         var accounts = new AccountsViewModel(() => client);
         var folders = new FolderTreeViewModel(() => client, selection);
         var connection = new ConnectionViewModel(() => client, TimeSpan.FromMilliseconds(10), TimeSpan.FromMilliseconds(10));
-        var onboarding = new OnboardingViewModel(RealLocalisation(), () => navigation, connection, accounts, connect, folders, selection);
+        var onboarding = new OnboardingViewModel(RealLocalisation(), new CultureService("en-GB"), () => client, () => navigation, connection, accounts, connect, folders, selection);
 
-        return new Rig(onboarding, client, navigation, connect, selection, accounts);
+        return new Rig(onboarding, client, navigation, connect, selection, accounts, connection);
     }
 
     private static async Task ReachReviewAsync(Rig rig)
@@ -141,8 +141,11 @@ public sealed class OnboardingViewModelShould
         rig.Onboarding.Step.ShouldBe(OnboardingStep.Welcome);
     }
 
+    private static ActivityView Report(long done, long? total, int? eta, double? rate, ActivityState state = ActivityState.InitialIndexing)
+        => new(Job.Id, "OneDrive", state, done, total, null, eta, DateTimeOffset.UnixEpoch, DateTimeOffset.UnixEpoch, null, false, rate);
+
     [Fact]
-    public async Task summarise_provider_local_path_scopes_and_labelled_placeholders_on_review()
+    public async Task summarise_provider_local_path_and_scopes_on_review()
     {
         var rig = CreateRig();
 
@@ -151,8 +154,88 @@ public sealed class OnboardingViewModelShould
         rig.Onboarding.ReviewProvider.ShouldContain("ada@example.com");
         rig.Onboarding.ReviewLocalPath.ShouldBe(Job.LocalRootPath);
         rig.Onboarding.ReviewScopes.ShouldBe(["docs"]);
-        rig.Onboarding.EstimatedItemsText.ShouldContain("placeholder");
-        rig.Onboarding.AvailableStorageText.ShouldContain("placeholder");
+    }
+
+    [Fact]
+    public async Task show_the_drive_info_in_the_review_step()
+    {
+        var rig = CreateRig();
+        rig.Client.DriveInfoReply = new Ok<DriveInfoView>(new DriveInfoView(26_843_545_600, 1_073_741_824, 107_374_182_400, 1234));
+
+        await ReachReviewAsync(rig);
+
+        rig.Onboarding.AvailableStorageText.ShouldBe("1.0 GB free of 100.0 GB");
+        rig.Onboarding.EstimatedItemsText.ShouldBe("1,234");
+    }
+
+    [Fact]
+    public async Task show_unknown_when_the_estimate_is_absent()
+    {
+        var rig = CreateRig();
+        rig.Client.DriveInfoReply = new Ok<DriveInfoView>(new DriveInfoView(1, 2, 3, null));
+        var unknown = RealLocalisation().Get("Onboarding.Unknown");
+
+        rig.Onboarding.EstimatedItemsText.ShouldBe(unknown);
+        rig.Onboarding.AvailableStorageText.ShouldBe(unknown);
+        rig.Onboarding.PhaseText.ShouldBe(unknown);
+        rig.Onboarding.ItemCountsText.ShouldBe(unknown);
+        rig.Onboarding.ThroughputText.ShouldBe(unknown);
+        rig.Onboarding.RemainingText.ShouldBe(unknown);
+        await ReachReviewAsync(rig);
+        rig.Onboarding.EstimatedItemsText.ShouldBe(unknown);
+        rig.Onboarding.AvailableStorageText.ShouldNotBe(unknown);
+    }
+
+    [Fact]
+    public async Task keep_the_values_unknown_when_the_daemon_cannot_answer_the_drive_question()
+    {
+        var rig = CreateRig();
+        rig.Client.DriveInfoReply = new Fail<IpcError>(new HandlerFailed("Sign in first."));
+
+        await ReachReviewAsync(rig);
+
+        rig.Onboarding.AvailableStorageText.ShouldBe(RealLocalisation().Get("Onboarding.Unknown"));
+    }
+
+    [Fact]
+    public void show_progress_in_the_sync_step()
+    {
+        var rig = CreateRig();
+        var changed = new List<string?>();
+        rig.Onboarding.PropertyChanged += (_, args) => changed.Add(args.PropertyName);
+
+        rig.Connection.Activities.Add(Report(10, 100, 30, 2.5));
+        var first = (rig.Onboarding.PhaseText, rig.Onboarding.ItemCountsText, rig.Onboarding.ThroughputText, rig.Onboarding.RemainingText);
+        rig.Connection.Activities[0] = Report(60, 100, 180, 4.0, ActivityState.Working);
+
+        first.ShouldBe(("Initial indexing", "10 of 100", "2.5 items per second", "Less than a minute"));
+        rig.Onboarding.PhaseText.ShouldBe("Synchronising");
+        rig.Onboarding.ItemCountsText.ShouldBe("60 of 100");
+        rig.Onboarding.ThroughputText.ShouldBe("4.0 items per second");
+        rig.Onboarding.RemainingText.ShouldBe("About 3 minutes");
+        changed.ShouldContain(nameof(OnboardingViewModel.RemainingText));
+    }
+
+    [Fact]
+    public void show_only_the_count_when_the_total_is_unknown()
+    {
+        var rig = CreateRig();
+
+        rig.Connection.Activities.Add(Report(1500, null, null, null));
+
+        rig.Onboarding.ItemCountsText.ShouldBe("1,500");
+        rig.Onboarding.ThroughputText.ShouldBe(RealLocalisation().Get("Onboarding.Unknown"));
+        rig.Onboarding.RemainingText.ShouldBe(RealLocalisation().Get("Onboarding.Unknown"));
+    }
+
+    [Fact]
+    public async Task honour_cancellation_when_loading_the_drive_info()
+    {
+        var rig = CreateRig();
+        using var cancelled = new CancellationTokenSource();
+        await cancelled.CancelAsync();
+
+        await Should.ThrowAsync<OperationCanceledException>(() => rig.Onboarding.LoadDriveInfoAsync(cancelled.Token));
     }
 
     [Fact]

@@ -34,6 +34,9 @@ internal sealed class FakeIpcClient(List<string> calls, bool available) : IIpcCl
     public Func<GetTraces, Result<TracesView, IpcError>> TracesReply { get; set; } = _ => new Ok<TracesView>(new TracesView([]));
 
     public Result<DiagnosticsView, IpcError> DiagnosticsReply { get; set; } = new Ok<DiagnosticsView>(new DiagnosticsView(DaemonState.Running, "1.0.0", DateTimeOffset.UnixEpoch, []));
+
+    public Result<DriveInfoView, IpcError> DriveInfoReply { get; set; } = new Ok<DriveInfoView>(new DriveInfoView(0, 0, 0, null));
+
     public Func<GetMetrics, Result<MetricsView, IpcError>> MetricsReply { get; set; } = _ => new Ok<MetricsView>(new MetricsView([]));
 
     public Func<GetAudit, Result<AuditView, IpcError>> AuditReply { get; set; } = _ => new Ok<AuditView>(new AuditView([]));
@@ -96,6 +99,7 @@ internal sealed class FakeIpcClient(List<string> calls, bool available) : IIpcCl
             GetLogs logs => (Result<TResult, IpcError>)(object)LogsReply(logs),
             GetTraces traces => (Result<TResult, IpcError>)(object)TracesReply(traces),
             GetDiagnostics => (Result<TResult, IpcError>)(object)DiagnosticsReply,
+            GetDriveInfo => (Result<TResult, IpcError>)(object)DriveInfoReply,
             GetMetrics metrics => (Result<TResult, IpcError>)(object)MetricsReply(metrics),
             GetSettings => (Result<TResult, IpcError>)(object)SettingsReply,
             GetSyncScopes scopes => (Result<TResult, IpcError>)(object)ScopesReply(scopes),
