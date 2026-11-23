@@ -45,5 +45,9 @@ internal static class ApplicationConstants
 
     public static string QueueHealthCheckName => "queue";
 
+    public static string EntityFrameworkCategoryPrefix => "Microsoft.EntityFrameworkCore";
+
+    public static string TelemetryBatchWriterCategory => "AStarDev.CloudSync.Persistence.TelemetryBatchWriter";
+
     public static string InterruptedOperationReason => "Interrupted by a daemon restart.";
 }

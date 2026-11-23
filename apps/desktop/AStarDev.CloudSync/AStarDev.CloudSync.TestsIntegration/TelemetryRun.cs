@@ -40,6 +40,7 @@ internal sealed class TelemetryRun : IAsyncDisposable
         var builder = Host.CreateApplicationBuilder();
         builder.Configuration[$"{Daemon.ApplicationConstants.IpcConfigurationSection}:{nameof(IpcOptions.SocketPath)}"] = SocketPath;
         builder.Configuration[$"{DatabaseOptions.ConfigurationSection}:{nameof(DatabaseOptions.Path)}"] = Path.Combine(directory, "cloudsync.db");
+        builder.Configuration[$"{TelemetryDatabaseOptions.ConfigurationSection}:{nameof(TelemetryDatabaseOptions.Path)}"] = Path.Combine(directory, "telemetry.db");
         builder.Logging.ClearProviders();
         builder.Logging.SetMinimumLevel(LogLevel.Trace);
         builder.Logging.AddProvider(Logs);

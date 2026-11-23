@@ -42,6 +42,7 @@ public sealed class InfrastructureInitialisationStageShould
         var databasePath = Path.Combine(blocker, "cloudsync.db");
         var builder = Microsoft.Extensions.Hosting.Host.CreateApplicationBuilder();
         builder.Configuration["Database:Path"] = databasePath;
+        builder.Configuration["Telemetry:Database:Path"] = Path.Combine(blocker, "telemetry.db");
         builder.Services.AddCloudSyncDaemon();
         using var host = builder.Build();
         var stage = host.Services.GetServices<IStartupStage>().OfType<InfrastructureInitialisationStage>().Single();

@@ -1,0 +1,29 @@
+<UserControl xmlns="https://github.com/avaloniaui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:vm="using:AStarDev.CloudSync.UI.ViewModels.Screens"
+             x:Class="AStarDev.CloudSync.UI.Views.Screens.LogsView"
+             x:DataType="vm:LogsViewModel">
+    <DockPanel Margin="16">
+        <TextBlock DockPanel.Dock="Top" Text="{Binding Title}" FontSize="24" FontWeight="SemiBold" Foreground="{DynamicResource Text.Primary.Brush}" />
+        <StackPanel DockPanel.Dock="Top" Orientation="Horizontal" Spacing="8" Margin="0,8,0,8">
+            <ComboBox ItemsSource="{Binding Levels}" SelectedIndex="{Binding MinimumLevel}" />
+            <ComboBox ItemsSource="{Binding Windows}" SelectedIndex="{Binding WindowIndex}" />
+            <TextBox Text="{Binding Text}" PlaceholderText="{Binding TextLabel}" MinWidth="240" />
+            <Button Content="{Binding RefreshText}" Command="{Binding RefreshCommand}" />
+        </StackPanel>
+        <TextBlock DockPanel.Dock="Top" Text="{Binding ErrorMessage}" IsVisible="{Binding ErrorMessage, Converter={x:Static ObjectConverters.IsNotNull}}" TextWrapping="Wrap" Foreground="{DynamicResource Trust.Degraded.Brush}" />
+        <TextBlock DockPanel.Dock="Top" Text="{Binding EmptyText}" IsVisible="{Binding IsEmpty}" Foreground="{DynamicResource Text.Secondary.Brush}" />
+        <ScrollViewer>
+            <ItemsControl ItemsSource="{Binding Entries}">
+                <ItemsControl.ItemTemplate>
+                    <DataTemplate x:DataType="vm:LogRowViewModel">
+                        <StackPanel Margin="0,0,0,8">
+                            <TextBlock Text="{Binding Header}" Foreground="{DynamicResource Text.Secondary.Brush}" />
+                            <TextBlock Text="{Binding Message}" TextWrapping="Wrap" Foreground="{DynamicResource Text.Primary.Brush}" />
+                        </StackPanel>
+                    </DataTemplate>
+                </ItemsControl.ItemTemplate>
+            </ItemsControl>
+        </ScrollViewer>
+    </DockPanel>
+</UserControl>
