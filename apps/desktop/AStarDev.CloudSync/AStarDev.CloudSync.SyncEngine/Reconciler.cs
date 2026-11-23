@@ -8,9 +8,13 @@ internal sealed class Reconciler : IReconciler
     /// <inheritdoc/>
     /// <remarks>
     /// With no known baseline only creation can be decided, and creations on both sides are the same only when the path matches and both content fingerprints are present and equal; otherwise the result is a conflict, never a guess.
+    /// A known item the disk was never observed for is left alone, because its missing local side proves nothing: only a recorded deletion may become a delete.
     /// With a baseline, each side is compared to it, then the pair is resolved per concern: existence, location and content.
     /// </remarks>
     public SyncDecision Reconcile(CanonicalItemState state)
+        => state is { Known: not null, Local: null, LocalObserved: false } ? Apply(SyncDecisionType.NoOp) : Resolve(state);
+
+    private static SyncDecision Resolve(CanonicalItemState state)
         => state.Known is null ? ResolveWithoutBaseline(state.Local, state.Remote) : ResolveAgainstBaseline(state.Known, state.Local, state.Remote);
 
     private static SyncDecision ResolveWithoutBaseline(LocalSnapshot? local, RemoteSnapshot? remote)

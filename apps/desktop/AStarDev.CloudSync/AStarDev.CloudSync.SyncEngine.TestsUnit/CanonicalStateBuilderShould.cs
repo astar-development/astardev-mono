@@ -91,6 +91,18 @@ public sealed class CanonicalStateBuilderShould
     }
 
     [Fact]
+    public void carry_whether_the_disk_was_observed_for_the_item()
+    {
+        var known = Known("a.txt");
+
+        var unobserved = CanonicalStateBuilder.Build([Remote(Remote1, "a.txt") with { LocalObserved = false }], [new KnownEntry(Remote1, known)]);
+        var deleted = CanonicalStateBuilder.Build([Remote(Remote1, "a.txt")], [new KnownEntry(Remote1, known)]);
+
+        unobserved.ShouldHaveSingleItem().LocalObserved.ShouldBeFalse();
+        deleted.ShouldHaveSingleItem().LocalObserved.ShouldBeTrue();
+    }
+
+    [Fact]
     public void ignore_a_local_only_row_whose_file_is_gone_and_never_had_a_baseline()
         => CanonicalStateBuilder.Build([new StoredItem(LocalOnly1, new RemoteItemId(string.Empty), new RelativePath("a.txt"), null, null)], []).ShouldBeEmpty();
 

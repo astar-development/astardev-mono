@@ -17,21 +17,21 @@ internal static class CanonicalStateBuilder
     {
         var baselines = known.ToDictionary(entry => entry.ItemId, entry => entry.Snapshot);
         var rowIds = items.Select(item => item.ItemId).ToHashSet();
-        var anchored = items.Where(HasRemoteId).Select(item => new Logical(item.ItemId, item.Path, item.Local, item.Remote)).ToList();
-        var orphans = known.Where(entry => !rowIds.Contains(entry.ItemId)).Select(entry => new Logical(entry.ItemId, entry.Snapshot.Path, null, null)).ToList();
+        var anchored = items.Where(HasRemoteId).Select(item => new Logical(item.ItemId, item.Path, item.Local, item.Remote, item.LocalObserved)).ToList();
+        var orphans = known.Where(entry => !rowIds.Contains(entry.ItemId)).Select(entry => new Logical(entry.ItemId, entry.Snapshot.Path, null, null, true)).ToList();
         var standalone = new List<Logical>();
 
         foreach (var localOnly in items.Where(item => !HasRemoteId(item) && (item.Local is not null || baselines.ContainsKey(item.ItemId))))
         {
             var target = FindTarget(anchored, orphans, baselines, localOnly.Path);
-            if (target is null) standalone.Add(new Logical(localOnly.ItemId, localOnly.Path, localOnly.Local, null));
+            if (target is null) standalone.Add(new Logical(localOnly.ItemId, localOnly.Path, localOnly.Local, null, localOnly.LocalObserved));
             else Join(target, localOnly, baselines);
         }
 
         var logical = anchored.Concat(orphans).Concat(standalone).ToList();
         ApplyLocalRenames(logical, standalone, baselines, items.Where(item => item.LastLocalIdentity is not null).GroupBy(item => item.Path).ToDictionary(group => group.Key, group => group.First().LastLocalIdentity!.Value));
 
-        return logical.Select(item => new CanonicalItemState(item.Id, baselines.GetValueOrDefault(item.Id), item.Local, item.Remote)).ToList();
+        return logical.Select(item => new CanonicalItemState(item.Id, baselines.GetValueOrDefault(item.Id), item.Local, item.Remote, item.LocalObserved)).ToList();
     }
 
     private static bool HasRemoteId(StoredItem item) => item.RemoteItemId.Value.Length > 0;
@@ -44,6 +44,7 @@ internal static class CanonicalStateBuilder
     private static void Join(Logical target, StoredItem localOnly, Dictionary<ItemId, KnownSnapshot> baselines)
     {
         target.Local = localOnly.Local ?? target.Local;
+        target.LocalObserved |= localOnly.LocalObserved;
         if (baselines.ContainsKey(localOnly.ItemId) && !baselines.ContainsKey(target.Id)) target.Id = localOnly.ItemId;
     }
 
@@ -71,7 +72,7 @@ internal static class CanonicalStateBuilder
 
     private static RenameEvidence ToEvidence(LocalSnapshot snapshot) => new(snapshot.Path, snapshot.Size, snapshot.ModifiedUtc, snapshot.Fingerprint, snapshot.Identity?.Value);
 
-    private sealed class Logical(ItemId id, RelativePath path, LocalSnapshot? local, RemoteSnapshot? remote)
+    private sealed class Logical(ItemId id, RelativePath path, LocalSnapshot? local, RemoteSnapshot? remote, bool localObserved)
     {
         public ItemId Id { get; set; } = id;
 
@@ -80,5 +81,7 @@ internal static class CanonicalStateBuilder
         public LocalSnapshot? Local { get; set; } = local;
 
         public RemoteSnapshot? Remote { get; } = remote;
+
+        public bool LocalObserved { get; set; } = localObserved;
     }
 }

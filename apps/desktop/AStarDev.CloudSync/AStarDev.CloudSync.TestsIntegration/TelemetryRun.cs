@@ -133,6 +133,14 @@ internal sealed class TelemetryRun : IAsyncDisposable
         (await runner.StartAsync(Job, cancellationToken)).Value.ShouldBeOfType<Ok<Unit>>();
         await WaitForAsync(() => Spans.ForJob(Job).Any(span => span.OperationName == "cloudsync.delta.process"), cancellationToken);
         await runner.StopAsync(Job, cancellationToken);
+        await DiscardQueuedByRunnerAsync(cancellationToken);
+    }
+
+    private async Task DiscardQueuedByRunnerAsync(CancellationToken cancellationToken)
+    {
+        var store = Services.GetRequiredService<IOperationStore>();
+        var claimed = (await store.ClaimNextAsync(DateTimeOffset.UtcNow.AddDays(1), int.MaxValue, cancellationToken)).Value.ShouldBeOfType<Ok<IReadOnlyList<Operation>>>().Value;
+        foreach (var operation in claimed) (await store.CompleteAsync(operation.Id, cancellationToken)).Value.ShouldBeOfType<Ok<Unit>>();
     }
 
     private async Task PlanAndRunAsync(CancellationToken cancellationToken)

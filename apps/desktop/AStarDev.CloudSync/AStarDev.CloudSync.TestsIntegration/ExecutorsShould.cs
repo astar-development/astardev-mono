@@ -175,6 +175,27 @@ public sealed class ExecutorsShould : IDisposable
     }
 
     [Fact]
+    public async Task keep_a_remote_item_whose_file_is_on_disk_and_dead_letter_the_delete()
+    {
+        var provider = new FakeCloudProvider(10);
+        await using var host = CreateHost(provider);
+        var job = await SeedAsync(host);
+        await AddRemoteAsync(host, job, "r1", "a.txt", 10);
+        var item = (await Items(host, job)).Single().ItemId;
+        await CommitKnownAsync(host, job, item, new KnownSnapshot(new RelativePath("a.txt"), 10, Stamp, null, null));
+        await RecordLocalAsync(host, job, "a.txt", 10, Stamp);
+        (await host.Services.GetRequiredService<ILocalObservationStore>().RecordAsync(job, [], [new RelativePath("a.txt")], Stamp.AddHours(3), Token)).Value.ShouldBeOfType<Ok<Unit>>();
+        await PlanAsync(host, job);
+        Directory.CreateDirectory(localRoot);
+        await File.WriteAllTextAsync(Path.Combine(localRoot, "a.txt"), "still here", Token);
+
+        await RunAllAsync(host);
+
+        provider.Deletes.ShouldBeEmpty();
+        (await Operations(host)).ShouldHaveSingleItem().Status.ShouldBe(OperationStatus.DeadLetter);
+    }
+
+    [Fact]
     public async Task delete_a_local_file_the_user_deleted_remotely()
     {
         var provider = new FakeCloudProvider(10);
