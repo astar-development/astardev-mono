@@ -43,6 +43,33 @@ public sealed class SyncScopeHandlersShould : IDisposable
     }
 
     [Fact]
+    public async Task start_the_crawl_when_the_first_scope_is_added()
+    {
+        var provider = new StubCloudProvider { SnapshotResult = new Ok<ProviderSnapshotPage>(new ProviderSnapshotPage([StubCloudProvider.Item("a")], null, new DeltaToken("delta-1"))) };
+        await using var host = DaemonTestHost.CreateWith(provider);
+        var job = await NewJobAsync(host);
+
+        await host.Services.GetRequiredService<AddSyncScopeHandler>().HandleAsync(new AddSyncScope(job.Id.Value, "docs"), Token);
+
+        (await CompletedAsync(host, new SyncScope(job.Id, new RemoteItemId("docs")))).Completed.ShouldBeTrue();
+    }
+
+    [Fact]
+    public async Task crawl_a_scope_added_later_without_waiting_for_the_polling_interval()
+    {
+        var provider = new StubCloudProvider { SnapshotResult = new Ok<ProviderSnapshotPage>(new ProviderSnapshotPage([StubCloudProvider.Item("a")], null, new DeltaToken("delta-1"))) };
+        await using var host = DaemonTestHost.CreateWith(provider);
+        var job = await NewJobAsync(host);
+        var handler = host.Services.GetRequiredService<AddSyncScopeHandler>();
+        await handler.HandleAsync(new AddSyncScope(job.Id.Value, "docs"), Token);
+        (await CompletedAsync(host, new SyncScope(job.Id, new RemoteItemId("docs")))).Completed.ShouldBeTrue();
+
+        await handler.HandleAsync(new AddSyncScope(job.Id.Value, "notes"), Token);
+
+        (await CompletedAsync(host, new SyncScope(job.Id, new RemoteItemId("notes")))).Completed.ShouldBeTrue();
+    }
+
+    [Fact]
     public async Task reject_a_scope_for_an_unknown_job()
     {
         await using var host = DaemonTestHost.CreateWith(new StubCloudProvider());
@@ -130,5 +157,20 @@ public sealed class SyncScopeHandlersShould : IDisposable
         var account = await host.AddAccountAsync("id", AccountStatus.Connected, Token);
 
         return await host.AddJobAsync(account, localRoot, Token);
+    }
+
+    private static async Task<CrawlCheckpoint> CompletedAsync(DaemonTestHost host, SyncScope scope)
+    {
+        var store = host.Services.GetRequiredService<IItemIndexStore>();
+        var deadline = DateTimeOffset.UtcNow.AddSeconds(10);
+        var checkpoint = CrawlCheckpoint.None;
+
+        while (!checkpoint.Completed && DateTimeOffset.UtcNow < deadline)
+        {
+            await Task.Delay(20, Token);
+            checkpoint = (await store.GetCheckpointAsync(scope, Token)).Value.ShouldBeOfType<Ok<CrawlCheckpoint>>().Value;
+        }
+
+        return checkpoint;
     }
 }
