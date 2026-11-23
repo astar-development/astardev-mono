@@ -415,6 +415,10 @@ Retry Connection
 
 The UI must degrade gracefully.
 
+### Failure Reply
+
+A request the daemon cannot answer gets an error reply with the request id, a `message` fit for display and a `code`. The code reads `CS-IPC-NNNN` and names the `IpcError` case the daemon hit; its help link is `https://astar-development.co.uk/errors/<code>`. The client surfaces the reply as `HandlerFailed` with the code in `Reported`; a code it cannot read is dropped and the failure still arrives.
+
 ---
 
 ## Architectural Summary
