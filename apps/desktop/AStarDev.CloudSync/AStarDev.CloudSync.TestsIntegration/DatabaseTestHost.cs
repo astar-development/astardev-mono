@@ -45,6 +45,7 @@ internal sealed class DatabaseTestHost : IAsyncDisposable
     {
         var builder = Host.CreateApplicationBuilder();
         builder.Configuration[$"{DatabaseOptions.ConfigurationSection}:{nameof(DatabaseOptions.Path)}"] = databasePath;
+        builder.Configuration[$"{TelemetryDatabaseOptions.ConfigurationSection}:{nameof(TelemetryDatabaseOptions.Path)}"] = Path.Combine(Path.GetDirectoryName(databasePath)!, "telemetry.db");
         builder.Logging.ClearProviders();
         builder.Services.AddCloudSyncPersistence();
         configureServices?.Invoke(builder.Services);

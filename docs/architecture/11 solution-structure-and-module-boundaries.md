@@ -251,6 +251,7 @@ Contains:
 - Mappings
 - Migrations
 - Repositories
+- Telemetry store: a second SQLite file, `telemetry.db`, with its own `TelemetryDbContext` and migrations, for logs, spans and metric samples. It lives in Persistence (it needs only Ports and EF Core, so no boundary reason to split it out) and is kept apart from the sync database so telemetry volume and failures never touch sync state
 
 Dependencies:
 

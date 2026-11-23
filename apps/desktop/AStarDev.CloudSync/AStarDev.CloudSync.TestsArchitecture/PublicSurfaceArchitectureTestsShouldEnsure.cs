@@ -16,9 +16,9 @@ public sealed class PublicSurfaceArchitectureTestsShouldEnsure
     [Fact]
     public void the_ports_expose_only_their_approved_public_types()
         => ShouldExposeExactly(typeof(ICloudProvider).Assembly,
-            "AccountAlreadyExists", "AccountNotFound", "AuthenticationFailed", "ChangeKind", "ConflictNotFound", "CrawlCheckpoint", "IAccountStore", "ICloudProvider", "IConflictStore", "IEventJournal", "IItemIndexStore", "IItemStateStore", "IKnownSnapshotStore", "ILocalObservationStore", "InvalidDeltaToken", "InvalidSettingValue", "IOperationStore", "ISettingsStore", "JournalEntry", "KnownEntry", "ISyncJobStore", "ISyncScopeStore", "OperationNotDeadLettered", "OperationNotRunning", "Permanent", "ProviderAccount",
-            "ProviderChange", "ProviderDeltaPage", "ProviderDriveInfo", "ProviderError", "ProviderItem", "ProviderSnapshotPage", "RateLimited", "SettingNames", "StorageFailed", "StoredItem", "StoreError", "SyncJobAlreadyExists", "SyncJobNotFound", "UploadRequest",
-            "SyncScopeAlreadyExists", "SyncScopeNotFound", "Transient", "UnknownSetting");
+            "AccountAlreadyExists", "AccountNotFound", "AuthenticationFailed", "ChangeKind", "ConflictNotFound", "CrawlCheckpoint", "IAccountStore", "ICloudProvider", "IConflictStore", "IEventJournal", "IItemIndexStore", "IItemStateStore", "IKnownSnapshotStore", "ILocalObservationStore", "InvalidDeltaToken", "InvalidSettingValue", "IOperationStore", "ISettingsStore", "JournalEntry", "KnownEntry", "ISyncJobStore", "ISyncScopeStore", "ITelemetryStore", "ITelemetryWriter", "OperationNotDeadLettered", "OperationNotRunning", "Permanent", "ProviderAccount",
+            "ProviderChange", "ProviderDeltaPage", "ProviderError", "ProviderItem", "ProviderSnapshotPage", "RateLimited", "SettingNames", "StorageFailed", "StoredItem", "StoreError", "SyncJobAlreadyExists", "SyncJobNotFound", "UploadRequest",
+            "SyncScopeAlreadyExists", "SyncScopeNotFound", "TelemetryEntry", "TelemetryKind", "TelemetryQuery", "Transient", "UnknownSetting");
 
     [Fact]
     public void ipc_exposes_only_its_approved_public_types_and_no_transport()
@@ -50,7 +50,7 @@ public sealed class PublicSurfaceArchitectureTestsShouldEnsure
     public void persistence_exposes_only_its_approved_public_types()
         => ShouldExposeExactly(typeof(Persistence.DatabaseOptions).Assembly,
             "DatabaseError", "DatabaseMode", "DatabaseOptions", "DatabaseUnavailable", "IDatabaseInitialiser", "IDatabaseState",
-            "MigrationFailed", "PersistenceServiceCollectionExtensions");
+            "MigrationFailed", "PersistenceServiceCollectionExtensions", "TelemetryDatabaseOptions");
 
     [Fact]
     public void onedrive_exposes_only_its_approved_public_types()
