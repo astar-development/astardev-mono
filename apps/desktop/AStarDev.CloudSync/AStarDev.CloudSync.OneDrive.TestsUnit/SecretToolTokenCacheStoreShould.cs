@@ -1,4 +1,5 @@
 using System.Runtime.Versioning;
+using AStarDev.CloudSync.Errors;
 using AStarDev.CloudSync.Ports;
 using AStarDev.FunctionalParadigm;
 
@@ -140,6 +141,14 @@ public sealed class SecretToolTokenCacheStoreShould : IDisposable
         var saved = await store.SaveAsync(RandomBytes(500), TestContext.Current.CancellationToken);
 
         saved.Value.ShouldBeOfType<Fail<ProviderError>>().Error.Value.ShouldBeOfType<AuthenticationFailed>();
+    }
+
+    [Fact]
+    public void set_the_help_link_when_the_tool_cannot_start()
+    {
+        var thrown = Should.Throw<InvalidOperationException>(() => SecretToolTokenCacheStore.Started(null, "secret-tool"));
+
+        thrown.HelpLink.ShouldBe(ErrorLinks.Root + "CS-ONEDRIVE-0002");
     }
 
     private static byte[] RandomBytes(int length)
