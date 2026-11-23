@@ -202,6 +202,60 @@ AccountDisconnected
 
 ---
 
+## Implemented Messages
+
+The examples above show the shape. This is what the daemon serves today (`AStarDev.CloudSync.IPC`). A request the daemon cannot answer gets the failure reply described under Failure Handling.
+
+### Commands
+
+Answered with a `CommandResult` (`Accepted`, `Rejected` or `ValidationError`, an optional message for the user and, when the daemon had one, the `TraceId` of the request).
+
+```text
+ConnectAccount, DisconnectAccount
+CreateSyncJob, AddSyncScope, RemoveSyncScope
+StartSync, StopSync
+ResolveConflict, RetryOperation, IgnoreOperation
+SetSetting
+```
+
+### Queries
+
+```text
+Accounts and sync:   GetAccounts, GetSyncJobs, GetSyncScopes, GetRemoteRootSummary, GetRemoteFolders, GetDriveInfo
+Status and activity: GetDaemonStatus, GetSyncStatus, GetDashboardSnapshot, GetActivities, GetQueue
+Conflicts:           GetConflicts, GetDeadLetters
+History and audit:   GetHistory, GetAudit, ExportHistory, ExportAudit
+Providers:           GetProviders
+Settings:            GetSettings
+Telemetry:           GetLogs, GetTraces, GetMetrics, GetDiagnostics
+```
+
+- `GetSettings` returns every known setting with its saved value or its default; `SetSetting` refuses an unknown name or a value the setting does not allow.
+- `ExportHistory` and `ExportAudit` take the same filter as `GetHistory` and `GetAudit` and return `ExportView(Csv)`: RFC 4180 with a header row, and a leading `'` on any cell that starts with `=`, `+`, `-` or `@`.
+- `GetAudit` first prunes entries older than the `retention.audit-days` setting (default 90).
+- `GetLogs`, `GetTraces` and `GetMetrics` read the separate `telemetry.db` (kept `retention.telemetry-days`, default 7). Logs and spans are stored with e-mail addresses and paths replaced; metric tags are not stored. `GetDiagnostics` returns only the name and status of each health check, never its description.
+- `GetActivities` and `GetDashboardSnapshot` share one job-level rate and time-left, worked out in the daemon over a 60 second window; both are empty while the job waits to retry.
+- `GetQueue` lists pending and running operations with a count per status; `Failed` includes dead-lettered operations.
+
+### Events
+
+Published to every subscriber.
+
+```text
+AccountConnected, AccountDisconnected
+ConflictDetected, ConflictResolved
+CrawlProgressChanged (phase, items done and total)
+ActivityChanged
+DaemonStatusChanged
+SyncStatusChanged   (published only when the status differs from the last one)
+DashboardChanged
+QueueChanged        (the daemon polls the queue every 2 seconds and publishes on change)
+```
+
+A client reads the current state with a query when a screen opens, then follows the events.
+
+---
+
 ## Event Streaming
 
 The UI establishes a long-lived subscription.
