@@ -39,6 +39,7 @@ public sealed class IpcHostedServiceShould
             services.GetRequiredService<SyncStatusQuery>(),
             services.GetRequiredService<HistoryQuery>(),
             services.GetRequiredService<LogsQuery>(),
+            services.GetRequiredService<AuditQuery>(),
             TimeProvider.System,
             NullLogger<IpcHostedService>.Instance);
     }

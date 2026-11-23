@@ -24,9 +24,9 @@ public sealed class PublicSurfaceArchitectureTestsShouldEnsure
     public void ipc_exposes_only_its_approved_public_types_and_no_transport()
         => ShouldExposeExactly(typeof(IPC.IIpcServer).Assembly,
             [
-             "AccountConnected", "AccountDisconnected", "AccountState", "AccountView", "AccountsView", "ActivitiesView", "ActivityChanged", "ActivityState", "ActivityView", "AddSyncScope", "CommandOutcome", "CommandResult", "ConflictChoice", "ConflictDetected", "ConflictResolved", "ConflictSideView", "ConflictView", "ConflictsView", "ConnectAccount",
+             "AccountConnected", "AccountDisconnected", "AccountState", "AccountView", "AccountsView", "ActivitiesView", "ActivityChanged", "ActivityState", "ActivityView", "AddSyncScope", "AuditEntryView", "AuditView", "CommandOutcome", "CommandResult", "ConflictChoice", "ConflictDetected", "ConflictResolved", "ConflictSideView", "ConflictView", "ConflictsView", "ConnectAccount",
              "ConnectionFailed", "ConnectionLost", "CrawlPhase", "CrawlProgressChanged", "CreateSyncJob", "DaemonState", "DaemonStatusChanged", "DaemonStatusView", "DeadLetterView", "DeadLettersView", "DisconnectAccount", "FrameTooLarge",
-             "GetAccounts", "GetActivities", "GetConflicts", "GetDaemonStatus", "GetDeadLetters", "GetHistory", "GetLogs", "GetRemoteFolders", "GetRemoteRootSummary", "GetSettings", "GetSyncJobs", "GetSyncScopes", "GetSyncStatus", "HandlerFailed", "HistoryEntryView", "HistoryView", "ICommand",
+             "GetAccounts", "GetActivities", "GetAudit", "GetConflicts", "GetDaemonStatus", "GetDeadLetters", "GetHistory", "GetLogs", "GetRemoteFolders", "GetRemoteRootSummary", "GetSettings", "GetSyncJobs", "GetSyncScopes", "GetSyncStatus", "HandlerFailed", "HistoryEntryView", "HistoryView", "ICommand",
              "IEvent", "IgnoreOperation", "IIpcClient", "IIpcServer", "IpcError", "IQuery`1", "ListenFailed", "LogEntryView", "LogsView", "MalformedFrame", "NotConnected", "ProviderHealthState", "RemoteFolderView", "RemoteFoldersView", "RemoteRootSummaryView",
              "RemoveSyncScope", "ResolveConflict", "RetryOperation", "SetSetting", "SettingsView", "StartSync", "StopSync", "SyncBootstrapMode", "SyncJobView", "SyncJobsView", "SyncScopeView", "SyncScopesView", "SyncStatusChanged", "SyncStatusView", "UnixSocketIpc"]);
 

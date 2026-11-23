@@ -28,6 +28,21 @@ public sealed class SyncScopeHandlersShould : IDisposable
     }
 
     [Fact]
+    public async Task record_a_scope_change_in_the_journal()
+    {
+        await using var host = DaemonTestHost.CreateWith(new StubCloudProvider());
+        var job = await NewJobAsync(host);
+
+        await host.Services.GetRequiredService<AddSyncScopeHandler>().HandleAsync(new AddSyncScope(job.Id.Value, "docs"), Token);
+        await host.Services.GetRequiredService<RemoveSyncScopeHandler>().HandleAsync(new RemoveSyncScope(job.Id.Value, "docs"), Token);
+        var entries = await host.Services.GetRequiredService<IEventJournal>().ListAsync(job.Id.Value, Token);
+
+        var listed = entries.Value.ShouldBeOfType<Ok<IReadOnlyList<JournalEntry>>>().Value;
+        listed.Select(entry => entry.EventType).ShouldBe(["SyncScopeAdded", "SyncScopeRemoved"]);
+        listed[0].PayloadJson.ShouldContain("docs");
+    }
+
+    [Fact]
     public async Task reject_a_scope_for_an_unknown_job()
     {
         await using var host = DaemonTestHost.CreateWith(new StubCloudProvider());

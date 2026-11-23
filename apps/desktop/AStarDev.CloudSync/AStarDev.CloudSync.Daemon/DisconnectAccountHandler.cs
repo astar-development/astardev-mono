@@ -7,7 +7,7 @@ using Microsoft.Extensions.Logging;
 namespace AStarDev.CloudSync.Daemon;
 
 /// <summary>Answers <see cref="DisconnectAccount"/> by forgetting the stored sign-in and the account, then announcing <see cref="AccountDisconnected"/>.</summary>
-internal sealed class DisconnectAccountHandler(ICloudProvider provider, IAccountStore store, IIpcServer server, ILogger<DisconnectAccountHandler> logger)
+internal sealed class DisconnectAccountHandler(ICloudProvider provider, IAccountStore store, AuditJournal audit, IIpcServer server, ILogger<DisconnectAccountHandler> logger)
 {
     /// <summary>Removes the sign-in first and the account second, so a failure leaves an account that can be disconnected again.</summary>
     /// <returns>
@@ -38,6 +38,7 @@ internal sealed class DisconnectAccountHandler(ICloudProvider provider, IAccount
     private async Task<Result<CommandResult, IpcError>> AnnounceAsync(Account account, CancellationToken cancellationToken)
     {
         logger.LogInformation("Disconnected account {AccountId}", account.Id.Value);
+        await audit.RecordAsync("AccountDisconnected", account.Id.Value, new { accountId = account.Id.Value }, cancellationToken);
 
         return await server.PublishAsync(new AccountDisconnected(account.Id.Value), cancellationToken) switch
         {

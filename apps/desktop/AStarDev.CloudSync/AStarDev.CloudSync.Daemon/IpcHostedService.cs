@@ -7,7 +7,7 @@ using Microsoft.Extensions.Logging;
 namespace AStarDev.CloudSync.Daemon;
 
 /// <summary>Serves the IPC contract. Registered after <see cref="StartupHostedService"/>, so it only listens once every recovery stage has finished.</summary>
-internal sealed class IpcHostedService(IIpcServer server, ConnectAccountHandler connectAccount, DisconnectAccountHandler disconnectAccount, AccountsQuery accounts, RootSummaryQuery rootSummary, RemoteFoldersQuery remoteFolders, CreateSyncJobHandler createSyncJob, AddSyncScopeHandler addSyncScope, RemoveSyncScopeHandler removeSyncScope, SyncJobsQuery syncJobs, SyncScopesQuery syncScopes, StartSyncHandler startSync, StopSyncHandler stopSync, ActivitiesQuery activities, ConflictsQuery conflicts, DeadLettersQuery deadLetters, RetryOperationHandler retryOperation, IgnoreOperationHandler ignoreOperation, ResolveConflictHandler resolveConflict, SettingsQuery settings, SetSettingHandler setSetting, SyncStatusQuery syncStatus, HistoryQuery history, LogsQuery logs, TimeProvider timeProvider, ILogger<IpcHostedService> logger) : IHostedService
+internal sealed class IpcHostedService(IIpcServer server, ConnectAccountHandler connectAccount, DisconnectAccountHandler disconnectAccount, AccountsQuery accounts, RootSummaryQuery rootSummary, RemoteFoldersQuery remoteFolders, CreateSyncJobHandler createSyncJob, AddSyncScopeHandler addSyncScope, RemoveSyncScopeHandler removeSyncScope, SyncJobsQuery syncJobs, SyncScopesQuery syncScopes, StartSyncHandler startSync, StopSyncHandler stopSync, ActivitiesQuery activities, ConflictsQuery conflicts, DeadLettersQuery deadLetters, RetryOperationHandler retryOperation, IgnoreOperationHandler ignoreOperation, ResolveConflictHandler resolveConflict, SettingsQuery settings, SetSettingHandler setSetting, SyncStatusQuery syncStatus, HistoryQuery history, LogsQuery logs, AuditQuery audit, TimeProvider timeProvider, ILogger<IpcHostedService> logger) : IHostedService
 {
     private static readonly string Version = typeof(IpcHostedService).Assembly.GetName().Version?.ToString() ?? ApplicationConstants.UnknownVersion;
 
@@ -45,6 +45,7 @@ internal sealed class IpcHostedService(IIpcServer server, ConnectAccountHandler 
         server.MapQuery<GetSyncStatus, SyncStatusView>(syncStatus.HandleAsync);
         server.MapQuery<GetHistory, HistoryView>(history.HandleAsync);
         server.MapQuery<GetLogs, LogsView>(logs.HandleAsync);
+        server.MapQuery<GetAudit, AuditView>(audit.HandleAsync);
 
         return await server.StartAsync(cancellationToken) switch
         {
