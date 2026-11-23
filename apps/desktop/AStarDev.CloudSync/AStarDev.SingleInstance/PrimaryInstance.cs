@@ -71,7 +71,7 @@ public sealed class PrimaryInstance : IAsyncDisposable
         }
 
         if (failures >= MaxConsecutiveAcceptFailures)
-            logger.LogError("{Location}: accepting second launches failed {Count} times in a row; hand-off is no longer answered.", Location, failures);
+            SingleInstanceLog.AcceptingStopped(logger, Location, failures);
     }
 
     private async Task<bool> AcceptFailedAsync(Exception exception, CancellationToken cancellationToken)
@@ -79,7 +79,7 @@ public sealed class PrimaryInstance : IAsyncDisposable
         if (cancellationToken.IsCancellationRequested)
             return false;
 
-        logger.LogWarning("{Location} caught {ErrorType}.", Location, exception.GetType().Name);
+        SingleInstanceLog.AcceptFailed(logger, Location, exception.GetType().Name);
         await Task.Delay(RetryDelay, cancellationToken).ConfigureAwait(ConfigureAwaitOptions.SuppressThrowing);
 
         return false;
@@ -105,7 +105,7 @@ public sealed class PrimaryInstance : IAsyncDisposable
 
     private Unit ActivationHandlerFailed(Exception exception)
     {
-        logger.LogWarning("{Location} caught {ErrorType}.", Location, exception.GetType().Name);
+        SingleInstanceLog.ActivationHandlerFailed(logger, Location, exception.GetType().Name);
 
         return default;
     }
