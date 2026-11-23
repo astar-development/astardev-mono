@@ -6,6 +6,7 @@
              x:DataType="vm:HistoryViewModel">
     <DockPanel Margin="16">
         <TextBlock DockPanel.Dock="Top" Text="{Binding Title}" FontSize="24" FontWeight="SemiBold" Foreground="{DynamicResource Text.Primary.Brush}" />
+        <TextBlock DockPanel.Dock="Top" Text="{Binding ErrorMessage}" IsVisible="{Binding ErrorMessage, Converter={x:Static ObjectConverters.IsNotNull}}" TextWrapping="Wrap" Foreground="{DynamicResource Trust.Degraded.Brush}" />
         <TabControl SelectedIndex="{Binding TabIndex}">
             <TabItem Header="{Binding HistoryTabText}">
                 <views:OperationListView />

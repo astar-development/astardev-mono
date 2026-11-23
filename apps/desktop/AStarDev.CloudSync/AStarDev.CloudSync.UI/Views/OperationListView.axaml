@@ -6,7 +6,7 @@
              x:Class="AStarDev.CloudSync.UI.Views.OperationListView"
              x:DataType="vm:OperationListViewModel">
     <DockPanel Margin="0,8,0,0">
-        <TextBlock DockPanel.Dock="Top" Text="{Binding SampleDataText}" Foreground="{DynamicResource Trust.Degraded.Brush}" TextWrapping="Wrap" Margin="0,0,0,8" />
+        <TextBlock DockPanel.Dock="Top" IsVisible="{Binding IsSampleData}" Text="{Binding SampleDataText}" Foreground="{DynamicResource Trust.Degraded.Brush}" TextWrapping="Wrap" Margin="0,0,0,8" />
         <StackPanel DockPanel.Dock="Top" IsVisible="{Binding ShowTools}" Spacing="8" Margin="0,0,0,8">
             <WrapPanel>
                 <StackPanel Margin="0,0,12,8">
