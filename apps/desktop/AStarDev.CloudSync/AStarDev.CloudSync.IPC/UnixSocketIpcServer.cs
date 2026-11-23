@@ -241,13 +241,13 @@ internal sealed class UnixSocketIpcServer(string socketPath, Action<IpcError>? o
         Envelope reply = outcome switch
         {
             Ok<JsonElement> ok => new ResponseEnvelope(request.Id, ok.Value),
-            Fail<IpcError> fail => new ErrorEnvelope(request.Id, fail.Error.Describe())
+            Fail<IpcError> fail => new ErrorEnvelope(request.Id, fail.Error.Describe(), fail.Error.Info().Code.Value)
         };
 
         if (await connection.Channel.SendAsync(reply, stopping) is Fail<IpcError> sendFailure && sendFailure.Error is not ConnectionLost)
         {
             report(sendFailure.Error);
-            _ = await connection.Channel.SendAsync(new ErrorEnvelope(request.Id, sendFailure.Error.Describe()), stopping);
+            _ = await connection.Channel.SendAsync(new ErrorEnvelope(request.Id, sendFailure.Error.Describe(), sendFailure.Error.Info().Code.Value), stopping);
         }
     }
 

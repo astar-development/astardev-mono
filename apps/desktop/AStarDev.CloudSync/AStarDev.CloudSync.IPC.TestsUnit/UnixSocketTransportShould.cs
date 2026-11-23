@@ -134,6 +134,7 @@ public sealed class UnixSocketTransportShould : IAsyncLifetime
         var unmapped = await client.SendAsync(new PingCommand("unmapped"), Token).WaitAsync(Timeout, Token);
 
         failed.ShouldFail().Value.ShouldBeOfType<HandlerFailed>().Message.ShouldBe("denied");
+        failed.ShouldFail().Value.ShouldBeOfType<HandlerFailed>().Reported.Value.ShouldBe("CS-IPC-0006");
         threw.ShouldFail().Value.ShouldBeOfType<HandlerFailed>().Message.ShouldContain("boom");
         unmapped.ShouldFail().Value.ShouldBeOfType<HandlerFailed>().Message.ShouldContain(nameof(PingCommand));
 

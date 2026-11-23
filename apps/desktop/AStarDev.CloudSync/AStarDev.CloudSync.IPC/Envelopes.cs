@@ -1,5 +1,6 @@
 using System.Text.Json;
 using System.Text.Json.Serialization;
+using AStarDev.CloudSync.Errors;
 using AStarDev.FunctionalParadigm;
 
 namespace AStarDev.CloudSync.IPC;
@@ -44,8 +45,8 @@ internal sealed record SubscribeEnvelope(long Id) : RequestEnvelope(Id);
 /// <summary>Successful answer to the request with the same <paramref name="Id"/>. <paramref name="Payload"/> is the handler's result.</summary>
 internal sealed record ResponseEnvelope(long Id, JsonElement Payload) : Envelope;
 
-/// <summary>Failed answer to the request with the same <paramref name="Id"/>. The client surfaces <paramref name="Message"/> as <see cref="HandlerFailed"/>.</summary>
-internal sealed record ErrorEnvelope(long Id, string Message) : Envelope;
+/// <summary>Failed answer to the request with the same <paramref name="Id"/>. The client surfaces <paramref name="Message"/> as <see cref="HandlerFailed"/>, keeping <paramref name="Code"/>, the <c>CS-IPC-NNNN</c> code of the error the server hit, as <see cref="HandlerFailed.Reported"/>.</summary>
+internal sealed record ErrorEnvelope(long Id, string Message, string Code) : Envelope;
 
 /// <summary>Server push to subscribed connections. Has no id because nothing answers it; <paramref name="Type"/> picks the handlers registered with <see cref="IIpcClient.OnEvent{TEvent}"/>.</summary>
 internal sealed record EventEnvelope(string Type, JsonElement Payload) : TracedEnvelope;
@@ -66,7 +67,7 @@ internal static class IpcJson
 
     /// <summary>Reads a payload as <typeparamref name="T"/>. A JSON <c>null</c> payload is a <see cref="MalformedFrame"/>, never a <see langword="null"/> value.</summary>
     public static Result<T, IpcError> FromElement<T>(JsonElement element)
-        => Try.Run(() => element.Deserialize<T>(Options) ?? throw new JsonException($"Expected a {typeof(T).Name} but the payload was null."))
+        => Try.Run(() => element.Deserialize<T>(Options) ?? throw new JsonException($"Expected a {typeof(T).Name} but the payload was null.").WithHelpLink(IpcErrorCodes.MalformedFrame))
             .ToResult(IpcErrors.AsMalformed);
 
     /// <summary>Produces the bytes of one frame payload, with the <c>kind</c> discriminator that <see cref="Decode"/> needs.</summary>
@@ -76,6 +77,6 @@ internal static class IpcJson
 
     /// <summary>Rebuilds the right <see cref="Envelope"/> subtype from its <c>kind</c> discriminator. JSON <c>null</c> or an unknown kind is a <see cref="MalformedFrame"/>.</summary>
     public static Result<Envelope, IpcError> Decode(byte[] bytes)
-        => Try.Run(() => JsonSerializer.Deserialize<Envelope>(bytes, Options) ?? throw new JsonException("The frame holds JSON null instead of an envelope."))
+        => Try.Run(() => JsonSerializer.Deserialize<Envelope>(bytes, Options) ?? throw new JsonException("The frame holds JSON null instead of an envelope.").WithHelpLink(IpcErrorCodes.MalformedFrame))
             .ToResult(IpcErrors.AsMalformed);
 }

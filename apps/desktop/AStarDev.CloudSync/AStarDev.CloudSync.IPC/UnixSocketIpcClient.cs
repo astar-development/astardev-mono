@@ -208,7 +208,7 @@ internal sealed class UnixSocketIpcClient(string socketPath, Action<IpcError>? o
                 answered.TrySetResult(new Ok<JsonElement>(response.Payload));
                 break;
             case ErrorEnvelope error when pending.TryRemove(error.Id, out var refused):
-                refused.TrySetResult(new Fail<IpcError>(new HandlerFailed(error.Message)));
+                refused.TrySetResult(new Fail<IpcError>(new HandlerFailed(error.Message, IpcErrorCodes.Read(error.Code))));
                 break;
             case EventEnvelope @event when eventHandlers.TryGetValue(@event.Type, out var handlers):
                 Handle(@event, handlers);
