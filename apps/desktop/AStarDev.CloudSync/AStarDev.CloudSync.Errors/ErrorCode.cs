@@ -7,10 +7,12 @@ namespace AStarDev.CloudSync.Errors;
 /// <remarks>Codes never change once shipped: the help link and every log line quote them.</remarks>
 public readonly partial record struct ErrorCode
 {
-    private ErrorCode(string value) => Value = value;
+    private readonly string? text;
 
-    /// <summary>The code text. Never empty for a value made by <see cref="Create"/>; empty only for <c>default</c>.</summary>
-    public string Value { get; } = string.Empty;
+    private ErrorCode(string value) => text = value;
+
+    /// <summary>The code text. Never empty for a value made by <see cref="Create"/>; the empty string, never <see langword="null"/>, for <c>default</c>.</summary>
+    public string Value => text ?? string.Empty;
 
     /// <summary>Checks <paramref name="value"/> against the <c>CS-&lt;MODULE&gt;-&lt;NNNN&gt;</c> format: a module of 2 to 12 capital letters, then 4 digits.</summary>
     /// <param name="value">The text to check. May be <see langword="null"/> or empty, which is a failure.</param>
