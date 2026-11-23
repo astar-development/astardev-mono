@@ -45,6 +45,8 @@ internal static class DaemonServiceCollectionExtensions
         services.AddHostedService<StartupHostedService>();
         services.AddSingleton(TimeProvider.System);
         services.AddSingleton(provider => UnixSocketIpc.CreateServer(provider.GetRequiredService<IOptions<IpcOptions>>().Value.SocketPath, logger: provider.GetRequiredService<ILoggerFactory>().CreateLogger("AStarDev.CloudSync.IPC")));
+        services.AddSingleton<AuditJournal>();
+        services.AddSingleton<AuditQuery>();
         services.AddSingleton<ConnectAccountHandler>();
         services.AddSingleton<RootSummaryQuery>();
         services.AddSingleton<RemoteFoldersQuery>();

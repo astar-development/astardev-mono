@@ -36,5 +36,39 @@ internal sealed class EventJournalStore(IDbContextFactory<CloudSyncDbContext> co
         return outcome.ToResult(ToStorageFailure);
     }
 
+    /// <inheritdoc/>
+    public async Task<Result<IReadOnlyList<JournalEntry>, StoreError>> ListAsync(DateTimeOffset fromUtc, DateTimeOffset toUtc, IReadOnlyList<string> eventTypes, CancellationToken cancellationToken)
+    {
+        var outcome = await Try.RunAsync<IReadOnlyList<JournalEntry>>(async token =>
+        {
+            await using var context = await contextFactory.CreateDbContextAsync(token).ConfigureAwait(false);
+            var rows = await context.EventJournal.AsNoTracking().ToListAsync(token).ConfigureAwait(false);
+
+            return rows
+                .Where(row => row.OccurredUtc >= fromUtc && row.OccurredUtc <= toUtc && (eventTypes.Count == 0 || eventTypes.Contains(row.EventType)))
+                .OrderBy(row => row.OccurredUtc)
+                .Select(row => row.ToEntry())
+                .ToList();
+        }, cancellationToken).ConfigureAwait(false);
+
+        return outcome.ToResult(ToStorageFailure);
+    }
+
+    /// <inheritdoc/>
+    public async Task<Result<int, StoreError>> PruneAsync(DateTimeOffset olderThanUtc, CancellationToken cancellationToken)
+    {
+        var outcome = await Try.RunAsync<int>(async token =>
+        {
+            await using var context = await contextFactory.CreateDbContextAsync(token).ConfigureAwait(false);
+            var expired = (await context.EventJournal.ToListAsync(token).ConfigureAwait(false)).Where(row => row.OccurredUtc < olderThanUtc).ToList();
+            context.EventJournal.RemoveRange(expired);
+            await context.SaveChangesAsync(token).ConfigureAwait(false);
+
+            return expired.Count;
+        }, cancellationToken).ConfigureAwait(false);
+
+        return outcome.ToResult(ToStorageFailure);
+    }
+
     private static StoreError ToStorageFailure(Exception exception) => new StorageFailed(exception.Message);
 }

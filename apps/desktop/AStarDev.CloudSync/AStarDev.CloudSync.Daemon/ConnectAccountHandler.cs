@@ -8,7 +8,7 @@ using Microsoft.Extensions.Logging;
 namespace AStarDev.CloudSync.Daemon;
 
 /// <summary>Answers <see cref="ConnectAccount"/> by signing in through <see cref="ICloudProvider"/>, keeping the account in the <see cref="IAccountStore"/> and announcing the result with <see cref="AccountConnected"/>.</summary>
-internal sealed class ConnectAccountHandler(ICloudProvider provider, IAccountStore store, IIpcServer server, TimeProvider timeProvider, ILogger<ConnectAccountHandler> logger)
+internal sealed class ConnectAccountHandler(ICloudProvider provider, IAccountStore store, AuditJournal audit, IIpcServer server, TimeProvider timeProvider, ILogger<ConnectAccountHandler> logger)
 {
     /// <summary>
     /// Signs in and, on success, stores the account (or marks the already stored one <see cref="AccountStatus.Connected"/>, which is how a user signs in again) and publishes <see cref="AccountConnected"/> before answering.
@@ -62,6 +62,7 @@ internal sealed class ConnectAccountHandler(ICloudProvider provider, IAccountSto
     private async Task<Result<CommandResult, IpcError>> AnnounceAsync(ProviderAccount account, AccountId id, CancellationToken cancellationToken)
     {
         logger.LogInformation("Connected account {AccountId}", id.Value);
+        await audit.RecordAsync("AccountConnected", id.Value, new { accountId = id.Value }, cancellationToken);
 
         return await server.PublishAsync(new AccountConnected(account.DisplayName), cancellationToken) switch
         {
