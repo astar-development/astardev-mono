@@ -50,6 +50,35 @@ internal sealed class RootEnumerator(HttpClient client, OneDriveTelemetry teleme
     public Task<Result<IReadOnlyList<ProviderItem>, ProviderError>> ListChildrenAsync(RemoteItemId parent, CancellationToken cancellationToken)
         => CollectAsync($"me/drive/items/{Uri.EscapeDataString(parent.Value)}/children", [], cancellationToken);
 
+    /// <summary>Reads the drive quota. Graph has no item count, so the estimate is none.</summary>
+    /// <returns>The quota as drive info, or the <see cref="ProviderError"/> met. A drive without a quota reports zeros. Cancellation propagates as <see cref="OperationCanceledException"/>.</returns>
+    public async Task<Result<ProviderDriveInfo, ProviderError>> GetDriveInfoAsync(CancellationToken cancellationToken)
+    {
+        telemetry.RecordRequest();
+        var outcome = await Try.RunAsync(FetchDriveAsync, cancellationToken).ConfigureAwait(false);
+        Result<ProviderDriveInfo, ProviderError> info = outcome switch
+        {
+            Success<Result<ProviderDriveInfo, ProviderError>> success => success.Value,
+            Failure<Result<ProviderDriveInfo, ProviderError>> failure => new Fail<ProviderError>(AuthenticationErrors.From(failure.Exception))
+        };
+
+        if (info.Value is Fail<ProviderError> failed) RecordFailure(failed.Error);
+
+        return info;
+    }
+
+    private async Task<Result<ProviderDriveInfo, ProviderError>> FetchDriveAsync(CancellationToken cancellationToken)
+    {
+        using var response = await client.GetAsync("me/drive?$select=quota", cancellationToken).ConfigureAwait(false);
+
+        if (!response.IsSuccessStatusCode) return new Fail<ProviderError>(GraphErrors.From(response));
+
+        var drive = await response.Content.ReadFromJsonAsync<GraphDrive>(GraphJson.Options, cancellationToken).ConfigureAwait(false);
+        var quota = drive?.Quota ?? new GraphQuota(0, 0, 0);
+
+        return new Ok<ProviderDriveInfo>(new ProviderDriveInfo(quota.Used, quota.Remaining, quota.Total, Option.None<long>()));
+    }
+
     private async Task<Result<IReadOnlyList<ProviderItem>, ProviderError>> CollectAsync(string url, List<ProviderItem> items, CancellationToken cancellationToken)
     {
         var page = await GetPageAsync(url, cancellationToken).ConfigureAwait(false);

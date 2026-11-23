@@ -6,7 +6,7 @@ using Microsoft.Extensions.Logging;
 namespace AStarDev.CloudSync.Daemon;
 
 /// <summary>Records crawl progress in the <see cref="ActivityTracker"/> and tells every subscribed UI with <see cref="CrawlProgressChanged"/> and <see cref="ActivityChanged"/> events.</summary>
-internal sealed class IpcCrawlProgressSink(IIpcServer server, ActivityTracker tracker, ILogger<IpcCrawlProgressSink> logger) : ICrawlProgressSink
+internal sealed class IpcCrawlProgressSink(IIpcServer server, ActivityTracker tracker, SyncStatusQuery status, ILogger<IpcCrawlProgressSink> logger) : ICrawlProgressSink
 {
     /// <inheritdoc/>
     /// <remarks>A failed publish is logged and dropped: a UI that misses one report sees the next.</remarks>
@@ -15,6 +15,7 @@ internal sealed class IpcCrawlProgressSink(IIpcServer server, ActivityTracker tr
         var activity = await tracker.ApplyAsync(progress, cancellationToken);
         await PublishAsync(new CrawlProgressChanged(progress.SyncJobId.Value, progress.RemoteRootId.Value, progress.ItemsIndexed, progress.Completed), cancellationToken);
         await PublishAsync(new ActivityChanged(activity), cancellationToken);
+        if (await status.PublishIfChangedAsync(cancellationToken) is Fail<IpcError> fail) logger.LogWarning("Publishing {Event} failed: {Error}", nameof(SyncStatusChanged), fail.Error.Value);
     }
 
     private async Task PublishAsync<TEvent>(TEvent @event, CancellationToken cancellationToken)

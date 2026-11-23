@@ -10,7 +10,7 @@ namespace AStarDev.CloudSync.UI.ViewModels;
 /// <param name="initialDelay">Wait before the first retry.</param>
 /// <param name="maxDelay">Upper bound the retry wait doubles towards.</param>
 /// <param name="post">Runs a state change on the UI thread. Omit to run it inline.</param>
-public sealed partial class ConnectionViewModel(Func<IIpcClient> createClient, TimeSpan initialDelay, TimeSpan maxDelay, Action<Action>? post = null) : ViewModelBase
+public sealed partial class ConnectionViewModel(Func<IIpcClient> createClient, TimeSpan initialDelay, TimeSpan maxDelay, Action<Action>? post = null) : ViewModelBase, IStatusSource
 {
     private readonly Action<Action> postToUi = post ?? (action => action());
 
@@ -25,6 +25,10 @@ public sealed partial class ConnectionViewModel(Func<IIpcClient> createClient, T
     /// </summary>
     [ObservableProperty]
     public partial DaemonStatusView? DaemonStatus { get; set; }
+
+    /// <summary>The values of the status bar: read once on each connect, then kept current by <see cref="SyncStatusChanged"/> events. Empty until the first read succeeds; not cleared when the link drops, so read it with <see cref="State"/>.</summary>
+    [ObservableProperty]
+    public partial Option<SyncStatusView> SyncStatus { get; set; } = Option.None<SyncStatusView>();
 
     /// <summary>
     /// What the daemon is doing for each job, as it reported: read once on each connect, then kept current by <see cref="ActivityChanged"/> events. Shown as received, never recalculated.
@@ -97,6 +101,11 @@ public sealed partial class ConnectionViewModel(Func<IIpcClient> createClient, T
             EventReceived?.Invoke(changed);
             DaemonStatus = changed.Status;
         }));
+        client.OnEvent<SyncStatusChanged>(changed => postToUi(() =>
+        {
+            EventReceived?.Invoke(changed);
+            SyncStatus = Option.Some(changed.Status);
+        }));
         client.OnEvent<ActivityChanged>(changed => postToUi(() =>
         {
             EventReceived?.Invoke(changed);
@@ -130,6 +139,7 @@ public sealed partial class ConnectionViewModel(Func<IIpcClient> createClient, T
     private async Task<Result<Unit, IpcError>> SubscribeAsync(IIpcClient client, DaemonStatusView status, CancellationToken cancellationToken)
     {
         postToUi(() => DaemonStatus = status);
+        if (await client.QueryAsync(new GetSyncStatus(), cancellationToken) is Ok<SyncStatusView> syncStatus) postToUi(() => SyncStatus = Option.Some(syncStatus.Value));
         if (await client.QueryAsync(new GetActivities(), cancellationToken) is Ok<ActivitiesView> activities) postToUi(() => Replace(activities.Value.Activities));
         if (await client.QueryAsync(new GetDeadLetters(), cancellationToken) is Ok<DeadLettersView> deadLetters) postToUi(() => ReplaceDeadLetters(deadLetters.Value.DeadLetters));
         if (await ConflictListing.ListAsync(client, cancellationToken) is Ok<IReadOnlyList<ConflictView>> conflicts) postToUi(() => ReplaceConflicts(conflicts.Value));

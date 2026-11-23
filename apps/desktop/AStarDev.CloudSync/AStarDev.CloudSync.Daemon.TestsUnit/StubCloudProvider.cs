@@ -96,6 +96,13 @@ internal sealed class StubCloudProvider : ICloudProvider
         return Task.FromResult<Result<Unit, ProviderError>>(new Ok<Unit>(default));
     }
 
+    public Task<Result<ProviderDriveInfo, ProviderError>> GetDriveInfoAsync(CancellationToken cancellationToken)
+    {
+        cancellationToken.ThrowIfCancellationRequested();
+
+        return Task.FromResult<Result<ProviderDriveInfo, ProviderError>>(new Ok<ProviderDriveInfo>(new ProviderDriveInfo(0, 0, 0, Option.None<long>())));
+    }
+
     public Task<Result<Unit, ProviderError>> DeleteAsync(RemoteItemId itemId, CancellationToken cancellationToken)
     {
         cancellationToken.ThrowIfCancellationRequested();
