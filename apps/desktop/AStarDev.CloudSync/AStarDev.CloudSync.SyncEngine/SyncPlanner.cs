@@ -66,7 +66,7 @@ public sealed class SyncPlanner
         PerformanceMetrics.Shared.RecordReconciliation(timeProvider.GetElapsedTime(reconcileStarted));
         if (outcome.Value is Fail<StoreError> failed) WorkflowTelemetry.Fail(span, failed.Error.Value?.GetType().Name ?? "unknown", "Planning stopped on a store error.");
 
-        if (outcome.Value is Ok<PlanSummary> ok) logger.LogInformation("Planned job {Job}: {Queued} operations queued, {Conflicts} conflicts stored", jobId.Value, ok.Value.Queued, ok.Value.Conflicts);
+        if (outcome.Value is Ok<PlanSummary> ok) EngineLog.JobPlanned(logger, jobId.Value, ok.Value.Queued, ok.Value.Conflicts);
 
         return outcome;
     }

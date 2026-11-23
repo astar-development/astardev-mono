@@ -85,7 +85,7 @@ internal sealed class DeltaProcessingService(ICloudProvider provider, IItemIndex
     {
         foreach (var scope in selected)
         {
-            if (await ProcessScopeAsync(scope, cancellationToken) is Fail<DeltaError> failed) logger.LogWarning("Delta processing of {Root} of job {Job} stopped; its token is kept: {Reason}", scope.RemoteRootId.Value, scope.SyncJobId.Value, failed.Error.Value);
+            if (await ProcessScopeAsync(scope, cancellationToken) is Fail<DeltaError> failed) EngineLog.DeltaProcessingStopped(logger, scope.RemoteRootId.Value, scope.SyncJobId.Value, failed.Error.Value);
         }
 
         return new Ok<Unit>(default);

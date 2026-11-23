@@ -85,7 +85,7 @@ public sealed class OperationScheduler(IOperationStore store, IOperationExecutor
             var outcome = await RunOnceAsync(cancellationToken);
             if (outcome.Value is Ok<bool> { Value: true }) continue;
 
-            if (outcome.Value is Fail<StoreError> fail) logger.LogError("The operation queue could not be read or written: {Error}", fail.Error.Value);
+            if (outcome.Value is Fail<StoreError> fail) EngineLog.QueueUnavailable(logger, fail.Error.Value);
 
             await Task.Delay(options.Value.PollInterval, timeProvider, cancellationToken);
         }
