@@ -2,6 +2,8 @@
   "Audit.Title": "Audit",
   "Audit.Glyph": "🧾",
   "Audit.Refresh": "Refresh",
+  "Audit.Export": "Export",
+  "Audit.ExportFileName": "audit.csv",
   "Audit.Empty": "Nothing has been recorded yet.",
   "Audit.Row": "{date} {time}  {type}"
 }

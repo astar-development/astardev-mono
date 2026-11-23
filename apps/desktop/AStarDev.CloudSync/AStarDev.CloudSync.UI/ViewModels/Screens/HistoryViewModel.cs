@@ -3,6 +3,7 @@ using AStarDev.CloudSync.UI.Localisation;
 using AStarDev.CloudSync.UI.Navigation;
 using AStarDev.CloudSync.UI.ViewModels.Operations;
 using AStarDev.FunctionalParadigm;
+using CommunityToolkit.Mvvm.Input;
 
 namespace AStarDev.CloudSync.UI.ViewModels.Screens;
 
@@ -11,6 +12,7 @@ internal sealed class HistoryViewModel : OperationListViewModel, IScreen
 {
     private readonly ILocalisationService localisation;
     private readonly Func<IIpcClient> createClient;
+    private readonly ExportCommand exporter;
     private CancellationTokenSource? refresh;
     private string? errorMessage;
 
@@ -18,11 +20,15 @@ internal sealed class HistoryViewModel : OperationListViewModel, IScreen
     /// <param name="localisation">Supplies every text.</param>
     /// <param name="culture">Formats every date, time and number.</param>
     /// <param name="createClient">Creates a fresh client per refresh; one client is one connection.</param>
-    public HistoryViewModel(ILocalisationService localisation, ICultureService culture, Func<IIpcClient> createClient)
+    /// <param name="exporter">Saves the export the Export button asks for.</param>
+    public HistoryViewModel(ILocalisationService localisation, ICultureService culture, Func<IIpcClient> createClient, ExportCommand exporter)
         : base(localisation, culture, [OperationStatus.Completed, OperationStatus.Failed], true, false)
     {
         this.localisation = localisation;
         this.createClient = createClient;
+        this.exporter = exporter;
+        CanExport = true;
+        Export = new AsyncRelayCommand(ExportAsync);
     }
 
     /// <inheritdoc/>
@@ -67,6 +73,18 @@ internal sealed class HistoryViewModel : OperationListViewModel, IScreen
                 break;
         }
     }
+
+    /// <summary>Saves the operations the current filters leave to a file the user chooses. A failure lands in <see cref="ErrorMessage"/>; a dismissed dialog changes nothing.</summary>
+    /// <param name="cancellationToken">Cancelling abandons the dialog or the write and surfaces as <see cref="OperationCanceledException"/>.</param>
+    public async Task ExportAsync(CancellationToken cancellationToken)
+        => ErrorMessage = await exporter.RunAsync(new ExportHistory(CurrentFilter()), localisation.Get("History.ExportFileName"), cancellationToken) switch
+        {
+            Ok<Unit> => null,
+            Fail<ConnectFailure> fail => fail.Error.Message
+        };
+
+    private GetHistory CurrentFilter()
+        => new(SelectedProvider.Value, SelectedType.Value, SelectedStatus.Value, DateFrom is { } from ? new DateTimeOffset(from.Date, TimeSpan.Zero) : null, DateTo is { } to ? new DateTimeOffset(to.Date.AddDays(1), TimeSpan.Zero).AddTicks(-1) : null, PathText);
 
     private async Task RefreshAndOpenAsync(string? targetId, CancellationToken cancellationToken)
     {

@@ -6,7 +6,7 @@ namespace AStarDev.CloudSync.UI.ViewModels.Operations;
 
 /// <summary>
 /// The shared body of the Queue, Activity and History screens: a list of sample operations narrowed by provider, type, status, date range and path,
-/// a details panel, a disabled export and a placeholder retention. Replacing the sample source with daemon data later does not change the view.
+/// a details panel, an export that screens opt into and a placeholder retention. Replacing the sample source with daemon data later does not change the view.
 /// </summary>
 internal abstract class OperationListViewModel : ViewModelBase
 {
@@ -119,8 +119,14 @@ internal abstract class OperationListViewModel : ViewModelBase
     /// <summary>Text saying the list holds sample data, not real operations.</summary>
     public string SampleDataText { get; }
 
-    /// <summary>Label of the export button, which is always disabled for now.</summary>
+    /// <summary>Label of the export button.</summary>
     public string ExportText { get; }
+
+    /// <summary>True when the screen can export, so the button is enabled and <see cref="ExportDisabledReason"/> is hidden.</summary>
+    public bool CanExport { get; protected set; }
+
+    /// <summary>Exports what the screen shows. Does nothing on a screen that cannot export.</summary>
+    public IAsyncRelayCommand Export { get; protected set; } = new AsyncRelayCommand(() => Task.CompletedTask);
 
     /// <summary>Why export is disabled.</summary>
     public string ExportDisabledReason { get; }

@@ -48,8 +48,8 @@
                 <Button Content="{loc:Loc Operations.Filter.Clear}" Command="{Binding ClearFilters}" VerticalAlignment="Bottom" Margin="0,0,0,8" />
             </WrapPanel>
             <StackPanel Orientation="Horizontal" Spacing="12">
-                <Button Content="{Binding ExportText}" IsEnabled="False" ToolTip.Tip="{Binding ExportDisabledReason}" />
-                <TextBlock Text="{Binding ExportDisabledReason}" Foreground="{DynamicResource Text.Secondary.Brush}" VerticalAlignment="Center" TextWrapping="Wrap" />
+                <Button Content="{Binding ExportText}" Command="{Binding Export}" IsEnabled="{Binding CanExport}" />
+                <TextBlock Text="{Binding ExportDisabledReason}" IsVisible="{Binding !CanExport}" Foreground="{DynamicResource Text.Secondary.Brush}" VerticalAlignment="Center" TextWrapping="Wrap" />
             </StackPanel>
             <TextBlock Text="{Binding RetentionText}" Foreground="{DynamicResource Text.Secondary.Brush}" TextWrapping="Wrap" />
         </StackPanel>

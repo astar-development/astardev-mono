@@ -1,4 +1,5 @@
 {
   "History.Title": "History",
-  "History.Glyph": "📜"
+  "History.Glyph": "📜",
+  "History.ExportFileName": "history.csv"
 }
