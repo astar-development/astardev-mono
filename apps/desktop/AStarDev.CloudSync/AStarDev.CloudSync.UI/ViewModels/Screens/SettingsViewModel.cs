@@ -116,12 +116,6 @@ internal sealed partial class SettingsViewModel(ILocalisationService localisatio
     /// <summary>Metrics, Logs, Traces and Diagnostics, in that order.</summary>
     public IReadOnlyList<DestinationViewModel> Advanced { get; } = AdvancedScreens.Select(id => new DestinationViewModel(id, localisation.Get($"{id}.Title"), localisation.Get($"{id}.Glyph"))).ToList();
 
-    /// <summary>Placeholder entry for managing sync scopes after setup; explains what adding or removing a folder means.</summary>
-    public SettingsEntryViewModel ScopeManagement { get; } = new(localisation.Get("Settings.ScopeManagement.Heading"), localisation.Get("Settings.ScopeManagement.Consequences"), localisation.Get("Settings.ScopeManagement.WhatHappensNext"));
-
-    /// <summary>Placeholder entry for changing the sync root; explains what a change affects and that it is not available yet.</summary>
-    public SettingsEntryViewModel SyncRootChange { get; } = new(localisation.Get("Settings.SyncRoot.Heading"), localisation.Get("Settings.SyncRoot.Consequences"), localisation.Get("Settings.SyncRoot.WhatHappensNext"));
-
     /// <summary>The remote folders, expanded level by level.</summary>
     public FolderTreeViewModel Folders => folders;
 

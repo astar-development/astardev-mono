@@ -26,7 +26,7 @@ internal sealed partial class AddProviderViewModel(ConnectViewModel connect, IPr
     [NotifyCanExecuteChangedFor(nameof(ContinueCommand))]
     public partial ProviderDescriptor? SelectedProvider { get; set; }
 
-    /// <summary>Every provider the user can pick, including placeholders that cannot be chosen.</summary>
+    /// <summary>Every provider the user can pick, .</summary>
     public IReadOnlyList<ProviderDescriptor> Providers => catalogue.All;
 
     /// <summary>Tells the view the provider list may have changed, after the catalogue was refreshed.</summary>
@@ -61,13 +61,10 @@ internal sealed partial class AddProviderViewModel(ConnectViewModel connect, IPr
         SelectedProvider = null;
     }
 
-    /// <summary>Chooses <paramref name="provider"/>. A placeholder provider that is not available is ignored. Also exposed to the view as <c>SelectCommand</c>.</summary>
+    /// <summary>Chooses <paramref name="provider"/>. Also exposed to the view as <c>SelectCommand</c>.</summary>
     /// <param name="provider">The provider the user picked.</param>
     [RelayCommand]
-    public void Select(ProviderDescriptor provider)
-    {
-        if (provider.IsAvailable) SelectedProvider = provider;
-    }
+    public void Select(ProviderDescriptor provider) => SelectedProvider = provider;
 
     /// <summary>
     /// Moves to the next step. At Authenticate it signs in first and stays there when that fails, leaving the reason on <see cref="ConnectViewModel.ErrorMessage"/>.

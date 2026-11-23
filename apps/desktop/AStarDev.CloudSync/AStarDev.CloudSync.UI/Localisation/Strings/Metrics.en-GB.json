@@ -2,6 +2,6 @@
   "Metrics.Title": "Metrics",
   "Metrics.Glyph": "📊",
   "Metrics.Refresh": "Refresh",
-  "Metrics.Empty": "No metrics have been sampled yet.",
+  "Metrics.Empty": "No metrics have been recorded yet.",
   "Metrics.Row.Current": "{value} {unit}"
 }

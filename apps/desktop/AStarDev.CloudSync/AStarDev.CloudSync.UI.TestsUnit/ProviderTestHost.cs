@@ -22,8 +22,10 @@ internal sealed class ProviderTestHost : IDisposable
         var localisation = host.Services.GetRequiredService<ILocalisationService>();
         Connect = new ConnectViewModel(() => client);
         Accounts = new AccountsViewModel(() => client);
-        Providers = new ProvidersViewModel(localisation, Connect, Accounts, host.Services.GetRequiredService<Func<INavigationService>>(), catalogue ?? new SampleProviderCatalogue(localisation), new SampleProviderInsightsSource(localisation), launcher);
+        Providers = new ProvidersViewModel(localisation, Connect, Accounts, host.Services.GetRequiredService<Func<INavigationService>>(), catalogue ?? OneDrive, new IpcProviderInsightsSource(new IpcProvidersSource(() => client), localisation, host.Services.GetRequiredService<ICultureService>()), launcher);
     }
+
+    private static FakeProviderCatalogue OneDrive { get; } = new(new ProviderDescriptor("OneDrive", "OneDrive", [ProviderCapability.SelectiveSync, ProviderCapability.DeltaSync, ProviderCapability.Versioning, ProviderCapability.RecycleBin, ProviderCapability.SharedContent]));
 
     public FakeIpcClient Client { get; }
 

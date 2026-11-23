@@ -20,7 +20,7 @@ public sealed class AddProviderViewModelShould
         add.Step.ShouldBe(AddProviderStep.SelectProvider);
         add.ContinueCommand.CanExecute(null).ShouldBeFalse();
 
-        add.SelectCommand.Execute(add.Providers.First(provider => provider.IsAvailable));
+        add.SelectCommand.Execute(add.Providers[0]);
         var visited = new List<AddProviderStep> { add.Step };
         while (add.IsOpen)
         {
@@ -38,7 +38,7 @@ public sealed class AddProviderViewModelShould
         using var host = ProviderTestHost.Create(new FakeIpcClient([], available: false));
         var add = host.Providers.Add;
         add.BeginCommand.Execute(null);
-        add.SelectCommand.Execute(add.Providers.First(provider => provider.IsAvailable));
+        add.SelectCommand.Execute(add.Providers[0]);
         await add.ContinueCommand.ExecuteAsync(null);
 
         await add.ContinueCommand.ExecuteAsync(null);
@@ -48,26 +48,12 @@ public sealed class AddProviderViewModelShould
     }
 
     [Fact]
-    public void not_let_a_placeholder_provider_be_selected()
-    {
-        using var host = ProviderTestHost.Create(ProviderTestHost.ClientWith());
-        var add = host.Providers.Add;
-        add.BeginCommand.Execute(null);
-        var placeholder = add.Providers.First(provider => !provider.IsAvailable);
-
-        add.SelectCommand.Execute(placeholder);
-
-        add.SelectedProvider.ShouldBeNull();
-        add.ContinueCommand.CanExecute(null).ShouldBeFalse();
-    }
-
-    [Fact]
     public void close_and_forget_the_choice_when_cancelled()
     {
         using var host = ProviderTestHost.Create(ProviderTestHost.ClientWith());
         var add = host.Providers.Add;
         add.BeginCommand.Execute(null);
-        add.SelectCommand.Execute(add.Providers.First(provider => provider.IsAvailable));
+        add.SelectCommand.Execute(add.Providers[0]);
 
         add.CancelCommand.Execute(null);
 
@@ -81,7 +67,7 @@ public sealed class AddProviderViewModelShould
         using var host = ProviderTestHost.Create(ProviderTestHost.ClientWith());
         var add = host.Providers.Add;
         add.BeginCommand.Execute(null);
-        add.SelectCommand.Execute(add.Providers.First(provider => provider.IsAvailable));
+        add.SelectCommand.Execute(add.Providers[0]);
         using var cancelled = new CancellationTokenSource();
         await cancelled.CancelAsync();
 

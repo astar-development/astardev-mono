@@ -11,7 +11,7 @@ internal sealed class IpcProviderCatalogue(IpcProvidersSource source) : IProvide
     public IReadOnlyList<ProviderDescriptor> All => [.. source.Current.Providers.Select(Describe)];
 
     /// <inheritdoc/>
-    public ProviderDescriptor Find(string providerType) => All.Where(descriptor => descriptor.ProviderType == providerType).Concat([new ProviderDescriptor(providerType, providerType, true, [])]).First();
+    public ProviderDescriptor Find(string providerType) => All.Where(descriptor => descriptor.ProviderType == providerType).Concat([new ProviderDescriptor(providerType, providerType, [])]).First();
 
-    private static ProviderDescriptor Describe(ProviderView provider) => new(provider.ProviderType, provider.ProviderType, true, provider.Capabilities);
+    private static ProviderDescriptor Describe(ProviderView provider) => new(provider.ProviderType, provider.ProviderType, provider.Capabilities);
 }

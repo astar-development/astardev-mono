@@ -18,17 +18,6 @@ public sealed class QueueViewModelShould
     private static Result<DeadLettersView, IpcError> Reply(params DeadLetterView[] views) => new Ok<DeadLettersView>(new DeadLettersView(views));
 
     [Fact]
-    public void show_operations_in_every_status_with_a_count_per_status()
-    {
-        using var host = OperationScreensHost.Create();
-
-        var queue = host.Screen<QueueViewModel>();
-
-        queue.Rows.Select(row => row.Entry.Status).Distinct().Order().ShouldBe(Enum.GetValues<OperationStatus>());
-        queue.StatusCounts.Select(count => count.Text).ShouldBe(["Pending: 2", "Running: 2", "Completed: 4", "Failed: 2"]);
-    }
-
-    [Fact]
     public void hide_the_filters_and_point_conflicts_to_their_own_screen()
     {
         using var host = OperationScreensHost.Create();

@@ -15,6 +15,7 @@
 
   <ItemGroup>
     <Content Include="..\AStarDev.CloudSync.UI\Themes\**\*.axaml" Link="Themes\%(RecursiveDir)%(Filename)%(Extension)" CopyToOutputDirectory="PreserveNewest" />
+    <Content Include="..\AStarDev.CloudSync.UI\Views\**\*.axaml" Link="Views\%(RecursiveDir)%(Filename)%(Extension)" CopyToOutputDirectory="PreserveNewest" />
   </ItemGroup>
 
   <ItemGroup>

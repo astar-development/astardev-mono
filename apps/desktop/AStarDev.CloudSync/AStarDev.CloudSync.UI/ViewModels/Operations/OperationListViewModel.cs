@@ -5,8 +5,8 @@ using CommunityToolkit.Mvvm.Input;
 namespace AStarDev.CloudSync.UI.ViewModels.Operations;
 
 /// <summary>
-/// The shared body of the Queue, Activity and History screens: a list of sample operations narrowed by provider, type, status, date range and path,
-/// a details panel, an export that screens opt into and a placeholder retention. Replacing the sample source with daemon data later does not change the view.
+/// The shared body of the Queue, Activity and History screens: a list of operations narrowed by provider, type, status, date range and path,
+/// a details panel and an export that screens opt into. Starts empty; a screen fills it with <see cref="Load"/>.
 /// </summary>
 internal abstract class OperationListViewModel : ViewModelBase
 {
@@ -24,27 +24,23 @@ internal abstract class OperationListViewModel : ViewModelBase
     private DateTime? dateTo;
     private string pathText = string.Empty;
 
-    /// <summary>Creates the list from the sample operations whose status is in <paramref name="statuses"/>, or empty when <paramref name="useSamples"/> is false.</summary>
+    /// <summary>Creates an empty list for the operations whose status is in <paramref name="statuses"/>.</summary>
     /// <param name="localisation">Supplies every text.</param>
     /// <param name="culture">Formats every date, time and number.</param>
     /// <param name="statuses">The statuses this screen shows; the status filter offers only these.</param>
-    /// <param name="showTools">False hides filters, export and retention (the Queue is a read-only overview).</param>
-    /// <param name="useSamples">True fills the list with sample operations and labels it as sample data; false starts empty until <see cref="Load"/> is called.</param>
-    protected OperationListViewModel(ILocalisationService localisation, ICultureService culture, IReadOnlyCollection<OperationStatus> statuses, bool showTools, bool useSamples = true)
+    /// <param name="showTools">False hides filters and export (the Queue is a read-only overview).</param>
+    protected OperationListViewModel(ILocalisationService localisation, ICultureService culture, IReadOnlyCollection<OperationStatus> statuses, bool showTools)
     {
         this.localisation = localisation;
         this.culture = culture;
         ShowTools = showTools;
-        IsSampleData = useSamples;
         all = new FilterChoice(localisation.Get("Operations.All"), null);
         StatusChoices = [all, .. statuses.Select(status => new FilterChoice(localisation.Get($"Operations.Status.{status}"), status.ToString()))];
         selectedProvider = selectedType = selectedStatus = all;
-        SampleDataText = localisation.Get("Operations.SampleData");
         ExportText = localisation.Get("Operations.Export");
         ExportDisabledReason = localisation.Get("Operations.ExportDisabled");
-        RetentionText = localisation.Get("Operations.Retention");
         ClearFilters = new RelayCommand(Clear);
-        Load(useSamples ? SampleOperations.All.Where(entry => statuses.Contains(entry.Status)).ToList() : []);
+        Load([]);
     }
 
     /// <summary>The operations passing every filter, newest first. Updated in place when a filter changes.</summary>
@@ -53,7 +49,7 @@ internal abstract class OperationListViewModel : ViewModelBase
     /// <summary>The panel showing one operation beside the list.</summary>
     public OperationDetailsViewModel Details { get; } = new();
 
-    /// <summary>True when filters, export and retention are shown.</summary>
+    /// <summary>True when filters and export are shown.</summary>
     public bool ShowTools { get; }
 
     /// <summary>Provider filter entries; the first is "All".</summary>
@@ -113,12 +109,6 @@ internal abstract class OperationListViewModel : ViewModelBase
     /// <summary>True when filters leave no row.</summary>
     public bool HasNoRows => Rows.Count == 0;
 
-    /// <summary>True when the list holds sample data, so the screen shows <see cref="SampleDataText"/>.</summary>
-    public bool IsSampleData { get; }
-
-    /// <summary>Text saying the list holds sample data, not real operations.</summary>
-    public string SampleDataText { get; }
-
     /// <summary>Label of the export button.</summary>
     public string ExportText { get; }
 
@@ -130,9 +120,6 @@ internal abstract class OperationListViewModel : ViewModelBase
 
     /// <summary>Why export is disabled.</summary>
     public string ExportDisabledReason { get; }
-
-    /// <summary>The retention period as a placeholder; not yet configurable.</summary>
-    public string RetentionText { get; }
 
     /// <summary>Text shown when no row shows: that no operation exists yet, or that the filters leave none.</summary>
     public string NoMatchesText

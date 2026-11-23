@@ -33,7 +33,6 @@ public sealed class HistoryViewModelShould
         history.Rows[0].Status.Text.ShouldBe("Failed");
         history.Rows[0].Entry.Provider.ShouldBe("Dropbox");
         history.Rows[1].Status.Text.ShouldBe("Completed");
-        history.IsSampleData.ShouldBeFalse();
         history.ErrorMessage.ShouldBeNull();
     }
 

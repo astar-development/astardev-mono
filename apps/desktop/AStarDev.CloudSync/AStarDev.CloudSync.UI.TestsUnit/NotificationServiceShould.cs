@@ -177,22 +177,13 @@ public sealed class NotificationServiceShould
     }
 
     [Fact]
-    public void show_one_localised_sample_per_category()
+    public void keep_what_the_in_app_presenter_was_given()
     {
-        var samples = SampleNotifications.Create(RealLocalisation());
+        var presenter = new InAppNotificationPresenter();
+        var notification = new Notification(NotificationCategory.Conflict, "k", "Title", "Message", "Next", new NotificationTarget(ScreenId.Conflicts, null), 1);
 
-        samples.Select(sample => sample.Category).ShouldBe(Enum.GetValues<NotificationCategory>());
-        samples.ShouldAllBe(sample => !sample.Title.StartsWith('!') && !sample.Message.StartsWith('!') && !sample.NextStep.StartsWith('!'));
-    }
+        presenter.Present(notification);
 
-    [Fact]
-    public void keep_what_the_placeholder_presenter_was_given()
-    {
-        var presenter = new PlaceholderNotificationPresenter();
-        var sample = SampleNotifications.Create(RealLocalisation())[0];
-
-        presenter.Present(sample);
-
-        presenter.Presented.ShouldBe([sample]);
+        presenter.Presented.ShouldBe([notification]);
     }
 }

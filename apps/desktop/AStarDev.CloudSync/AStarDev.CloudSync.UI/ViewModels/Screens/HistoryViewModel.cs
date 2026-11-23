@@ -22,7 +22,7 @@ internal sealed class HistoryViewModel : OperationListViewModel, IScreen
     /// <param name="createClient">Creates a fresh client per refresh; one client is one connection.</param>
     /// <param name="exporter">Saves the export the Export button asks for.</param>
     public HistoryViewModel(ILocalisationService localisation, ICultureService culture, Func<IIpcClient> createClient, ExportCommand exporter)
-        : base(localisation, culture, [OperationStatus.Completed, OperationStatus.Failed], true, false)
+        : base(localisation, culture, [OperationStatus.Completed, OperationStatus.Failed], true)
     {
         this.localisation = localisation;
         this.createClient = createClient;

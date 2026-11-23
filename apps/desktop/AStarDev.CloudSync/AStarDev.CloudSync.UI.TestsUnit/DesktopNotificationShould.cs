@@ -50,7 +50,7 @@ public sealed class DesktopNotificationShould
         host.Services.GetRequiredService<INotificationService>().Raise(new NotificationEvent(NotificationEventKind.ConflictDetected, "c-1"));
 
         notifier.Shown.Single().Target.TargetId.ShouldBe("c-1");
-        host.Services.GetRequiredService<PlaceholderNotificationPresenter>().Presented.Count.ShouldBe(1);
+        host.Services.GetRequiredService<InAppNotificationPresenter>().Presented.Count.ShouldBe(1);
     }
 
     [Fact]
