@@ -1,6 +1,5 @@
 {
   "Operations.All": "All",
-  "Operations.SampleData": "Sample data: real operations will appear here once the daemon reports them.",
   "Operations.Filter.Provider": "Provider",
   "Operations.Filter.Type": "Operation type",
   "Operations.Filter.Status": "Status",
@@ -13,7 +12,6 @@
   "Operations.Export": "Export",
   "Operations.ExportDisabled": "Export is not available on this screen yet.",
   "Operations.ExportFailed": "The export could not be saved to {path}: {reason}",
-  "Operations.Retention": "Retention: 90 days (placeholder; it will become configurable).",
   "Operations.Type.Download": "Download",
   "Operations.Type.Upload": "Upload",
   "Operations.Type.Rename": "Rename",

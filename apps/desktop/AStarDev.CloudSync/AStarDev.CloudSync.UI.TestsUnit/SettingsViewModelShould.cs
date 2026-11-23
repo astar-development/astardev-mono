@@ -178,19 +178,6 @@ public sealed class SettingsViewModelShould
     }
 
     [Fact]
-    public void explain_consequences_and_what_happens_next_for_the_placeholder_entry_points()
-    {
-        var (settings, _) = Create();
-
-        foreach (var entry in new[] { settings.ScopeManagement, settings.SyncRootChange })
-        {
-            entry.Heading.ShouldNotStartWith("!");
-            entry.Consequences.ShouldNotStartWith("!");
-            entry.WhatHappensNext.ShouldNotStartWith("!");
-        }
-    }
-
-    [Fact]
     public void open_the_providers_screen_from_the_providers_category()
     {
         var (settings, navigation) = Create();

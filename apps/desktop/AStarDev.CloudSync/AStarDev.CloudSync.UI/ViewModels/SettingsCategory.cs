@@ -12,10 +12,10 @@ internal enum SettingsCategory
     /// <summary>Sync folders and the local sync folder.</summary>
     Synchronisation,
 
-    /// <summary>Theme and display; a placeholder for now.</summary>
+    /// <summary>Theme and display.</summary>
     Appearance,
 
-    /// <summary>Notification preferences; a placeholder for now.</summary>
+    /// <summary>Notification preferences.</summary>
     Notifications,
 
     /// <summary>Metrics, Logs, Traces and Diagnostics.</summary>

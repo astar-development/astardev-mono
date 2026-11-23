@@ -6,7 +6,7 @@
   "Common.Disconnect": "Disconnect",
   "Common.RemoteFolders": "Remote folders",
   "Common.LocalFolder": "Local folder",
-  "Common.LocalFolderPlaceholder": "/home/you/OneDrive",
+  "Common.LocalFolderExample": "/home/you/OneDrive",
   "Common.Browse": "Browse...",
   "Common.FirstSync": "First sync",
   "Common.CreateSyncJob": "Create sync job",

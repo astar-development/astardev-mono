@@ -6,7 +6,6 @@
              x:Class="AStarDev.CloudSync.UI.Views.OperationListView"
              x:DataType="vm:OperationListViewModel">
     <DockPanel Margin="0,8,0,0">
-        <TextBlock DockPanel.Dock="Top" IsVisible="{Binding IsSampleData}" Text="{Binding SampleDataText}" Foreground="{DynamicResource Trust.Degraded.Brush}" TextWrapping="Wrap" Margin="0,0,0,8" />
         <StackPanel DockPanel.Dock="Top" IsVisible="{Binding ShowTools}" Spacing="8" Margin="0,0,0,8">
             <WrapPanel>
                 <StackPanel Margin="0,0,12,8">
@@ -51,7 +50,6 @@
                 <Button Content="{Binding ExportText}" Command="{Binding Export}" IsEnabled="{Binding CanExport}" />
                 <TextBlock Text="{Binding ExportDisabledReason}" IsVisible="{Binding !CanExport}" Foreground="{DynamicResource Text.Secondary.Brush}" VerticalAlignment="Center" TextWrapping="Wrap" />
             </StackPanel>
-            <TextBlock Text="{Binding RetentionText}" Foreground="{DynamicResource Text.Secondary.Brush}" TextWrapping="Wrap" />
         </StackPanel>
         <Border DockPanel.Dock="Right" IsVisible="{Binding Details.IsOpen}" Width="300" Margin="12,0,0,0" Padding="12" Background="{DynamicResource Surface.Raised.Brush}" BorderBrush="{DynamicResource Border.Brush}" BorderThickness="1">
             <StackPanel Spacing="6" x:DataType="vm:OperationDetailsViewModel" DataContext="{Binding Details}">

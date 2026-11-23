@@ -43,7 +43,7 @@
                     <views:FolderTreeView DataContext="{Binding Folders}" />
                     <TextBlock Text="{loc:Loc Common.LocalFolder}" FontWeight="SemiBold" />
                     <StackPanel Orientation="Horizontal" Spacing="8">
-                        <TextBox Text="{Binding Selection.LocalRoot, Mode=TwoWay}" IsReadOnly="{Binding Selection.HasJob}" Width="360" PlaceholderText="{loc:Loc Common.LocalFolderPlaceholder}" />
+                        <TextBox Text="{Binding Selection.LocalRoot, Mode=TwoWay}" IsReadOnly="{Binding Selection.HasJob}" Width="360" PlaceholderText="{loc:Loc Common.LocalFolderExample}" />
                         <Button Content="{loc:Loc Common.Browse}" Command="{Binding Selection.BrowseCommand}" IsEnabled="{Binding !Selection.HasJob}" />
                     </StackPanel>
                     <StackPanel Orientation="Horizontal" Spacing="8">
@@ -53,16 +53,6 @@
                     </StackPanel>
                     <TextBlock Text="{Binding Selection.JobSummary}" />
                     <TextBlock Text="{Binding Selection.StatusMessage}" Foreground="{DynamicResource Trust.Critical.Brush}" TextWrapping="Wrap" />
-                    <StackPanel Spacing="4" DataContext="{Binding ScopeManagement}" x:DataType="vm:SettingsEntryViewModel">
-                        <TextBlock Text="{Binding Heading}" FontWeight="SemiBold" />
-                        <TextBlock Text="{Binding Consequences}" TextWrapping="Wrap" />
-                        <TextBlock Text="{Binding WhatHappensNext}" TextWrapping="Wrap" Foreground="{DynamicResource Text.Secondary.Brush}" />
-                    </StackPanel>
-                    <StackPanel Spacing="4" DataContext="{Binding SyncRootChange}" x:DataType="vm:SettingsEntryViewModel">
-                        <TextBlock Text="{Binding Heading}" FontWeight="SemiBold" />
-                        <TextBlock Text="{Binding Consequences}" TextWrapping="Wrap" />
-                        <TextBlock Text="{Binding WhatHappensNext}" TextWrapping="Wrap" Foreground="{DynamicResource Text.Secondary.Brush}" />
-                    </StackPanel>
                 </StackPanel>
                 <StackPanel Spacing="8" IsVisible="{Binding IsAppearance}">
                     <TextBlock Text="{loc:Loc Settings.Appearance.Heading}" FontSize="18" FontWeight="SemiBold" />

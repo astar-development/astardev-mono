@@ -46,16 +46,6 @@ public sealed class ScreenRegistrationShould
     }
 
     [Fact]
-    public void show_a_localised_not_available_text_on_a_stub()
-    {
-        using var host = CreateHost();
-
-        var stub = new SampleStub(host.Services.GetRequiredService<Localisation.ILocalisationService>());
-
-        stub.NotAvailableText.ShouldNotStartWith("!");
-    }
-
-    [Fact]
     public void share_one_navigation_service_with_the_main_view_model()
     {
         using var host = CreateHost();
@@ -75,6 +65,4 @@ public sealed class ScreenRegistrationShould
         bar.ErrorStateText.ShouldNotStartWith("!");
         bar.LastActivityText.ShouldNotStartWith("!");
     }
-
-    private sealed class SampleStub(Localisation.ILocalisationService localisation) : StubScreenViewModel(ScreenId.Metrics, localisation);
 }

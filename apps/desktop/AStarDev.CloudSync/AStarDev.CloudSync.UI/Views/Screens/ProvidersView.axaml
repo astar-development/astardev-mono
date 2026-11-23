@@ -47,8 +47,7 @@
                         <ItemsControl.ItemTemplate>
                             <DataTemplate x:DataType="prov:ProviderDescriptor">
                                 <StackPanel Orientation="Horizontal" Spacing="8" Margin="0,0,0,4">
-                                    <Button Content="{Binding DisplayName}" IsEnabled="{Binding IsAvailable}" Command="{ReflectionBinding $parent[ItemsControl].DataContext.SelectCommand}" CommandParameter="{Binding}" />
-                                    <TextBlock Text="{loc:Loc Providers.Add.ComingSoon}" IsVisible="{Binding !IsAvailable}" VerticalAlignment="Center" Foreground="{DynamicResource Text.Secondary.Brush}" />
+                                    <Button Content="{Binding DisplayName}" Command="{ReflectionBinding $parent[ItemsControl].DataContext.SelectCommand}" CommandParameter="{Binding}" />
                                 </StackPanel>
                             </DataTemplate>
                         </ItemsControl.ItemTemplate>

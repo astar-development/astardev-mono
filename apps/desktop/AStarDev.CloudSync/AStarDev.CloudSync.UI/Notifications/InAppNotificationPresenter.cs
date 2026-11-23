@@ -1,7 +1,7 @@
 namespace AStarDev.CloudSync.UI.Notifications;
 
-/// <summary>Stands in for OS notifications: keeps what it is given so a view can list it.</summary>
-internal sealed class PlaceholderNotificationPresenter : INotificationPresenter
+/// <summary>The in-app notification list: keeps every notification it is given, oldest first, so a view can list it.</summary>
+internal sealed class InAppNotificationPresenter : INotificationPresenter
 {
     private readonly List<Notification> presented = [];
 

@@ -5,12 +5,12 @@ using AStarDev.CloudSync.UI.ViewModels.Operations;
 
 namespace AStarDev.CloudSync.UI.ViewModels.Screens;
 
-/// <summary>The Activity screen: what is happening now. Shows what the daemon reports for each job, then sample pending and running operations until the daemon reports real ones.</summary>
+/// <summary>The Activity screen: what is happening now. Shows what the daemon reports for each job, then the pending and running operations.</summary>
 internal sealed class ActivityViewModel : OperationListViewModel, IScreen
 {
     private readonly ILocalisationService localisation;
 
-    /// <summary>Creates the screen with its filters and sample operations, and starts following the daemon's activities.</summary>
+    /// <summary>Creates the screen with its filters and starts following the daemon's activities.</summary>
     /// <param name="localisation">Supplies every text.</param>
     /// <param name="culture">Formats every date, time and number.</param>
     /// <param name="connection">Holds the activities the daemon reported; the screen rebuilds its rows whenever they change.</param>

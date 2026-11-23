@@ -7,19 +7,12 @@ public sealed class ProviderCardViewModelShould
 {
     private static CancellationToken Token => TestContext.Current.CancellationToken;
 
-    private sealed class FakeCatalogue(params ProviderDescriptor[] descriptors) : IProviderCatalogue
-    {
-        public IReadOnlyList<ProviderDescriptor> All => descriptors;
-
-        public ProviderDescriptor Find(string providerType) => descriptors.FirstOrDefault(descriptor => descriptor.ProviderType == providerType) ?? new ProviderDescriptor(providerType, providerType, true, []);
-    }
-
     [Fact]
     public async Task drive_actions_from_capabilities()
     {
-        var full = new ProviderDescriptor("Full", "Full Drive", true, [ProviderCapability.SelectiveSync, ProviderCapability.DeltaSync, ProviderCapability.Versioning]);
-        var bare = new ProviderDescriptor("Bare", "Bare Drive", true, []);
-        using var host = ProviderTestHost.Create(ProviderTestHost.ClientWith(ProviderTestHost.Account("a", "Full"), ProviderTestHost.Account("b", "Bare"), ProviderTestHost.Account("c", "Unlisted")), new FakeCatalogue(full, bare));
+        var full = new ProviderDescriptor("Full", "Full Drive", [ProviderCapability.SelectiveSync, ProviderCapability.DeltaSync, ProviderCapability.Versioning]);
+        var bare = new ProviderDescriptor("Bare", "Bare Drive", []);
+        using var host = ProviderTestHost.Create(ProviderTestHost.ClientWith(ProviderTestHost.Account("a", "Full"), ProviderTestHost.Account("b", "Bare"), ProviderTestHost.Account("c", "Unlisted")), new FakeProviderCatalogue(full, bare));
 
         await host.Accounts.RefreshAsync(Token);
 
@@ -43,20 +36,6 @@ public sealed class ProviderCardViewModelShould
 
         host.Providers.Cards[0].CanPause.ShouldBeFalse();
         host.Providers.Cards[0].CanReconnect.ShouldBeTrue();
-    }
-
-    [Fact]
-    public async Task label_last_sync_storage_and_activity_as_sample_data()
-    {
-        using var host = ProviderTestHost.Create(ProviderTestHost.ClientWith(ProviderTestHost.Account("a")));
-
-        await host.Accounts.RefreshAsync(Token);
-
-        var card = host.Providers.Cards[0];
-        card.LastSyncText.ShouldContain("sample");
-        card.StorageText.ShouldContain("sample");
-        card.RecentActivityText.ShouldContain("sample");
-        card.ProviderName.ShouldBe("OneDrive");
     }
 
     [Fact]

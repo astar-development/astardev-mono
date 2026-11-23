@@ -80,7 +80,7 @@ internal static class UiServiceCollectionExtensions
         services.AddSingleton(provider => new OnboardingViewModel(provider.GetRequiredService<ILocalisationService>(), provider.GetRequiredService<ICultureService>(), provider.GetRequiredService<Func<IIpcClient>>(), provider.GetRequiredService<Func<INavigationService>>(), provider.GetRequiredService<ConnectionViewModel>(), provider.GetRequiredService<AccountsViewModel>(), provider.GetRequiredService<ConnectViewModel>(), provider.GetRequiredService<FolderTreeViewModel>(), provider.GetRequiredService<ScopeSelectionViewModel>()));
         services.AddSingleton(provider => new MainViewModel(provider.GetRequiredService<INavigationService>(), provider.GetServices<IScreen>(), provider.GetRequiredService<StatusBarViewModel>(), provider.GetRequiredService<OnboardingViewModel>()));
         services.AddSingleton<TrayLifecycle>();
-        services.AddSingleton<PlaceholderNotificationPresenter>();
+        services.AddSingleton<InAppNotificationPresenter>();
         services.AddSingleton<IDesktopNotifier, NotifySendNotifier>();
         services.AddSingleton<INotificationPresenter, DesktopNotificationPresenter>();
         services.AddSingleton<INotificationService>(provider => new NotificationService(provider.GetRequiredService<INotificationPresenter>(), provider.GetRequiredService<TrayLifecycle>(), provider.GetRequiredService<ILocalisationService>(), TimeProvider.System, NotificationAggregationWindow));

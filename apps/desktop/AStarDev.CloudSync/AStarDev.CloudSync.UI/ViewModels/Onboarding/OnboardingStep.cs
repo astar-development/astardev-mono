@@ -15,6 +15,6 @@ internal enum OnboardingStep
     /// <summary>The summary the user must confirm before anything is synchronised.</summary>
     Review,
 
-    /// <summary>The first synchronisation, shown with placeholder progress until real progress data exists.</summary>
+    /// <summary>The first synchronisation, shown with the progress the daemon reports.</summary>
     InitialSync
 }

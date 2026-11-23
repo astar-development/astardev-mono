@@ -39,7 +39,6 @@ public sealed class ProvidersViewModelShould
         screen.OnNavigatedTo(null);
 
         screen.Add.Providers.Select(provider => provider.ProviderType).ShouldBe(["OneDrive", "Other"]);
-        screen.Add.Providers.Select(provider => provider.IsAvailable).ShouldBe([true, true]);
         screen.Add.Providers[1].Capabilities.ShouldBe([ProviderCapability.DeltaSync, ProviderCapability.Versioning]);
         client.Sent.ShouldBeEmpty();
     }
