@@ -6,6 +6,8 @@ namespace AStarDev.CloudSync.Daemon.TestsUnit;
 
 internal sealed class StubCloudProvider : ICloudProvider
 {
+    public IReadOnlyList<ProviderFeature> Features { get; init; } = [ProviderFeature.SelectiveSync, ProviderFeature.DeltaSync];
+
     public Result<ProviderAccount, ProviderError> ConnectResult { get; init; } = new Ok<ProviderAccount>(new ProviderAccount("id", "Ada"));
 
     public Result<ProviderSnapshotPage, ProviderError> SnapshotResult { get; init; } = new Ok<ProviderSnapshotPage>(new ProviderSnapshotPage([]));

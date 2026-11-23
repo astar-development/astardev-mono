@@ -1,3 +1,5 @@
+using AStarDev.CloudSync.IPC;
+
 namespace AStarDev.CloudSync.UI.ViewModels.Providers;
 
 /// <summary>What the UI knows about a kind of provider: its name and capabilities. A new provider needs only a descriptor, not a new screen.</summary>

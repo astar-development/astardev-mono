@@ -8,6 +8,7 @@ using AStarDev.CloudSync.UI.Theming;
 using AStarDev.CloudSync.UI.Tray;
 using AStarDev.CloudSync.UI.ViewModels;
 using AStarDev.CloudSync.UI.ViewModels.Onboarding;
+using AStarDev.CloudSync.UI.ViewModels.Providers;
 using AStarDev.FunctionalParadigm;
 using AStarDev.SingleInstance;
 using Avalonia.Threading;
@@ -55,6 +56,9 @@ internal static class UiServiceCollectionExtensions
         });
         services.AddSingleton(provider => new ConnectionViewModel(provider.GetRequiredService<Func<IIpcClient>>(), InitialRetryDelay, MaxRetryDelay, action => Dispatcher.UIThread.Post(action)));
         services.AddSingleton<IDashboardSource>(provider => new IpcDashboardSource(provider.GetRequiredService<Func<IIpcClient>>()));
+        services.AddSingleton(provider => new IpcProvidersSource(provider.GetRequiredService<Func<IIpcClient>>()));
+        services.AddSingleton<IProviderCatalogue, IpcProviderCatalogue>();
+        services.AddSingleton<IProviderInsightsSource, IpcProviderInsightsSource>();
         services.AddSingleton(provider => new ConnectViewModel(provider.GetRequiredService<Func<IIpcClient>>()));
         services.AddSingleton(provider => new AccountsViewModel(provider.GetRequiredService<Func<IIpcClient>>()));
         services.AddSingleton<AvaloniaShell>();

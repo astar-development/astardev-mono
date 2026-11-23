@@ -1,3 +1,4 @@
+using AStarDev.CloudSync.IPC;
 using AStarDev.CloudSync.UI.Localisation;
 
 namespace AStarDev.CloudSync.UI.ViewModels.Providers;

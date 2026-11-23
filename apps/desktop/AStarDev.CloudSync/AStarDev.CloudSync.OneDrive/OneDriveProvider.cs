@@ -11,6 +11,9 @@ namespace AStarDev.CloudSync.OneDrive;
 internal sealed class OneDriveProvider(IOptions<OneDriveSettings> settings, ITokenCacheStore store, AccessTokenHolder holder, RootEnumerator enumerator, ItemTransfer transfer, ILogger<OneDriveProvider> logger) : ICloudProvider
 {
     /// <inheritdoc/>
+    public IReadOnlyList<ProviderFeature> Features { get; } = [ProviderFeature.SelectiveSync, ProviderFeature.DeltaSync];
+
+    /// <inheritdoc/>
     /// <remarks>The client id is read from the <c>OneDrive:ClientId</c> setting on every call; a missing one is an <see cref="AuthenticationFailed"/> value that says so. A successful sign-in lets later calls carry its access token.</remarks>
     public Task<Result<ProviderAccount, ProviderError>> ConnectAsync(CancellationToken cancellationToken)
         => ObserveAsync("Connect", null, null, ConnectCoreAsync, cancellationToken);

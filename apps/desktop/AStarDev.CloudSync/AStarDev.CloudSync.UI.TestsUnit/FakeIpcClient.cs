@@ -39,6 +39,8 @@ internal sealed class FakeIpcClient(List<string> calls, bool available) : IIpcCl
 
     public Func<GetMetrics, Result<MetricsView, IpcError>> MetricsReply { get; set; } = _ => new Ok<MetricsView>(new MetricsView([]));
 
+    public Result<ProvidersView, IpcError> ProvidersReply { get; set; } = new Ok<ProvidersView>(new ProvidersView([], []));
+
     public Func<GetAudit, Result<AuditView, IpcError>> AuditReply { get; set; } = _ => new Ok<AuditView>(new AuditView([]));
 
     public Func<IQuery<ExportView>, Result<ExportView, IpcError>> ExportReply { get; set; } = _ => new Ok<ExportView>(new ExportView(""));
@@ -100,6 +102,7 @@ internal sealed class FakeIpcClient(List<string> calls, bool available) : IIpcCl
             GetTraces traces => (Result<TResult, IpcError>)(object)TracesReply(traces),
             GetDiagnostics => (Result<TResult, IpcError>)(object)DiagnosticsReply,
             GetDriveInfo => (Result<TResult, IpcError>)(object)DriveInfoReply,
+            GetProviders => (Result<TResult, IpcError>)(object)ProvidersReply,
             GetMetrics metrics => (Result<TResult, IpcError>)(object)MetricsReply(metrics),
             GetSettings => (Result<TResult, IpcError>)(object)SettingsReply,
             GetSyncScopes scopes => (Result<TResult, IpcError>)(object)ScopesReply(scopes),

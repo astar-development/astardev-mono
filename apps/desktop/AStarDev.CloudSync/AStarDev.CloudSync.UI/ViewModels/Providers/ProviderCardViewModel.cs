@@ -9,7 +9,7 @@ namespace AStarDev.CloudSync.UI.ViewModels.Providers;
 /// <summary>One connected account as a card. Which actions it offers follows the provider's capabilities, never its name.</summary>
 /// <param name="account">What the daemon reported about the account.</param>
 /// <param name="descriptor">The provider's name and capabilities.</param>
-/// <param name="insights">The sample figures shown on the card.</param>
+/// <param name="insights">The figures shown on the card.</param>
 /// <param name="health">The account's health, already decided by the screen.</param>
 /// <param name="owner">The screen, which carries out the actions.</param>
 /// <param name="localisation">Supplies the capability and pause texts.</param>
@@ -30,13 +30,13 @@ internal sealed partial class ProviderCardViewModel(AccountView account, Provide
     /// <summary>The capabilities as localised words, for display.</summary>
     public IReadOnlyList<string> CapabilityLabels => [.. descriptor.Capabilities.Select(capability => localisation.Get($"Providers.Capability.{capability}"))];
 
-    /// <summary>Last sync line, currently sample data.</summary>
+    /// <summary>Last sync line.</summary>
     public string LastSyncText => insights.LastSyncText;
 
-    /// <summary>Storage consumption line, currently sample data.</summary>
+    /// <summary>Storage consumption line.</summary>
     public string StorageText => insights.StorageText;
 
-    /// <summary>Recent activity line, currently sample data.</summary>
+    /// <summary>Recent activity line.</summary>
     public string RecentActivityText => insights.RecentActivityText;
 
     /// <summary>True when the provider supports selective sync, so folders can be managed.</summary>

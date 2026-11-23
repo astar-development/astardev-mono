@@ -9,6 +9,9 @@ namespace AStarDev.CloudSync.Ports;
 /// </summary>
 public interface ICloudProvider
 {
+    /// <summary>What this provider can do, which decides the actions the UI offers for its accounts. Fixed for the life of the provider; empty means only what every provider does.</summary>
+    IReadOnlyList<ProviderFeature> Features { get; }
+
     /// <summary>Signs in and reports which account was connected. Call before any other member.</summary>
     /// <returns>The connected account, or <see cref="AuthenticationFailed"/> when the credentials are refused.</returns>
     Task<Result<ProviderAccount, ProviderError>> ConnectAsync(CancellationToken cancellationToken);

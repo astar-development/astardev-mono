@@ -1,7 +1,7 @@
-namespace AStarDev.CloudSync.UI.ViewModels.Providers;
+namespace AStarDev.CloudSync.IPC;
 
-/// <summary>A feature a provider may offer. The Providers screen shows or hides actions from these values instead of asking which provider it is.</summary>
-internal enum ProviderCapability
+/// <summary>A feature a provider offers, as the daemon reports it. The UI shows or hides actions from these values instead of asking which provider it is.</summary>
+public enum ProviderCapability
 {
     /// <summary>The user can choose which remote folders are synchronised.</summary>
     SelectiveSync,

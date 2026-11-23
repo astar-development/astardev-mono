@@ -1,6 +1,8 @@
 using AStarDev.CloudSync.IPC;
 using AStarDev.CloudSync.UI.Navigation;
 using AStarDev.CloudSync.UI.ViewModels.Providers;
+using AStarDev.CloudSync.UI.ViewModels.Screens;
+using AStarDev.FunctionalParadigm;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting;
 
@@ -9,6 +11,81 @@ namespace AStarDev.CloudSync.UI.TestsUnit;
 public sealed class ProvidersViewModelShould
 {
     private static CancellationToken Token => TestContext.Current.CancellationToken;
+
+    private static readonly DateTimeOffset Synced = new(2026, 11, 20, 12, 30, 0, TimeSpan.Zero);
+
+    private static ProvidersViewModel ResolveFromComposition(FakeIpcClient client, out IHost host)
+    {
+        var builder = Host.CreateApplicationBuilder();
+        builder.Services.AddCloudSyncUi();
+        builder.Services.AddSingleton<Func<IIpcClient>>(() => client);
+        builder.Services.AddSingleton<IUriLauncher>(new FakeUriLauncher());
+        host = builder.Build();
+
+        return host.Services.GetServices<IScreen>().OfType<ProvidersViewModel>().Single();
+    }
+
+    [Fact]
+    public void list_the_catalogue_from_the_daemon()
+    {
+        var client = new FakeIpcClient([], available: true)
+        {
+            ProvidersReply = new Ok<ProvidersView>(new ProvidersView([new ProviderView("OneDrive", [ProviderCapability.SelectiveSync]), new ProviderView("Other", [ProviderCapability.DeltaSync, ProviderCapability.Versioning])], []))
+        };
+        var screen = ResolveFromComposition(client, out var host);
+        using var _ = host;
+
+        screen.Add.Providers.ShouldBeEmpty();
+        screen.OnNavigatedTo(null);
+
+        screen.Add.Providers.Select(provider => provider.ProviderType).ShouldBe(["OneDrive", "Other"]);
+        screen.Add.Providers.Select(provider => provider.IsAvailable).ShouldBe([true, true]);
+        screen.Add.Providers[1].Capabilities.ShouldBe([ProviderCapability.DeltaSync, ProviderCapability.Versioning]);
+        client.Sent.ShouldBeEmpty();
+    }
+
+    [Fact]
+    public async Task show_each_accounts_own_insights()
+    {
+        var ada = ProviderTestHost.Account("ada@example.com");
+        var grace = ProviderTestHost.Account("grace@example.com");
+        var client = ProviderTestHost.ClientWith(ada, grace);
+        client.ProvidersReply = new Ok<ProvidersView>(new ProvidersView(
+            [new ProviderView("OneDrive", [ProviderCapability.SelectiveSync])],
+            [new ProviderInsightsView(ada.Id, Synced, 40_000_000_000, 100_000_000_000, 2, 1, 0), new ProviderInsightsView(grace.Id, null, null, null, 0, 0, 3)]));
+        var screen = ResolveFromComposition(client, out var host);
+        using var _ = host;
+
+        await screen.Accounts.RefreshAsync(Token);
+
+        var cards = screen.Cards;
+        cards.Select(card => card.AccountName).ShouldBe(["ada@example.com", "grace@example.com"]);
+        cards[0].LastSyncText.ShouldStartWith("Last sync: ");
+        cards[0].LastSyncText.ShouldNotContain("never");
+        cards[1].LastSyncText.ShouldBe("Last sync: never");
+        cards[0].StorageText.ShouldBe("Storage: 40 GB of 100 GB used");
+        cards[1].StorageText.ShouldBe("Storage: unavailable");
+        cards[0].RecentActivityText.ShouldBe("Recent activity: 2 waiting, 1 running, 0 failed");
+        cards[1].RecentActivityText.ShouldBe("Recent activity: 0 waiting, 0 running, 3 failed");
+        cards.Select(card => card.Health.Health).ShouldBe([ProviderHealth.Syncing, ProviderHealth.Warning]);
+        cards[0].Capabilities.ShouldBe([ProviderCapability.SelectiveSync]);
+    }
+
+    [Fact]
+    public async Task keep_the_earlier_figures_when_the_daemon_cannot_be_asked()
+    {
+        var ada = ProviderTestHost.Account("ada@example.com");
+        var client = ProviderTestHost.ClientWith(ada);
+        client.ProvidersReply = new Ok<ProvidersView>(new ProvidersView([], [new ProviderInsightsView(ada.Id, null, null, null, 4, 0, 0)]));
+        var screen = ResolveFromComposition(client, out var host);
+        using var _ = host;
+        await screen.Accounts.RefreshAsync(Token);
+
+        client.ProvidersReply = new Fail<IpcError>(new HandlerFailed("no"));
+        screen.OnNavigatedTo(null);
+
+        screen.Cards.Single().RecentActivityText.ShouldBe("Recent activity: 4 waiting, 0 running, 0 failed");
+    }
 
     [Fact]
     public void show_every_health_state()

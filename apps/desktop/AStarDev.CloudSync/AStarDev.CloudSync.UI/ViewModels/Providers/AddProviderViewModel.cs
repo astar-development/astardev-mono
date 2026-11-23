@@ -29,6 +29,9 @@ internal sealed partial class AddProviderViewModel(ConnectViewModel connect, IPr
     /// <summary>Every provider the user can pick, including placeholders that cannot be chosen.</summary>
     public IReadOnlyList<ProviderDescriptor> Providers => catalogue.All;
 
+    /// <summary>Tells the view the provider list may have changed, after the catalogue was refreshed.</summary>
+    public void Refresh() => OnPropertyChanged(nameof(Providers));
+
     /// <summary>True while the provider list is shown, that is at the first step.</summary>
     public bool IsSelecting => Step == AddProviderStep.SelectProvider;
 

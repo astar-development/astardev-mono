@@ -186,6 +186,21 @@ internal sealed class ItemIndexStore(IDbContextFactory<CloudSyncDbContext> conte
 
         row.DeltaToken = token;
         row.UpdatedUtc = observedUtc;
+        await UpsertProviderStateAsync(context, scope.SyncJobId, token, observedUtc, cancellationToken).ConfigureAwait(false);
+    }
+
+    private static async Task UpsertProviderStateAsync(CloudSyncDbContext context, SyncJobId syncJobId, DeltaToken token, DateTimeOffset observedUtc, CancellationToken cancellationToken)
+    {
+        var state = await context.ProviderStates.SingleOrDefaultAsync(entity => entity.SyncJobId == syncJobId, cancellationToken).ConfigureAwait(false);
+        if (state is null)
+        {
+            state = new ProviderStateEntity { SyncJobId = syncJobId };
+            context.ProviderStates.Add(state);
+        }
+
+        state.DeltaToken = token;
+        state.LastSyncUtc = observedUtc;
+        state.LastScanUtc = observedUtc;
     }
 
     private static async Task UpsertCheckpointAsync(CloudSyncDbContext context, SyncScope scope, CrawlCheckpoint checkpoint, DateTimeOffset observedUtc, CancellationToken cancellationToken)

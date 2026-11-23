@@ -1,6 +1,6 @@
 namespace AStarDev.CloudSync.UI.ViewModels.Providers;
 
-/// <summary>The provider metadata registry the Providers screen reads. Replace the implementation to list real providers.</summary>
+/// <summary>The provider metadata registry the Providers screen reads.</summary>
 internal interface IProviderCatalogue
 {
     /// <summary>Every provider offered in the add journey, available or not, in display order.</summary>
