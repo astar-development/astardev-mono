@@ -41,6 +41,7 @@ public sealed class IpcHostedServiceShould
             services.GetRequiredService<HistoryQuery>(),
             services.GetRequiredService<LogsQuery>(),
             services.GetRequiredService<TracesQuery>(),
+            services.GetRequiredService<DiagnosticsQuery>(),
             services.GetRequiredService<AuditQuery>(),
             services.GetRequiredService<ExportQuery>(),
             TimeProvider.System,

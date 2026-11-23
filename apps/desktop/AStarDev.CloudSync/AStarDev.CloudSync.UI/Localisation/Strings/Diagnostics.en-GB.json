@@ -1,4 +1,15 @@
 {
   "Diagnostics.Title": "Diagnostics",
-  "Diagnostics.Glyph": "🩺"
+  "Diagnostics.Glyph": "🩺",
+  "Diagnostics.Version.Label": "Version",
+  "Diagnostics.State.Label": "State",
+  "Diagnostics.State.Running": "Running",
+  "Diagnostics.State.Stopping": "Stopping",
+  "Diagnostics.Uptime.Label": "Uptime",
+  "Diagnostics.Uptime": "{days} d {hours} h {minutes} min",
+  "Diagnostics.Checks.Label": "Health checks",
+  "Diagnostics.Status.Healthy": "Healthy",
+  "Diagnostics.Status.Degraded": "Degraded",
+  "Diagnostics.Status.Unhealthy": "Unhealthy",
+  "Diagnostics.Refresh": "Refresh"
 }
