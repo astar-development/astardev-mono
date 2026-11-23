@@ -6,10 +6,10 @@ namespace AStarDev.CloudSync.IPC;
 /// <param name="LastReconciliation">When a job last finished indexing or applying changes; <see langword="null"/> before any has since the daemon started.</param>
 /// <param name="LastProviderPoll">When the provider last answered with progress since the daemon started; <see langword="null"/> before any.</param>
 /// <param name="LastQueueActivity">When the newest operation in the queue was created; <see langword="null"/> when the queue is empty.</param>
-/// <param name="ItemsAnalysed">Items processed so far across every job.</param>
-/// <param name="ItemsTotal">Items to process in all; <see langword="null"/> when any job's total is unknown.</param>
-/// <param name="ItemsPerSecond">Throughput the crawl reports, summed over the folders still being crawled; <see langword="null"/> when none is crawling or no rate is known yet.</param>
-/// <param name="EstimatedRemaining">The longest time left of the folders still being crawled, as the crawl estimates; <see langword="null"/> when unknown.</param>
+/// <param name="ItemsAnalysed">Items processed so far: indexed while any job is indexing, otherwise operations completed.</param>
+/// <param name="ItemsTotal">Items to process in all: the indexing total (<see langword="null"/> when any job's is unknown) while indexing, otherwise every operation queued so far.</param>
+/// <param name="ItemsPerSecond">Items per second: the crawl's, summed over the folders being crawled, while indexing, otherwise operations completed per second over the last minute; <see langword="null"/> when no rate is known yet.</param>
+/// <param name="EstimatedRemaining">Time left: the longest crawl estimate while indexing, otherwise the operations not yet completed at the current rate; <see langword="null"/> when unknown.</param>
 /// <param name="Providers">One entry per provider type with an account.</param>
 /// <param name="Pending">Operations waiting to start.</param>
 /// <param name="Running">Operations executing now.</param>

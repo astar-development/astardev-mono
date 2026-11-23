@@ -24,6 +24,7 @@
   "Dashboard.Trust.LastQueueActivity": "Last queue activity : {time}",
   "Dashboard.Progress.Heading": "Sync progress",
   "Dashboard.Progress.ItemsAnalysed": "{done} / {total} items analysed",
+  "Dashboard.Progress.ItemsSynced": "{done} / {total} items synced",
   "Dashboard.Progress.Phase": "Phase : {phase}",
   "Dashboard.Progress.Throughput": "Throughput : {rate} items/sec",
   "Dashboard.Progress.Remaining": "Estimated remaining : {minutes} minutes",

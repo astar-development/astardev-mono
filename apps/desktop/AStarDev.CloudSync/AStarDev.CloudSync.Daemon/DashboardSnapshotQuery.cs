@@ -9,9 +9,10 @@ namespace AStarDev.CloudSync.Daemon;
 
 /// <summary>
 /// Answers <see cref="GetDashboardSnapshot"/> from the operation, conflict, account and journal stores, the provider health check and the <see cref="ActivityTracker"/>, and publishes <see cref="DashboardChanged"/> when the answer changes.
-/// Items done and total come from the <see cref="ActivityTracker"/>; throughput and time left are the tracker's job-level 60 second figures (<see cref="ActivityView.ItemsPerSecond"/>, <see cref="ActivityView.EtaSeconds"/>), the same the Activity screen shows.
+/// While a job is indexing, items done and total, throughput and time left are the <see cref="ActivityTracker"/>'s (<see cref="ActivityView.ItemsPerSecond"/>, <see cref="ActivityView.EtaSeconds"/>), the same the Activity screen shows.
+/// Afterwards they describe transfers: operations completed out of all operations, the <see cref="TransferRate"/> and the time left at that rate.
 /// </summary>
-internal sealed class DashboardSnapshotQuery(IOperationStore operations, IConflictStore conflicts, IAccountStore accounts, ISyncJobStore jobs, ISyncScopeStore scopes, IEventJournal journal, CanonicalStateReader states, HealthCheckService health, ActivityTracker tracker, IIpcServer server, TimeProvider timeProvider)
+internal sealed class DashboardSnapshotQuery(IOperationStore operations, IConflictStore conflicts, IAccountStore accounts, ISyncJobStore jobs, ISyncScopeStore scopes, IEventJournal journal, CanonicalStateReader states, HealthCheckService health, ActivityTracker tracker, TransferRate transferRate, IIpcServer server, TimeProvider timeProvider)
 {
     private static readonly string[] ScopeEvents = ["SyncScopeAdded", "SyncScopeRemoved"];
 
@@ -100,7 +101,7 @@ internal sealed class DashboardSnapshotQuery(IOperationStore operations, IConfli
         var providers = ProvidersOf(accountList);
         var reconciled = activities.Where(activity => activity.State == ActivityState.Healthy).Select(activity => (DateTimeOffset?)activity.UpdatedUtc).Max();
         var queued = queue.Select(operation => (DateTimeOffset?)operation.CreatedUtc).Max();
-        var (rate, remaining) = CrawlEstimate(activities);
+        var (done, total, rate, remaining) = ProgressOf(activities, counts);
 
         return new DashboardView(
             ProviderHealthOf(providerHealth),
@@ -108,8 +109,8 @@ internal sealed class DashboardSnapshotQuery(IOperationStore operations, IConfli
             reconciled,
             activities.Select(activity => (DateTimeOffset?)activity.UpdatedUtc).Max(),
             queued,
-            activities.Sum(activity => activity.ItemsDone),
-            activities.Count > 0 && activities.All(activity => activity.ItemsTotal is not null) ? activities.Sum(activity => activity.ItemsTotal!.Value) : null,
+            done,
+            total,
             rate,
             remaining,
             providers,
@@ -123,6 +124,18 @@ internal sealed class DashboardSnapshotQuery(IOperationStore operations, IConfli
             running,
             EventsOf(reconciled, pending + executing == 0 && completed > 0 ? queued ?? DateTimeOffset.UnixEpoch : null, scopeEntries.Select(entry => (DateTimeOffset?)entry.OccurredUtc).Max()),
             setup);
+    }
+
+    private (long Done, long? Total, double? Rate, TimeSpan? Remaining) ProgressOf(IReadOnlyList<ActivityView> activities, IReadOnlyDictionary<OperationStatus, int> counts)
+    {
+        var completed = counts.GetValueOrDefault(OperationStatus.Completed);
+        var all = completed + counts.GetValueOrDefault(OperationStatus.Pending) + counts.GetValueOrDefault(OperationStatus.Running) + counts.GetValueOrDefault(OperationStatus.Failed) + counts.GetValueOrDefault(OperationStatus.DeadLetter);
+        var perSecond = transferRate.Record(completed);
+        if (!activities.Any(activity => activity.State == ActivityState.InitialIndexing)) return (completed, all, perSecond, perSecond is { } speed && all > completed ? TimeSpan.FromSeconds((all - completed) / speed) : null);
+
+        var (rate, remaining) = CrawlEstimate(activities);
+
+        return (activities.Sum(activity => activity.ItemsDone), activities.All(activity => activity.ItemsTotal is not null) ? activities.Sum(activity => activity.ItemsTotal!.Value) : null, rate, remaining);
     }
 
     private static (double? Rate, TimeSpan? Remaining) CrawlEstimate(IReadOnlyList<ActivityView> activities)

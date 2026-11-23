@@ -119,6 +119,41 @@ public sealed class DashboardSnapshotQueryShould
     }
 
     [Fact]
+    public async Task report_transfer_progress_as_completed_over_all_operations_once_indexing_has_ended()
+    {
+        var (host, job) = await HostWithJobAsync();
+        await using var _ = host;
+        var finished = await host.AddOperationAsync(job, OperationStatus.Running, Token);
+        await host.Services.GetRequiredService<IOperationStore>().CompleteAsync(finished.Id, Token);
+        await host.AddOperationAsync(job, OperationStatus.Pending, Token);
+        await host.AddOperationAsync(job, OperationStatus.Pending, Token);
+
+        var dashboard = await SnapshotAsync(host);
+
+        dashboard.ItemsAnalysed.ShouldBe(1);
+        dashboard.ItemsTotal.ShouldBe(3);
+    }
+
+    [Fact]
+    public async Task report_the_transfer_rate_and_time_left_from_recent_completions()
+    {
+        var clock = new ManualTimeProvider(DateTimeOffset.UnixEpoch);
+        var (host, job) = await HostWithJobAsync(clock: clock);
+        await using var _ = host;
+        var finished = await host.AddOperationAsync(job, OperationStatus.Running, Token);
+        await host.AddOperationAsync(job, OperationStatus.Pending, Token);
+        await host.AddOperationAsync(job, OperationStatus.Pending, Token);
+        await SnapshotAsync(host);
+        await host.Services.GetRequiredService<IOperationStore>().CompleteAsync(finished.Id, Token);
+        clock.Advance(TimeSpan.FromSeconds(10));
+
+        var dashboard = await SnapshotAsync(host);
+
+        dashboard.ItemsPerSecond.ShouldNotBeNull().ShouldBe(0.1, 0.001);
+        dashboard.EstimatedRemaining.ShouldBe(TimeSpan.FromSeconds(20));
+    }
+
+    [Fact]
     public async Task publish_a_change_when_the_queue_moves()
     {
         var server = new RecordingIpcServer();
