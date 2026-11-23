@@ -25,6 +25,8 @@ internal sealed class FakeIpcClient(List<string> calls, bool available) : IIpcCl
 
     public Result<HistoryView, IpcError> HistoryReply { get; set; } = new Ok<HistoryView>(new HistoryView([]));
 
+    public Result<QueueView, IpcError> QueueReply { get; set; } = new Ok<QueueView>(new QueueView(0, 0, 0, 0, []));
+
     public Result<DeadLettersView, IpcError> DeadLettersReply { get; set; } = new Ok<DeadLettersView>(new DeadLettersView([]));
 
     public Func<GetConflicts, Result<ConflictsView, IpcError>> ConflictsReply { get; set; } = _ => new Ok<ConflictsView>(new ConflictsView([]));
@@ -94,6 +96,7 @@ internal sealed class FakeIpcClient(List<string> calls, bool available) : IIpcCl
             GetActivities => (Result<TResult, IpcError>)(object)ActivitiesReply,
             GetDeadLetters => (Result<TResult, IpcError>)(object)DeadLettersReply,
             GetSyncStatus => (Result<TResult, IpcError>)(object)SyncStatusReply,
+            GetQueue => (Result<TResult, IpcError>)(object)QueueReply,
             GetHistory => (Result<TResult, IpcError>)(object)HistoryReply,
             GetConflicts conflicts => (Result<TResult, IpcError>)(object)ConflictsReply(conflicts),
             ExportHistory or ExportAudit => (Result<TResult, IpcError>)(object)ExportReply((IQuery<ExportView>)query),

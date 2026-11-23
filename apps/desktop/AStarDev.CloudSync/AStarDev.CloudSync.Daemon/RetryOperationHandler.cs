@@ -6,7 +6,7 @@ using AStarDev.FunctionalParadigm;
 namespace AStarDev.CloudSync.Daemon;
 
 /// <summary>Answers <see cref="RetryOperation"/> by putting the dead-lettered operation back in the queue.</summary>
-internal sealed class RetryOperationHandler(IOperationStore store, SyncStatusQuery status)
+internal sealed class RetryOperationHandler(IOperationStore store, SyncStatusQuery status, QueueQuery queue)
 {
     /// <summary>Requeues the operation with its attempts reset.</summary>
     /// <returns>
@@ -23,6 +23,7 @@ internal sealed class RetryOperationHandler(IOperationStore store, SyncStatusQue
     private async Task<Result<CommandResult, IpcError>> AcceptedAsync(CancellationToken cancellationToken)
     {
         _ = await status.PublishIfChangedAsync(cancellationToken);
+        _ = await queue.PublishIfChangedAsync(cancellationToken);
 
         return new Ok<CommandResult>(new CommandResult(CommandOutcome.Accepted));
     }

@@ -7,7 +7,7 @@ using AStarDev.FunctionalParadigm;
 namespace AStarDev.CloudSync.Daemon;
 
 /// <summary>Answers <see cref="GetHistory"/> from the <see cref="IOperationStore"/>, the job and account stores and the item state.</summary>
-internal sealed class HistoryQuery(IOperationStore operations, ISyncJobStore jobs, IAccountStore accounts, CanonicalStateReader states)
+internal sealed class HistoryQuery(IOperationStore operations, OperationLookup lookup)
 {
     private const string Completed = "Completed";
     private const string Failed = "Failed";
@@ -32,10 +32,10 @@ internal sealed class HistoryQuery(IOperationStore operations, ISyncJobStore job
     {
         if (finished.Count == 0) return new Ok<HistoryView>(new HistoryView([]));
 
-        var providers = await ProvidersAsync(cancellationToken);
+        var providers = await lookup.ProvidersAsync(cancellationToken);
         if (providers.Value is Fail<StoreError> providersFailure) return Failure(providersFailure.Error);
 
-        var items = await ItemsAsync(finished.Select(operation => operation.SyncJobId).Distinct().ToList(), cancellationToken);
+        var items = await lookup.ItemsAsync(finished.Select(operation => operation.SyncJobId).Distinct().ToList(), cancellationToken);
         if (items.Value is Fail<StoreError> itemsFailure) return Failure(itemsFailure.Error);
 
         var providerOf = ((Ok<IReadOnlyDictionary<SyncJobId, string>>)providers.Value).Value;
@@ -43,33 +43,6 @@ internal sealed class HistoryQuery(IOperationStore operations, ISyncJobStore job
         var entries = finished.Select(operation => EntryOf(operation, providerOf.GetValueOrDefault(operation.SyncJobId, string.Empty), stateOf.GetValueOrDefault(operation.ItemId))).Where(entry => Matches(query, entry)).ToList();
 
         return new Ok<HistoryView>(new HistoryView(entries));
-    }
-
-    private async Task<Result<IReadOnlyDictionary<SyncJobId, string>, StoreError>> ProvidersAsync(CancellationToken cancellationToken)
-    {
-        var allJobs = await jobs.ListAsync(cancellationToken);
-        if (allJobs.Value is Fail<StoreError> jobsFailure) return jobsFailure;
-
-        var allAccounts = await accounts.ListAsync(cancellationToken);
-        if (allAccounts.Value is Fail<StoreError> accountsFailure) return accountsFailure;
-
-        var typeOf = ((Ok<IReadOnlyList<Account>>)allAccounts.Value).Value.ToDictionary(account => account.Id, account => account.ProviderType);
-
-        return new Ok<IReadOnlyDictionary<SyncJobId, string>>(((Ok<IReadOnlyList<SyncJob>>)allJobs.Value).Value.Where(job => typeOf.ContainsKey(job.AccountId)).ToDictionary(job => job.Id, job => typeOf[job.AccountId]));
-    }
-
-    private async Task<Result<IReadOnlyDictionary<ItemId, CanonicalItemState>, StoreError>> ItemsAsync(IReadOnlyList<SyncJobId> jobIds, CancellationToken cancellationToken)
-    {
-        var byItem = new Dictionary<ItemId, CanonicalItemState>();
-        foreach (var jobId in jobIds)
-        {
-            var read = await states.ReadAsync(jobId, cancellationToken);
-            if (read.Value is Fail<StoreError> failure) return failure;
-
-            foreach (var state in ((Ok<IReadOnlyList<CanonicalItemState>>)read.Value).Value) byItem[state.ItemId] = state;
-        }
-
-        return new Ok<IReadOnlyDictionary<ItemId, CanonicalItemState>>(byItem);
     }
 
     private static bool IsFinished(Operation operation) => operation.Status is OperationStatus.Completed or OperationStatus.Failed or OperationStatus.DeadLetter;
@@ -91,11 +64,7 @@ internal sealed class HistoryQuery(IOperationStore operations, ISyncJobStore job
     private static string OutcomeOf(OperationStatus status) => status == OperationStatus.Completed ? Completed : Failed;
 
     private static HistoryEntryView EntryOf(Operation operation, string provider, CanonicalItemState? state)
-        => new(operation.Id.Value, provider, operation.Type.ToString(), OutcomeOf(operation.Status), operation.CreatedUtc, PathOf(state), SizeOf(state));
-
-    private static string PathOf(CanonicalItemState? state) => state?.Remote?.Path.Value ?? state?.Local?.Path.Value ?? state?.Known?.Path.Value ?? string.Empty;
-
-    private static long SizeOf(CanonicalItemState? state) => state?.Remote?.Size ?? state?.Local?.Size ?? state?.Known?.Size ?? 0;
+        => new(operation.Id.Value, provider, operation.Type.ToString(), OutcomeOf(operation.Status), operation.CreatedUtc, OperationLookup.PathOf(state), OperationLookup.SizeOf(state));
 
     private static Fail<IpcError> Failure(StoreError error) => new(new HandlerFailed(StoreErrorMessages.Describe(error, "read", "operation history")));
 }

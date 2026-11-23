@@ -16,13 +16,13 @@ internal sealed class QueueViewModel : OperationListViewModel, IScreen
     private readonly ConnectionViewModel connection;
     private string? errorMessage;
 
-    /// <summary>Creates the screen with every status visible and no filters, and starts following the dead letters the daemon reported.</summary>
+    /// <summary>Creates the screen with no filters and starts following the dead letters and the queue the daemon reported.</summary>
     /// <param name="localisation">Supplies every text.</param>
     /// <param name="culture">Formats every date, time and number.</param>
     /// <param name="createClient">Creates a fresh client per decision; one client is one connection.</param>
-    /// <param name="connection">Holds the dead letters the daemon reported; the screen rebuilds its rows whenever they change.</param>
+    /// <param name="connection">Holds the dead letters and the queue the daemon reported; the screen rebuilds its rows whenever they change.</param>
     public QueueViewModel(ILocalisationService localisation, ICultureService culture, Func<IIpcClient> createClient, ConnectionViewModel connection)
-        : base(localisation, culture, Enum.GetValues<OperationStatus>(), false)
+        : base(localisation, culture, [OperationStatus.Pending, OperationStatus.Running], false)
     {
         this.localisation = localisation;
         this.culture = culture;
@@ -31,6 +31,7 @@ internal sealed class QueueViewModel : OperationListViewModel, IScreen
         ConflictsNote = localisation.Get("Queue.ConflictsNote");
         connection.DeadLetters.CollectionChanged += (_, _) => Rebuild();
         Rebuild();
+        FollowQueue(connection, ShowCounts);
     }
 
     /// <inheritdoc/>
@@ -41,6 +42,9 @@ internal sealed class QueueViewModel : OperationListViewModel, IScreen
 
     /// <inheritdoc/>
     public string Glyph => localisation.Get("Queue.Glyph");
+
+    /// <summary>How many operations are in each status, as colour, icon and text, from the daemon's counts. Statuses with none are left out.</summary>
+    public IReadOnlyList<StatusIndicatorViewModel> StatusCounts { get; private set; } = [];
 
     /// <summary>Text pointing the user to the Conflicts screen, the only place conflicts are resolved.</summary>
     public string ConflictsNote { get; }
@@ -122,6 +126,12 @@ internal sealed class QueueViewModel : OperationListViewModel, IScreen
                 ErrorMessage = fail.Error.Message;
                 break;
         }
+    }
+
+    private void ShowCounts(QueueView queue)
+    {
+        StatusCounts = [.. new[] { (OperationStatus.Pending, queue.Pending), (OperationStatus.Running, queue.Running), (OperationStatus.Completed, queue.Completed), (OperationStatus.Failed, queue.Failed) }.Where(count => count.Item2 > 0).Select(count => new StatusIndicatorViewModel(OperationStatusLevel.Of(count.Item1), $"{localisation.Get($"Operations.Status.{count.Item1}")}: {culture.FormatNumber(count.Item2)}"))];
+        OnPropertyChanged(nameof(StatusCounts));
     }
 
     private void Rebuild()

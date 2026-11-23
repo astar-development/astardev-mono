@@ -7,6 +7,16 @@
              x:DataType="vm:QueueViewModel">
     <DockPanel Margin="16">
         <TextBlock DockPanel.Dock="Top" Text="{Binding Title}" FontSize="24" FontWeight="SemiBold" Foreground="{DynamicResource Text.Primary.Brush}" />
+        <ItemsControl DockPanel.Dock="Top" ItemsSource="{Binding StatusCounts}" Margin="0,8,0,0">
+            <ItemsControl.ItemsPanel>
+                <ItemsPanelTemplate><WrapPanel /></ItemsPanelTemplate>
+            </ItemsControl.ItemsPanel>
+            <ItemsControl.ItemTemplate>
+                <DataTemplate x:DataType="svm:StatusIndicatorViewModel">
+                    <views:StatusIndicatorView Margin="0,0,16,0" />
+                </DataTemplate>
+            </ItemsControl.ItemTemplate>
+        </ItemsControl>
         <TextBlock DockPanel.Dock="Top" Text="{Binding ConflictsNote}" Foreground="{DynamicResource Text.Secondary.Brush}" TextWrapping="Wrap" Margin="0,8,0,0" />
         <StackPanel DockPanel.Dock="Top" IsVisible="{Binding HasDeadLetters}" Spacing="8" Margin="0,8,0,0">
             <TextBlock Text="{Binding DeadLettersHeading}" FontWeight="SemiBold" Foreground="{DynamicResource Text.Primary.Brush}" />

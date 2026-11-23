@@ -7,7 +7,7 @@ using Microsoft.Extensions.Logging;
 namespace AStarDev.CloudSync.Daemon;
 
 /// <summary>Serves the IPC contract. Registered after <see cref="StartupHostedService"/>, so it only listens once every recovery stage has finished.</summary>
-internal sealed class IpcHostedService(IIpcServer server, ConnectAccountHandler connectAccount, DisconnectAccountHandler disconnectAccount, AccountsQuery accounts, RootSummaryQuery rootSummary, DriveInfoQuery driveInfo, RemoteFoldersQuery remoteFolders, CreateSyncJobHandler createSyncJob, AddSyncScopeHandler addSyncScope, RemoveSyncScopeHandler removeSyncScope, SyncJobsQuery syncJobs, SyncScopesQuery syncScopes, StartSyncHandler startSync, StopSyncHandler stopSync, ActivitiesQuery activities, ConflictsQuery conflicts, DeadLettersQuery deadLetters, RetryOperationHandler retryOperation, IgnoreOperationHandler ignoreOperation, ResolveConflictHandler resolveConflict, SettingsQuery settings, SetSettingHandler setSetting, SyncStatusQuery syncStatus, DashboardSnapshotQuery dashboard, HistoryQuery history, LogsQuery logs, TracesQuery traces, DiagnosticsQuery diagnostics, MetricsQuery metrics, ProvidersQuery providers, AuditQuery audit, ExportQuery export, TimeProvider timeProvider, ILogger<IpcHostedService> logger) : IHostedService
+internal sealed class IpcHostedService(IIpcServer server, ConnectAccountHandler connectAccount, DisconnectAccountHandler disconnectAccount, AccountsQuery accounts, RootSummaryQuery rootSummary, DriveInfoQuery driveInfo, RemoteFoldersQuery remoteFolders, CreateSyncJobHandler createSyncJob, AddSyncScopeHandler addSyncScope, RemoveSyncScopeHandler removeSyncScope, SyncJobsQuery syncJobs, SyncScopesQuery syncScopes, StartSyncHandler startSync, StopSyncHandler stopSync, ActivitiesQuery activities, ConflictsQuery conflicts, DeadLettersQuery deadLetters, RetryOperationHandler retryOperation, IgnoreOperationHandler ignoreOperation, ResolveConflictHandler resolveConflict, SettingsQuery settings, SetSettingHandler setSetting, SyncStatusQuery syncStatus, DashboardSnapshotQuery dashboard, HistoryQuery history, QueueQuery queue, LogsQuery logs, TracesQuery traces, DiagnosticsQuery diagnostics, MetricsQuery metrics, ProvidersQuery providers, AuditQuery audit, ExportQuery export, TimeProvider timeProvider, ILogger<IpcHostedService> logger) : IHostedService
 {
     public async Task StartAsync(CancellationToken cancellationToken)
     {
@@ -44,6 +44,7 @@ internal sealed class IpcHostedService(IIpcServer server, ConnectAccountHandler 
         server.MapQuery<GetSyncStatus, SyncStatusView>(syncStatus.HandleAsync);
         server.MapQuery<GetDashboardSnapshot, DashboardView>(dashboard.HandleAsync);
         server.MapQuery<GetHistory, HistoryView>(history.HandleAsync);
+        server.MapQuery<GetQueue, QueueView>(queue.HandleAsync);
         server.MapQuery<GetLogs, LogsView>(logs.HandleAsync);
         server.MapQuery<GetTraces, TracesView>(traces.HandleAsync);
         server.MapQuery<GetDiagnostics, DiagnosticsView>(diagnostics.HandleAsync);

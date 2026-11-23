@@ -11,7 +11,9 @@ internal static class HistoryEntries
     public static OperationEntry ToEntry(HistoryEntryView view)
         => new(view.OperationId.ToString(), view.Provider, TypeOf(view.Type), view.Status == nameof(OperationStatus.Completed) ? OperationStatus.Completed : OperationStatus.Failed, view.Timestamp, view.Path, view.SizeBytes);
 
-    private static OperationType TypeOf(string daemonType) => daemonType switch
+    /// <summary>Names the screen's operation type for a daemon type. A daemon type the screen has no name for is a queue run.</summary>
+    /// <param name="daemonType">The daemon's operation type name, for example <c>UploadFile</c>.</param>
+    public static OperationType TypeOf(string daemonType) => daemonType switch
     {
         "UploadFile" => OperationType.Upload,
         "DownloadFile" => OperationType.Download,
