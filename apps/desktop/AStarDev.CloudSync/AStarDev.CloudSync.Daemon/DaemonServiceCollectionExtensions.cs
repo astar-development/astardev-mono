@@ -62,6 +62,8 @@ internal static class DaemonServiceCollectionExtensions
         services.AddSingleton<RetryOperationHandler>();
         services.AddSingleton<IgnoreOperationHandler>();
         services.AddSingleton<ResolveConflictHandler>();
+        services.AddSingleton<SettingsQuery>();
+        services.AddSingleton<SetSettingHandler>();
         services.AddHealthChecks().AddCheck<ProviderHealthCheck>(ApplicationConstants.ProviderHealthCheckName);
         services.AddHealthChecks().AddCheck<QueueHealthCheck>(ApplicationConstants.QueueHealthCheckName);
         services.AddHostedService<IpcHostedService>();

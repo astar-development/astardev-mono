@@ -46,6 +46,9 @@ internal sealed class CloudSyncDbContext(DbContextOptions<CloudSyncDbContext> op
     /// <summary>The append-only journal of significant occurrences.</summary>
     public DbSet<JournalEntryEntity> EventJournal => Set<JournalEntryEntity>();
 
+    /// <summary>The user settings that were changed from their defaults.</summary>
+    public DbSet<SettingEntity> Settings => Set<SettingEntity>();
+
     /// <summary>Saves inside a <c>persistence.save</c> span; see <see cref="PersistenceTelemetry"/>.</summary>
     public override int SaveChanges(bool acceptAllChangesOnSuccess)
     {
@@ -137,6 +140,8 @@ internal sealed class CloudSyncDbContext(DbContextOptions<CloudSyncDbContext> op
             entry.ToTable("EventJournal").HasKey(entity => entity.Id);
             entry.HasIndex(entity => new { entity.AggregateId, entity.OccurredUtc });
         });
+
+        modelBuilder.Entity<SettingEntity>(setting => setting.ToTable("Settings").HasKey(entity => entity.Name));
 
         modelBuilder.Entity<ItemEntity>(item =>
         {
