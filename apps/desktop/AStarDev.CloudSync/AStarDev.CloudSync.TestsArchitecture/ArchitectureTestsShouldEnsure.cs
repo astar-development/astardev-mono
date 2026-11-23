@@ -34,6 +34,23 @@ public sealed class ArchitectureTestsShouldEnsure
             .GetResult().IsSuccessful.ShouldBeTrue();
 
     [Fact]
+    public void the_errors_project_depends_on_nothing_in_cloudsync() =>
+        Types
+            .InAssembly(typeof(Errors.ErrorCode).Assembly)
+            .ShouldNot()
+            .HaveDependencyOnAny(
+                "AStarDev.CloudSync.Daemon",
+                "AStarDev.CloudSync.Domain",
+                "AStarDev.CloudSync.IPC",
+                "AStarDev.CloudSync.Observability",
+                "AStarDev.CloudSync.OneDrive",
+                "AStarDev.CloudSync.Persistence",
+                "AStarDev.CloudSync.Ports",
+                "AStarDev.CloudSync.SyncEngine",
+                "AStarDev.CloudSync.UI")
+            .GetResult().IsSuccessful.ShouldBeTrue();
+
+    [Fact]
     public void the_fake_provider_depends_only_on_the_domain_and_the_ports() =>
         Types
             .InAssembly(typeof(FakeProvider.FakeCloudProvider).Assembly)

@@ -39,6 +39,10 @@ public sealed class PublicSurfaceArchitectureTestsShouldEnsure
         => ShouldExposeExactly(typeof(Observability.TelemetryServiceCollectionExtensions).Assembly, "CorrelationScope", "TelemetryServiceCollectionExtensions");
 
     [Fact]
+    public void errors_exposes_only_its_approved_public_types()
+        => ShouldExposeExactly(typeof(Errors.ErrorCode).Assembly, "ErrorCode", "ErrorLinks", "IErrorInfo", "InvalidErrorCode");
+
+    [Fact]
     public void the_fake_provider_exposes_no_public_types()
         => ShouldExposeExactly(typeof(FakeProvider.FakeCloudProvider).Assembly);
 

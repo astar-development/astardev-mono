@@ -94,6 +94,8 @@ AStarDev.CloudSync.UI
 
 AStarDev.CloudSync.Observability
 
+AStarDev.CloudSync.Errors
+
 AStarDev.CloudSync.FakeProvider
 
 AStarDev.CloudSync.TestsIntegration
@@ -432,6 +434,36 @@ Rules:
 - Exposes no public types; the daemon and the test projects see it through InternalsVisibleTo
 - The daemon references it in Debug builds only, so a release build never ships it
 - A Debug daemon selects it with `CloudSync:Provider=Fake`; see `docs/runbooks/cloudsync-fake-provider.md`
+
+---
+
+## AStarDev.CloudSync.Errors
+
+Purpose:
+
+```text
+One Error Code And Help Link Contract
+```
+
+Contains:
+
+- ErrorCode (`CS-<MODULE>-<NNNN>`, validated)
+- IErrorInfo (code and help link of an error)
+- ErrorLinks (link root `https://astar-development.co.uk/errors/`, link for a code, `Exception.HelpLink` helper)
+
+Rules:
+
+- Depends only on `AStarDev.FunctionalParadigm`
+- Ports, IPC, Persistence, SyncEngine, OneDrive, Daemon and UI may reference it; Domain may not
+- Holds no module's error types: each module keeps its own and implements `IErrorInfo`
+
+Must Never Become:
+
+```text
+Common
+Shared
+Utilities
+```
 
 ---
 

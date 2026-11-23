@@ -1,0 +1,18 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <Nullable>enable</Nullable>
+    <TargetFramework>net11.0</TargetFramework>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="..\..\..\..\nuget-packages\AStarDev.FunctionalParadigm\AStarDev.FunctionalParadigm.csproj" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <InternalsVisibleTo Include="AStarDev.CloudSync.Errors.TestsUnit" />
+    <InternalsVisibleTo Include="AStarDev.CloudSync.TestsArchitecture" />
+  </ItemGroup>
+
+</Project>
