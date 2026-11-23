@@ -69,7 +69,7 @@ public sealed class ProvidersViewModelShould
     }
 
     [Fact]
-    public async Task show_an_actionable_error_with_a_correlation_placeholder_and_a_diagnostics_link()
+    public async Task show_an_actionable_error_with_no_trace_and_a_diagnostics_link()
     {
         using var host = ProviderTestHost.Create(new FakeIpcClient([], available: false));
 
@@ -79,6 +79,7 @@ public sealed class ProvidersViewModelShould
         error.Message.ShouldContain("daemon");
         error.RetryGuidance.ShouldNotStartWith("!");
         error.CorrelationText.ShouldNotStartWith("!");
+        error.CorrelationText.ShouldContain("none");
         error.OpenDiagnosticsCommand.Execute(null);
         host.Navigation.Current.Id.ShouldBe(ScreenId.Diagnostics);
     }
