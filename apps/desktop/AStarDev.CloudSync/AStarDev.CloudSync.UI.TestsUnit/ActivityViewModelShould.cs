@@ -53,6 +53,67 @@ public sealed class ActivityViewModelShould
         host.Screen<ActivityViewModel>().HasDaemonActivities.ShouldBeFalse();
     }
 
+    private static readonly DateTimeOffset Queued = new(2026, 11, 20, 12, 0, 0, TimeSpan.Zero);
+
+    private static QueuedOperationView Operation(string status, string type, string path, DateTimeOffset queued) => new(Guid.NewGuid(), "OneDrive", type, status, path, 2048, queued);
+
+    [Fact]
+    public void list_the_daemons_pending_and_running_operations_newest_first()
+    {
+        using var host = OperationScreensHost.Create();
+        var activity = host.Screen<ActivityViewModel>();
+        var older = Operation("Running", "DownloadFile", "Docs/report.docx", Queued.AddMinutes(-5));
+        var newer = Operation("Pending", "UploadFile", "Photos/a.jpg", Queued);
+
+        host.Services.GetRequiredService<ConnectionViewModel>().Queue = new QueueView(1, 1, 0, 0, [older, newer]);
+
+        activity.Rows.Select(row => row.Entry).ShouldBe([new OperationEntry(newer.OperationId.ToString(), "OneDrive", OperationType.Upload, OperationStatus.Pending, Queued, "Photos/a.jpg", 2048), new OperationEntry(older.OperationId.ToString(), "OneDrive", OperationType.Download, OperationStatus.Running, Queued.AddMinutes(-5), "Docs/report.docx", 2048)]);
+        activity.Rows[0].Date.ShouldBe("20/11/2026");
+        activity.Rows[0].Time.ShouldBe("12:00");
+        activity.HasNoRows.ShouldBeFalse();
+    }
+
+    [Fact]
+    public void follow_the_queue_and_say_so_when_it_empties()
+    {
+        using var host = OperationScreensHost.Create();
+        var activity = host.Screen<ActivityViewModel>();
+        var connection = host.Services.GetRequiredService<ConnectionViewModel>();
+        connection.Queue = new QueueView(1, 0, 0, 0, [Operation("Pending", "UploadFile", "a.txt", Queued)]);
+
+        connection.Queue = new QueueView(0, 0, 1, 0, []);
+
+        activity.Rows.ShouldBeEmpty();
+        activity.HasNoRows.ShouldBeTrue();
+        activity.NoMatchesText.ShouldBe("No operations to show yet.");
+    }
+
+    [Fact]
+    public void filter_the_daemons_operations_by_type_and_path()
+    {
+        using var host = OperationScreensHost.Create();
+        var activity = host.Screen<ActivityViewModel>();
+        host.Services.GetRequiredService<ConnectionViewModel>().Queue = new QueueView(3, 0, 0, 0, [Operation("Pending", "UploadFile", "a/one.txt", Queued), Operation("Pending", "DeleteLocal", "a/two.txt", Queued), Operation("Pending", "UploadFile", "b/three.txt", Queued)]);
+
+        activity.SelectedType = activity.TypeChoices.Single(choice => choice.Value == nameof(OperationType.Upload));
+        activity.PathText = "A/";
+
+        activity.Rows.Select(row => row.Entry.Path).ShouldBe(["a/one.txt"]);
+    }
+
+    [Fact]
+    public void open_the_operation_named_by_a_navigation_target()
+    {
+        using var host = OperationScreensHost.Create();
+        var activity = host.Screen<ActivityViewModel>();
+        var target = Operation("Running", "RenameLocal", "x.txt", Queued);
+        host.Services.GetRequiredService<ConnectionViewModel>().Queue = new QueueView(0, 1, 0, 0, [target]);
+
+        activity.OnNavigatedTo(target.OperationId.ToString());
+
+        activity.Details.Row!.Entry.Path.ShouldBe("x.txt");
+    }
+
     [Fact]
     public void localise_its_export_explanation()
     {

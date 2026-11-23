@@ -77,6 +77,27 @@ public sealed class ConnectionViewModelShould
     }
 
     [Fact]
+    public async Task load_the_queue_on_connect_and_follow_changes()
+    {
+        var queued = new QueuedOperationView(Guid.NewGuid(), "OneDrive", "UploadFile", "Pending", "a.txt", 12, DateTimeOffset.UnixEpoch);
+        var client = new FakeIpcClient([], available: true) { QueueReply = new Ok<QueueView>(new QueueView(1, 0, 0, 0, [queued])) };
+        var viewModel = Create(client);
+        var seen = new List<IEvent>();
+        viewModel.EventReceived += seen.Add;
+        using var source = CancellationTokenSource.CreateLinkedTokenSource(Token);
+
+        var run = viewModel.RunAsync(source.Token);
+        await WaitForAsync(() => viewModel.Queue.Pending == 1);
+        var changed = new QueueChanged(new QueueView(0, 1, 1, 0, [queued with { Status = "Running" }]));
+        client.Raise(changed);
+        await source.CancelAsync();
+        await Should.ThrowAsync<OperationCanceledException>(() => run);
+
+        viewModel.Queue.ShouldBe(changed.Queue);
+        seen.ShouldBe([changed]);
+    }
+
+    [Fact]
     public async Task reconnect_when_the_daemon_returns()
     {
         var first = new FakeIpcClient([], available: true);
@@ -133,7 +154,7 @@ public sealed class ConnectionViewModelShould
         await source.CancelAsync();
         await Should.ThrowAsync<OperationCanceledException>(() => run);
 
-        calls.ShouldBe(["connect", "query", "query", "query", "query", "query", "subscribe"]);
+        calls.ShouldBe(["connect", "query", "query", "query", "query", "query", "query", "subscribe"]);
         viewModel.DaemonStatus.ShouldBe(FakeIpcClient.Status);
     }
 

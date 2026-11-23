@@ -5,7 +5,7 @@ using AStarDev.CloudSync.UI.ViewModels.Operations;
 
 namespace AStarDev.CloudSync.UI.ViewModels.Screens;
 
-/// <summary>The Activity screen: what is happening now. Shows what the daemon reports for each job, then the pending and running operations.</summary>
+/// <summary>The Activity screen: what is happening now. Shows what the daemon reports for each job, then the pending and running operations the daemon queued.</summary>
 internal sealed class ActivityViewModel : OperationListViewModel, IScreen
 {
     private readonly ILocalisationService localisation;
@@ -13,7 +13,7 @@ internal sealed class ActivityViewModel : OperationListViewModel, IScreen
     /// <summary>Creates the screen with its filters and starts following the daemon's activities.</summary>
     /// <param name="localisation">Supplies every text.</param>
     /// <param name="culture">Formats every date, time and number.</param>
-    /// <param name="connection">Holds the activities the daemon reported; the screen rebuilds its rows whenever they change.</param>
+    /// <param name="connection">Holds the activities and the queue the daemon reported; the screen rebuilds its rows whenever they change.</param>
     public ActivityViewModel(ILocalisationService localisation, ICultureService culture, ConnectionViewModel connection)
         : base(localisation, culture, [OperationStatus.Pending, OperationStatus.Running], true)
     {
@@ -27,6 +27,7 @@ internal sealed class ActivityViewModel : OperationListViewModel, IScreen
 
         connection.Activities.CollectionChanged += (_, _) => Rebuild();
         Rebuild();
+        FollowQueue(connection, _ => { });
     }
 
     /// <summary>What the daemon is doing for each job, in the daemon's own numbers.</summary>

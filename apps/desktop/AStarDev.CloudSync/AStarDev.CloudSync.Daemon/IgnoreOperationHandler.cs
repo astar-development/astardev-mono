@@ -6,7 +6,7 @@ using AStarDev.FunctionalParadigm;
 namespace AStarDev.CloudSync.Daemon;
 
 /// <summary>Answers <see cref="IgnoreOperation"/> by dropping the dead-lettered operation from the queue.</summary>
-internal sealed class IgnoreOperationHandler(IOperationStore store, SyncStatusQuery status)
+internal sealed class IgnoreOperationHandler(IOperationStore store, SyncStatusQuery status, QueueQuery queue)
 {
     /// <summary>Deletes the operation so it is never run.</summary>
     /// <returns>
@@ -23,6 +23,7 @@ internal sealed class IgnoreOperationHandler(IOperationStore store, SyncStatusQu
     private async Task<Result<CommandResult, IpcError>> AcceptedAsync(CancellationToken cancellationToken)
     {
         _ = await status.PublishIfChangedAsync(cancellationToken);
+        _ = await queue.PublishIfChangedAsync(cancellationToken);
 
         return new Ok<CommandResult>(new CommandResult(CommandOutcome.Accepted));
     }

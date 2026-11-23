@@ -74,7 +74,9 @@ internal static class DaemonServiceCollectionExtensions
         services.AddSingleton<SetSettingHandler>();
         services.AddSingleton<SyncStatusQuery>();
         services.AddSingleton<DashboardSnapshotQuery>();
+        services.AddSingleton<OperationLookup>();
         services.AddSingleton<HistoryQuery>();
+        services.AddSingleton<QueueQuery>();
         services.AddSingleton<LogsQuery>();
         services.AddSingleton<TracesQuery>();
         services.AddSingleton<DiagnosticsQuery>();
@@ -83,6 +85,7 @@ internal static class DaemonServiceCollectionExtensions
         services.AddHealthChecks().AddCheck<ProviderHealthCheck>(ApplicationConstants.ProviderHealthCheckName);
         services.AddHealthChecks().AddCheck<QueueHealthCheck>(ApplicationConstants.QueueHealthCheckName);
         services.AddHostedService<IpcHostedService>();
+        services.AddHostedService<QueuePublisher>();
 #if DEBUG
         services.AddDevelopmentProviderSwitch();
 #endif

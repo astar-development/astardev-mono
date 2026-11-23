@@ -43,13 +43,20 @@ public sealed partial class ConnectionViewModel(Func<IIpcClient> createClient, T
     public ObservableCollection<DeadLetterView> DeadLetters { get; } = [];
 
     /// <summary>
+    /// The queue as the daemon reported it: read once on each connect, then replaced by each <see cref="QueueChanged"/> event. Holds the counts per status and the pending and running operations, shown as received.
+    /// Empty until the first read succeeds; not cleared when the link drops, so a reconnect replaces it rather than flashing empty.
+    /// </summary>
+    [ObservableProperty]
+    public partial QueueView Queue { get; set; } = new(0, 0, 0, 0, []);
+
+    /// <summary>
     /// The conflicts that wait for the user, deferred ones included, across every job: read once on each connect, then kept current by <see cref="ConflictDetected"/> and <see cref="ConflictResolved"/> events and replaced by the Conflicts screen after each decision.
     /// A deferred conflict raises no event, so a decision to defer shows here only through that replacement. Shown as received, not cleared when the link drops.
     /// </summary>
     public ObservableCollection<ConflictView> Conflicts { get; } = [];
 
     /// <summary>
-    /// Raised on the UI thread for each daemon event pushed while connected, before the event changes <see cref="DaemonStatus"/>, <see cref="Activities"/> or <see cref="Conflicts"/>, so a listener can still read the previous value.
+    /// Raised on the UI thread for each daemon event pushed while connected, before the event changes <see cref="DaemonStatus"/>, <see cref="Activities"/>, <see cref="Queue"/> or <see cref="Conflicts"/>, so a listener can still read the previous value.
     /// The reads done on each connect do not raise it.
     /// </summary>
     internal event Action<IEvent>? EventReceived;
@@ -122,6 +129,11 @@ public sealed partial class ConnectionViewModel(Func<IIpcClient> createClient, T
             Remove(resolved.ConflictId);
         }));
         client.OnEvent<DashboardChanged>(changed => postToUi(() => EventReceived?.Invoke(changed)));
+        client.OnEvent<QueueChanged>(changed => postToUi(() =>
+        {
+            EventReceived?.Invoke(changed);
+            Queue = changed.Queue;
+        }));
         client.OnEvent<CrawlProgressChanged>(progress => postToUi(() => EventReceived?.Invoke(progress)));
 
         var connected = await client.ConnectAsync(cancellationToken);
@@ -143,6 +155,7 @@ public sealed partial class ConnectionViewModel(Func<IIpcClient> createClient, T
         if (await client.QueryAsync(new GetSyncStatus(), cancellationToken) is Ok<SyncStatusView> syncStatus) postToUi(() => SyncStatus = Option.Some(syncStatus.Value));
         if (await client.QueryAsync(new GetActivities(), cancellationToken) is Ok<ActivitiesView> activities) postToUi(() => Replace(activities.Value.Activities));
         if (await client.QueryAsync(new GetDeadLetters(), cancellationToken) is Ok<DeadLettersView> deadLetters) postToUi(() => ReplaceDeadLetters(deadLetters.Value.DeadLetters));
+        if (await client.QueryAsync(new GetQueue(), cancellationToken) is Ok<QueueView> queue) postToUi(() => Queue = queue.Value);
         if (await ConflictListing.ListAsync(client, cancellationToken) is Ok<IReadOnlyList<ConflictView>> conflicts) postToUi(() => ReplaceConflicts(conflicts.Value));
 
         return await client.SubscribeAsync(cancellationToken);

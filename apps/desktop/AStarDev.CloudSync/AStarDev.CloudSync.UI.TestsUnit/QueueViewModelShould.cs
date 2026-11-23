@@ -18,6 +18,41 @@ public sealed class QueueViewModelShould
     private static Result<DeadLettersView, IpcError> Reply(params DeadLetterView[] views) => new Ok<DeadLettersView>(new DeadLettersView(views));
 
     [Fact]
+    public void show_a_real_count_per_status_and_the_pending_and_running_operations()
+    {
+        using var host = OperationScreensHost.Create();
+        var queue = host.Screen<QueueViewModel>();
+        var running = new QueuedOperationView(Guid.NewGuid(), "OneDrive", "UploadFile", "Running", "a.txt", 1, Created);
+
+        host.Services.GetRequiredService<ConnectionViewModel>().Queue = new QueueView(2, 1, 4, 0, [running]);
+
+        queue.StatusCounts.Select(count => count.Text).ShouldBe(["Pending: 2", "Running: 1", "Completed: 4"]);
+        queue.Rows.ShouldHaveSingleItem().Entry.Status.ShouldBe(OperationStatus.Running);
+    }
+
+    [Fact]
+    public void follow_the_queue_when_it_changes()
+    {
+        using var host = OperationScreensHost.Create();
+        var queue = host.Screen<QueueViewModel>();
+        var connection = host.Services.GetRequiredService<ConnectionViewModel>();
+        connection.Queue = new QueueView(1, 0, 0, 0, [new QueuedOperationView(Guid.NewGuid(), "OneDrive", "UploadFile", "Pending", "a.txt", 1, Created)]);
+
+        connection.Queue = new QueueView(0, 0, 1, 1, []);
+
+        queue.StatusCounts.Select(count => count.Text).ShouldBe(["Completed: 1", "Failed: 1"]);
+        queue.Rows.ShouldBeEmpty();
+    }
+
+    [Fact]
+    public void show_no_count_before_the_daemon_has_reported()
+    {
+        using var host = OperationScreensHost.Create();
+
+        host.Screen<QueueViewModel>().StatusCounts.ShouldBeEmpty();
+    }
+
+    [Fact]
     public void hide_the_filters_and_point_conflicts_to_their_own_screen()
     {
         using var host = OperationScreensHost.Create();

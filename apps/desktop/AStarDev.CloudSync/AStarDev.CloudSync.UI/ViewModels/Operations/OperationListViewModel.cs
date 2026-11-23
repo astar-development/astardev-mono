@@ -1,4 +1,5 @@
 using System.Collections.ObjectModel;
+using AStarDev.CloudSync.IPC;
 using AStarDev.CloudSync.UI.Localisation;
 using CommunityToolkit.Mvvm.Input;
 
@@ -150,6 +151,24 @@ internal abstract class OperationListViewModel : ViewModelBase
         OnPropertyChanged(nameof(SelectedProvider));
         OnPropertyChanged(nameof(SelectedType));
         Refilter();
+    }
+
+    /// <summary>Shows the pending and running operations the daemon reported, now and after every change of <see cref="ConnectionViewModel.Queue"/>.</summary>
+    /// <param name="connection">Holds the queue the daemon reported.</param>
+    /// <param name="changed">Called with the queue each time it is shown, so a screen can show more than the operations.</param>
+    protected void FollowQueue(ConnectionViewModel connection, Action<QueueView> changed)
+    {
+        void Show()
+        {
+            Load([.. connection.Queue.Operations.Select(QueueEntries.ToEntry)]);
+            changed(connection.Queue);
+        }
+
+        connection.PropertyChanged += (_, args) =>
+        {
+            if (args.PropertyName == nameof(ConnectionViewModel.Queue)) Show();
+        };
+        Show();
     }
 
     private FilterChoice Keep(IReadOnlyList<FilterChoice> choices, FilterChoice selected) => choices.FirstOrDefault(choice => choice.Value == selected.Value) ?? all;

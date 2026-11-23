@@ -55,5 +55,7 @@ internal static class ApplicationConstants
 
     public static TimeSpan MetricSampleInterval => TimeSpan.FromMinutes(1);
 
+    public static TimeSpan QueuePollInterval => TimeSpan.FromSeconds(2);
+
     public static string InterruptedOperationReason => "Interrupted by a daemon restart.";
 }
