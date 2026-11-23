@@ -32,4 +32,13 @@ public sealed class ErrorCodeShould
 
         result.Value.ShouldBeOfType<Fail<InvalidErrorCode>>().Error.Value.ShouldBe(text ?? string.Empty);
     }
+
+    [Fact]
+    public void be_empty_text_and_never_null_for_the_default_value()
+    {
+        var none = default(ErrorCode);
+
+        none.Value.ShouldBe(string.Empty);
+        none.ToString().ShouldBe(string.Empty);
+    }
 }
