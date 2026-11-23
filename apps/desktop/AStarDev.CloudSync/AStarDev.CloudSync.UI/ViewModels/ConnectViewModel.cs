@@ -1,3 +1,4 @@
+using AStarDev.CloudSync.Errors;
 using AStarDev.CloudSync.IPC;
 using AStarDev.FunctionalParadigm;
 using CommunityToolkit.Mvvm.ComponentModel;
@@ -26,6 +27,10 @@ public sealed partial class ConnectViewModel(Func<IIpcClient> createClient) : Vi
     [ObservableProperty]
     public partial string? ErrorTraceId { get; set; }
 
+    /// <summary>The code of the last failure, which names its help page. <c>default</c> (empty) when the failure has none and after a request that worked.</summary>
+    [ObservableProperty]
+    public partial ErrorCode ErrorCode { get; set; }
+
     /// <summary>Ready-made label for <see cref="ItemCount"/>, empty while there is no count.</summary>
     public string ItemCountText => ItemCount switch
     {
@@ -44,6 +49,7 @@ public sealed partial class ConnectViewModel(Func<IIpcClient> createClient) : Vi
         IsBusy = true;
         ErrorMessage = null;
         ErrorTraceId = null;
+        ErrorCode = default;
         ItemCount = null;
 
         try
@@ -55,6 +61,7 @@ public sealed partial class ConnectViewModel(Func<IIpcClient> createClient) : Vi
                     break;
                 case Fail<ConnectFailure> fail:
                     ErrorTraceId = fail.Error.TraceId.Match(id => (string?)id, () => null);
+                    ErrorCode = fail.Error.Code;
                     ErrorMessage = fail.Error.Message;
                     break;
             }

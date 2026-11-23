@@ -25,6 +25,9 @@
                     <TextBlock Text="{Binding Message}" Foreground="{DynamicResource Trust.Critical.Brush}" TextWrapping="Wrap" />
                     <TextBlock Text="{Binding RetryGuidance}" TextWrapping="Wrap" />
                     <TextBlock Text="{Binding CorrelationText}" Foreground="{DynamicResource Text.Secondary.Brush}" />
+                    <TextBlock Text="{Binding CodeText}" IsVisible="{Binding HasLink}" Foreground="{DynamicResource Text.Secondary.Brush}" />
+                    <TextBlock Text="{Binding HelpLink}" IsVisible="{Binding HasLink}" Foreground="{DynamicResource Text.Secondary.Brush}" TextWrapping="Wrap" />
+                    <Button Content="{loc:Loc Providers.Error.OpenLink}" IsVisible="{Binding HasLink}" Command="{Binding OpenLinkCommand}" HorizontalAlignment="Left" />
                     <Button Content="{loc:Loc Providers.Error.Diagnostics}" Command="{Binding OpenDiagnosticsCommand}" HorizontalAlignment="Left" />
                 </StackPanel>
             </Border>
