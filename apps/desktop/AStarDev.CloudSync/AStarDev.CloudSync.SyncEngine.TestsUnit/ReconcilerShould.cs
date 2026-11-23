@@ -144,6 +144,10 @@ public sealed class ReconcilerShould
         => Describe(new Reconciler().Reconcile(ReconcilerStates.State(null, null, null))).ShouldBe("NoOp");
 
     [Fact]
+    public void leave_a_known_item_alone_when_the_disk_was_never_observed_for_it()
+        => Describe(new Reconciler().Reconcile(ReconcilerStates.State(ReconcilerStates.Known(), null, ReconcilerStates.Remote()) with { LocalObserved = false })).ShouldBe("NoOp");
+
+    [Fact]
     public void treat_creations_with_equal_path_size_and_time_but_no_proof_as_a_conflict()
     {
         var state = ReconcilerStates.State(null, ReconcilerStates.Local("/A.txt"), ReconcilerStates.Remote("/A.txt"));

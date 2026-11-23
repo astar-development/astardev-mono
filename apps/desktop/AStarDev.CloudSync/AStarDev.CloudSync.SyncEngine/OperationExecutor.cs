@@ -15,6 +15,7 @@ internal sealed class OperationExecutor(ISyncJobStore jobStore, IItemStateStore 
     /// Rebuilds the item's canonical state, as the planner saw it, and acts on it. A store that cannot be read is <see cref="Transient"/>.
     /// A local file that is locked, access-denied or outside the root is <see cref="Permanent"/>, so the operation dead-letters at once.
     /// A download, upload or rename whose item has vanished is <see cref="Permanent"/>; a delete whose item has vanished is success, so every operation is safe to repeat.
+    /// A remote delete is refused as <see cref="Permanent"/>, so it dead-letters for the user to decide, when the file is on disk at its remote, baseline or local path: nothing is deleted from the provider while a local copy exists.
     /// </remarks>
     public async Task<Result<Unit, ProviderError>> ExecuteAsync(Operation operation, CancellationToken cancellationToken)
     {
@@ -62,7 +63,7 @@ internal sealed class OperationExecutor(ISyncJobStore jobStore, IItemStateStore 
         if (type == OperationType.UploadFile) return UploadAsync(root, state, cancellationToken);
         if (type == OperationType.RenameRemote) return RenameRemoteAsync(state, cancellationToken);
         if (type == OperationType.RenameLocal) return Task.FromResult(RenameLocal(root, state));
-        if (type == OperationType.DeleteRemote) return DeleteRemoteAsync(state, cancellationToken);
+        if (type == OperationType.DeleteRemote) return DeleteRemoteAsync(root, state, cancellationToken);
 
         return Task.FromResult(DeleteLocal(root, state));
     }
@@ -114,8 +115,16 @@ internal sealed class OperationExecutor(ISyncJobStore jobStore, IItemStateStore 
             ? files.Move(root, local.Path, remote.Path)
             : Missing("local or remote item");
 
-    private Task<Result<Unit, ProviderError>> DeleteRemoteAsync(CanonicalItemState? state, CancellationToken cancellationToken)
-        => state?.Remote is { } remote ? provider.DeleteAsync(remote.ItemId, cancellationToken) : Task.FromResult(Done());
+    private Task<Result<Unit, ProviderError>> DeleteRemoteAsync(string root, CanonicalItemState? state, CancellationToken cancellationToken)
+        => state is { Remote: { } remote } ? DeleteUnlessOnDiskAsync(root, state, remote, cancellationToken) : Task.FromResult(Done());
+
+    private Task<Result<Unit, ProviderError>> DeleteUnlessOnDiskAsync(string root, CanonicalItemState state, RemoteSnapshot remote, CancellationToken cancellationToken)
+        => IsOnDisk(root, state, remote)
+            ? Task.FromResult<Result<Unit, ProviderError>>(new Fail<ProviderError>(new Permanent("The remote item was not deleted because the file still exists on disk.")))
+            : provider.DeleteAsync(remote.ItemId, cancellationToken);
+
+    private bool IsOnDisk(string root, CanonicalItemState state, RemoteSnapshot remote)
+        => files.Exists(root, remote.Path) || (state.Known is { } known && files.Exists(root, known.Path)) || (state.Local is { } local && files.Exists(root, local.Path));
 
     private Result<Unit, ProviderError> DeleteLocal(string root, CanonicalItemState? state)
         => state?.Local is { } local ? files.Delete(root, local.Path) : Done();

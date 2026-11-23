@@ -32,6 +32,37 @@ public sealed class PlannerShould
     }
 
     [Fact]
+    public async Task queue_nothing_for_a_known_remote_file_the_local_scan_has_not_seen_yet()
+    {
+        await using var host = CreateHost();
+        var job = await SeedAsync(host);
+        await AddRemoteAsync(host, job, "r1", "a.txt", 10);
+        var item = (await Items(host, job)).Single().ItemId;
+        await CommitKnownAsync(host, job, item, new KnownSnapshot(new RelativePath("a.txt"), 10, Stamp, null, null));
+
+        var summary = await PlanAsync(host, job);
+
+        summary.ShouldBe(new PlanSummary(0, 0));
+        (await Operations(host)).ShouldBeEmpty();
+    }
+
+    [Fact]
+    public async Task queue_a_remote_delete_once_the_local_scan_recorded_the_file_gone()
+    {
+        await using var host = CreateHost();
+        var job = await SeedAsync(host);
+        await AddRemoteAsync(host, job, "r1", "a.txt", 10);
+        await RecordLocalAsync(host, job, "a.txt", 10);
+        var item = (await Items(host, job)).Single().ItemId;
+        await CommitKnownAsync(host, job, item, new KnownSnapshot(new RelativePath("a.txt"), 10, Stamp, null, new ContentFingerprint("fp10")));
+        (await host.Services.GetRequiredService<ILocalObservationStore>().RecordAsync(job, [], [new RelativePath("a.txt")], Stamp.AddHours(3), Token)).Value.ShouldBeOfType<Ok<Unit>>();
+
+        await PlanAsync(host, job);
+
+        (await Operations(host)).ShouldHaveSingleItem().Type.ShouldBe(OperationType.DeleteRemote);
+    }
+
+    [Fact]
     public async Task persist_a_conflict_for_modify_modify()
     {
         await using var host = CreateHost();
