@@ -8,6 +8,7 @@
   "Operations.Filter.To": "To",
   "Operations.Filter.Path": "Affected path",
   "Operations.Filter.Clear": "Clear filters",
+  "Operations.Empty": "No operations to show yet.",
   "Operations.NoMatches": "No operations match the filters.",
   "Operations.Export": "Export",
   "Operations.ExportDisabled": "Export is not available yet: it needs the daemon to provide the event record.",
