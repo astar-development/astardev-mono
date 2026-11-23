@@ -1,4 +1,5 @@
 using AStarDev.CloudSync.Domain;
+using AStarDev.CloudSync.Errors;
 using AStarDev.CloudSync.Ports;
 using AStarDev.FunctionalParadigm;
 
@@ -41,7 +42,7 @@ internal sealed class PhysicalLocalFileStore : ILocalFileStore
         return full.StartsWith(fullRoot + Path.DirectorySeparatorChar, StringComparison.Ordinal) ? full : null;
     }
 
-    private static string Inside(string root, RelativePath path) => Resolve(root, path) ?? throw new UnauthorizedAccessException($"'{path.Value}' is outside the sync root.");
+    internal static string Inside(string root, RelativePath path) => Resolve(root, path) ?? throw new UnauthorizedAccessException($"'{path.Value}' is outside the sync root.").WithHelpLink(SyncEngineErrorCodes.PathOutsideRoot);
 
     private static async Task<Unit> ReplaceAsync(string target, Stream content, DateTimeOffset modifiedUtc, CancellationToken cancellationToken)
     {
