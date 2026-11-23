@@ -29,7 +29,7 @@ internal sealed class SetSettingHandler(ISettingsStore store, AuditJournal audit
 
     private Ok<CommandResult> Reject(string message)
     {
-        logger.LogWarning("Saving a setting failed: {Message}", message);
+        DaemonLog.SetSettingFailed(logger, message);
 
         return new Ok<CommandResult>(new CommandResult(CommandOutcome.Rejected, message));
     }

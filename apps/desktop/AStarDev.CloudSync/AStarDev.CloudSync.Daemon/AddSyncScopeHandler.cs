@@ -30,7 +30,7 @@ internal sealed class AddSyncScopeHandler(ISyncScopeStore store, AuditJournal au
 
     private Ok<CommandResult> Reject(string message)
     {
-        logger.LogWarning("Adding a sync scope failed: {Message}", message);
+        DaemonLog.AddSyncScopeFailed(logger, message);
 
         return new Ok<CommandResult>(new CommandResult(CommandOutcome.Rejected, message));
     }

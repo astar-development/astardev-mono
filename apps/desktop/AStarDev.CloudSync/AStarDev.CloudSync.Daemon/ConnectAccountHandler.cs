@@ -61,7 +61,7 @@ internal sealed class ConnectAccountHandler(ICloudProvider provider, IAccountSto
 
     private async Task<Result<CommandResult, IpcError>> AnnounceAsync(ProviderAccount account, AccountId id, CancellationToken cancellationToken)
     {
-        logger.LogInformation("Connected account {AccountId}", id.Value);
+        DaemonLog.AccountConnected(logger, id.Value);
         await audit.RecordAsync("AccountConnected", id.Value, new { accountId = id.Value }, cancellationToken);
 
         return await server.PublishAsync(new AccountConnected(account.DisplayName), cancellationToken) switch
@@ -74,7 +74,7 @@ internal sealed class ConnectAccountHandler(ICloudProvider provider, IAccountSto
     private Ok<CommandResult> Reject(string message)
     {
         var traceId = Activity.Current?.TraceId.ToString();
-        logger.LogWarning("Connecting an account failed: {Message}", message);
+        DaemonLog.ConnectAccountFailed(logger, message);
 
         return new Ok<CommandResult>(new CommandResult(CommandOutcome.Rejected, message, traceId));
     }

@@ -37,7 +37,7 @@ internal sealed class DisconnectAccountHandler(ICloudProvider provider, IAccount
 
     private async Task<Result<CommandResult, IpcError>> AnnounceAsync(Account account, CancellationToken cancellationToken)
     {
-        logger.LogInformation("Disconnected account {AccountId}", account.Id.Value);
+        DaemonLog.AccountDisconnected(logger, account.Id.Value);
         await audit.RecordAsync("AccountDisconnected", account.Id.Value, new { accountId = account.Id.Value }, cancellationToken);
 
         return await server.PublishAsync(new AccountDisconnected(account.Id.Value), cancellationToken) switch
@@ -49,7 +49,7 @@ internal sealed class DisconnectAccountHandler(ICloudProvider provider, IAccount
 
     private Ok<CommandResult> Reject(string message)
     {
-        logger.LogWarning("Disconnecting an account failed: {Message}", message);
+        DaemonLog.DisconnectAccountFailed(logger, message);
 
         return new Ok<CommandResult>(new CommandResult(CommandOutcome.Rejected, message));
     }

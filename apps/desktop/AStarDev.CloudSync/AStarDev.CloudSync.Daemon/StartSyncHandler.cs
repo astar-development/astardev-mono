@@ -24,7 +24,7 @@ internal sealed class StartSyncHandler(SyncRunner runner, ILogger<StartSyncHandl
 
     private Ok<CommandResult> Reject(string message)
     {
-        logger.LogWarning("Starting the sync failed: {Message}", message);
+        DaemonLog.StartSyncFailed(logger, message);
 
         return new Ok<CommandResult>(new CommandResult(CommandOutcome.Rejected, message));
     }
