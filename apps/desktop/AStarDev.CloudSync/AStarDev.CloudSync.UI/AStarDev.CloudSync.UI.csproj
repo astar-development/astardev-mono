@@ -8,6 +8,7 @@
   </PropertyGroup>
 
   <ItemGroup>
+    <ProjectReference Include="..\AStarDev.CloudSync.Errors\AStarDev.CloudSync.Errors.csproj" />
     <ProjectReference Include="..\AStarDev.CloudSync.IPC\AStarDev.CloudSync.IPC.csproj" />
     <ProjectReference Include="..\AStarDev.CloudSync.Observability\AStarDev.CloudSync.Observability.csproj" />
     <ProjectReference Include="..\AStarDev.SingleInstance\AStarDev.SingleInstance.csproj" />
