@@ -20,7 +20,7 @@ public sealed class PersistenceArchitectureTestsShouldEnsure
             .GetResult().IsSuccessful.ShouldBeTrue();
 
     [Fact]
-    public void the_persistence_project_file_references_only_domain_ports_and_the_functional_paradigm_library()
+    public void the_persistence_project_file_references_only_domain_ports_errors_and_the_functional_paradigm_library()
     {
         var project = XDocument.Load(ProjectFile());
 
@@ -28,7 +28,7 @@ public sealed class PersistenceArchitectureTestsShouldEnsure
             .Select(reference => Path.GetFileNameWithoutExtension(reference.Attribute("Include")!.Value.Replace('\\', '/')))
             .Order();
 
-        references.ShouldBe(["AStarDev.CloudSync.Domain", "AStarDev.CloudSync.Ports", "AStarDev.FunctionalParadigm"]);
+        references.ShouldBe(["AStarDev.CloudSync.Domain", "AStarDev.CloudSync.Errors", "AStarDev.CloudSync.Ports", "AStarDev.FunctionalParadigm"]);
     }
 
     private static string ProjectFile()
