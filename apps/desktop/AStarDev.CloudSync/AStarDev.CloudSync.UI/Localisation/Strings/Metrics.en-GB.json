@@ -1,4 +1,7 @@
 {
   "Metrics.Title": "Metrics",
-  "Metrics.Glyph": "📊"
+  "Metrics.Glyph": "📊",
+  "Metrics.Refresh": "Refresh",
+  "Metrics.Empty": "No metrics have been sampled yet.",
+  "Metrics.Row.Current": "{value} {unit}"
 }

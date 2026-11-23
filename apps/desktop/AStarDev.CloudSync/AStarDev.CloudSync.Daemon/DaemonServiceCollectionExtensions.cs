@@ -34,6 +34,8 @@ internal static class DaemonServiceCollectionExtensions
         services.AddCloudSyncPersistence();
         services.AddSingleton<ILoggerProvider, TelemetryLoggerProvider>();
         services.AddHostedService<TelemetrySpanListener>();
+        services.AddSingleton<TelemetryMetricSampler>();
+        services.AddHostedService(provider => provider.GetRequiredService<TelemetryMetricSampler>());
         services.AddOneDriveProvider();
         services.AddSingleton<ActivityTracker>();
         services.AddSingleton<ICrawlProgressSink, IpcCrawlProgressSink>();
@@ -75,6 +77,7 @@ internal static class DaemonServiceCollectionExtensions
         services.AddSingleton<LogsQuery>();
         services.AddSingleton<TracesQuery>();
         services.AddSingleton<DiagnosticsQuery>();
+        services.AddSingleton<MetricsQuery>();
         services.AddHealthChecks().AddCheck<ProviderHealthCheck>(ApplicationConstants.ProviderHealthCheckName);
         services.AddHealthChecks().AddCheck<QueueHealthCheck>(ApplicationConstants.QueueHealthCheckName);
         services.AddHostedService<IpcHostedService>();
