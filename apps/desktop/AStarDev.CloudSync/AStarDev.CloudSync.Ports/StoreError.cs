@@ -42,5 +42,14 @@ public sealed record OperationNotDeadLettered(OperationId Id);
 /// <param name="Id">The identity that was looked up.</param>
 public sealed record ConflictNotFound(ConflictId Id);
 
+/// <summary>The name is not one of <see cref="SettingNames"/>. Nothing was written.</summary>
+/// <param name="Name">The name that was given.</param>
+public sealed record UnknownSetting(string Name);
+
+/// <summary>The value does not fit the setting, for example text where a number of days is expected. Nothing was written.</summary>
+/// <param name="Name">The setting that was being saved.</param>
+/// <param name="Value">The value that was refused.</param>
+public sealed record InvalidSettingValue(string Name, string Value);
+
 /// <summary>Closed set of failures that cross the state store boundary.</summary>
-public union StoreError(AccountNotFound, AccountAlreadyExists, StorageFailed, SyncJobNotFound, SyncJobAlreadyExists, SyncScopeAlreadyExists, SyncScopeNotFound, OperationNotRunning, OperationNotDeadLettered, ConflictNotFound);
+public union StoreError(AccountNotFound, AccountAlreadyExists, StorageFailed, SyncJobNotFound, SyncJobAlreadyExists, SyncScopeAlreadyExists, SyncScopeNotFound, OperationNotRunning, OperationNotDeadLettered, ConflictNotFound, UnknownSetting, InvalidSettingValue);

@@ -118,6 +118,7 @@ PauseSync
 ResumeSync
 ResolveConflict
 RetryOperation
+SetSetting
 ```
 
 ---
@@ -150,6 +151,7 @@ Queries do not mutate state.
 ```csharp
 GetAccounts
 GetSyncJobs
+GetSettings
 GetSyncScopes
 GetConflicts
 GetOperations

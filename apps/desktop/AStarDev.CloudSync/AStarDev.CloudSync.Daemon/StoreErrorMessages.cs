@@ -17,6 +17,8 @@ internal static class StoreErrorMessages
         OperationNotRunning => "That operation is not running.",
         OperationNotDeadLettered => "That operation is not waiting for a decision any more.",
         ConflictNotFound => "That conflict no longer exists.",
+        UnknownSetting => "That setting does not exist.",
+        InvalidSettingValue => "That value is not allowed for this setting.",
         StorageFailed e => $"The {subject} could not be {failedAction} because the database failed: {e.Message}"
     };
 }

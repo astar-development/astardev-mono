@@ -19,7 +19,7 @@ public sealed class MigrationsShould
 
         result.Value.ShouldBeOfType<Ok<Unit>>();
         host.Services.GetRequiredService<IDatabaseState>().Mode.ShouldBe(DatabaseMode.Normal);
-        tables.ShouldBe(["Accounts", "Conflicts", "CrawlCheckpoints", "DeltaStates", "EventJournal", "ItemSnapshots", "Items", "KnownSnapshots", "Operations", "ProviderState", "StagedKnownSnapshots", "SyncJobs", "SyncScopes"]);
+        tables.ShouldBe(["Accounts", "Conflicts", "CrawlCheckpoints", "DeltaStates", "EventJournal", "ItemSnapshots", "Items", "KnownSnapshots", "Operations", "ProviderState", "Settings", "StagedKnownSnapshots", "SyncJobs", "SyncScopes"]);
     }
 
     [Fact]
@@ -32,7 +32,22 @@ public sealed class MigrationsShould
         var second = await initialiser.InitialiseAsync(Token);
 
         second.Value.ShouldBeOfType<Ok<Unit>>();
-        (await TableNamesAsync(host.DatabasePath)).Count.ShouldBe(13);
+        (await TableNamesAsync(host.DatabasePath)).Count.ShouldBe(14);
+    }
+
+    [Fact]
+    public async Task apply_the_settings_migration_to_an_existing_database()
+    {
+        await using var host = DatabaseTestHost.Create();
+        var initialiser = host.Services.GetRequiredService<IDatabaseInitialiser>();
+        await initialiser.InitialiseAsync(Token);
+        await ExecuteAsync(host.DatabasePath, "DROP TABLE Settings; DELETE FROM __EFMigrationsHistory WHERE MigrationId LIKE '%AddSettings';");
+        (await TableNamesAsync(host.DatabasePath)).ShouldNotContain("Settings");
+
+        var result = await initialiser.InitialiseAsync(Token);
+
+        result.Value.ShouldBeOfType<Ok<Unit>>();
+        (await TableNamesAsync(host.DatabasePath)).ShouldContain("Settings");
     }
 
     [Fact]
@@ -43,6 +58,15 @@ public sealed class MigrationsShould
         await cancelled.CancelAsync();
 
         await Should.ThrowAsync<OperationCanceledException>(() => host.Services.GetRequiredService<IDatabaseInitialiser>().InitialiseAsync(cancelled.Token));
+    }
+
+    private static async Task ExecuteAsync(string databasePath, string sql)
+    {
+        await using var connection = new SqliteConnection($"Data Source={databasePath};Pooling=False");
+        await connection.OpenAsync(Token);
+        await using var command = connection.CreateCommand();
+        command.CommandText = sql;
+        await command.ExecuteNonQueryAsync(Token);
     }
 
     private static async Task<List<string>> TableNamesAsync(string databasePath)

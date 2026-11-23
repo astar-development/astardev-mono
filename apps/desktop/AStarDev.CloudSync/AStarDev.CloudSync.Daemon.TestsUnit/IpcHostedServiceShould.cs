@@ -34,6 +34,8 @@ public sealed class IpcHostedServiceShould
             services.GetRequiredService<RetryOperationHandler>(),
             services.GetRequiredService<IgnoreOperationHandler>(),
             services.GetRequiredService<ResolveConflictHandler>(),
+            services.GetRequiredService<SettingsQuery>(),
+            services.GetRequiredService<SetSettingHandler>(),
             TimeProvider.System,
             NullLogger<IpcHostedService>.Instance);
     }
