@@ -8,6 +8,9 @@ internal interface IThemeService
     /// <summary>The theme applied last, or <see langword="null"/> until <see cref="Apply"/> succeeds.</summary>
     public string? Current { get; }
 
+    /// <summary>The names of the themes that have dictionaries, so a choice only offers what <see cref="Apply"/> accepts.</summary>
+    public IReadOnlyList<string> Available { get; }
+
     /// <summary>
     /// Replaces the application's theme dictionaries with every <c>Themes/&lt;themeName&gt;/*.axaml</c> plus the theme-independent <c>Themes/Shared/*.axaml</c>.
     /// Controls bound with <c>DynamicResource</c> pick the change up. Safe to call again to switch themes.

@@ -15,12 +15,21 @@
                 </DataTemplate>
             </ListBox.ItemTemplate>
         </ListBox>
+        <StackPanel DockPanel.Dock="Bottom" Spacing="8" Margin="0,8,0,0" Orientation="Horizontal">
+            <Button Content="{loc:Loc Settings.Save}" Command="{Binding SaveCommand}" />
+            <TextBlock Text="{Binding ErrorMessage}" Foreground="{DynamicResource Trust.Critical.Brush}" TextWrapping="Wrap" VerticalAlignment="Center" />
+        </StackPanel>
         <ScrollViewer>
             <Panel>
                 <StackPanel Spacing="8" IsVisible="{Binding IsGeneral}">
                     <TextBlock Text="{loc:Loc Settings.General.Heading}" FontSize="18" FontWeight="SemiBold" />
                     <TextBlock Text="{loc:Loc Settings.General.Language}" />
                     <TextBlock Text="{loc:Loc Settings.General.LanguageNote}" Foreground="{DynamicResource Text.Secondary.Brush}" TextWrapping="Wrap" />
+                    <TextBlock Text="{loc:Loc Settings.Retention.Heading}" FontSize="18" FontWeight="SemiBold" Margin="0,16,0,0" />
+                    <TextBlock Text="{loc:Loc Settings.Retention.Audit}" />
+                    <NumericUpDown Value="{Binding AuditRetentionDays, Mode=TwoWay}" Minimum="1" Increment="1" FormatString="0" HorizontalAlignment="Left" Width="160" />
+                    <TextBlock Text="{loc:Loc Settings.Retention.Telemetry}" />
+                    <NumericUpDown Value="{Binding TelemetryRetentionDays, Mode=TwoWay}" Minimum="1" Increment="1" FormatString="0" HorizontalAlignment="Left" Width="160" />
                 </StackPanel>
                 <StackPanel Spacing="8" IsVisible="{Binding IsProviders}">
                     <TextBlock Text="{loc:Loc Settings.Providers.Heading}" FontSize="18" FontWeight="SemiBold" />
@@ -44,28 +53,27 @@
                     </StackPanel>
                     <TextBlock Text="{Binding Selection.JobSummary}" />
                     <TextBlock Text="{Binding Selection.StatusMessage}" Foreground="{DynamicResource Trust.Critical.Brush}" TextWrapping="Wrap" />
-                    <Border Background="{DynamicResource Settings.Placeholder.Brush}" BorderBrush="{DynamicResource Border.Brush}" BorderThickness="1" Padding="12">
-                        <StackPanel Spacing="4" DataContext="{Binding ScopeManagement}" x:DataType="vm:SettingsEntryViewModel">
-                            <TextBlock Text="{Binding Heading}" FontWeight="SemiBold" />
-                            <TextBlock Text="{Binding Consequences}" TextWrapping="Wrap" />
-                            <TextBlock Text="{Binding WhatHappensNext}" TextWrapping="Wrap" Foreground="{DynamicResource Text.Secondary.Brush}" />
-                        </StackPanel>
-                    </Border>
-                    <Border Background="{DynamicResource Settings.Placeholder.Brush}" BorderBrush="{DynamicResource Border.Brush}" BorderThickness="1" Padding="12">
-                        <StackPanel Spacing="4" DataContext="{Binding SyncRootChange}" x:DataType="vm:SettingsEntryViewModel">
-                            <TextBlock Text="{Binding Heading}" FontWeight="SemiBold" />
-                            <TextBlock Text="{Binding Consequences}" TextWrapping="Wrap" />
-                            <TextBlock Text="{Binding WhatHappensNext}" TextWrapping="Wrap" Foreground="{DynamicResource Text.Secondary.Brush}" />
-                        </StackPanel>
-                    </Border>
+                    <StackPanel Spacing="4" DataContext="{Binding ScopeManagement}" x:DataType="vm:SettingsEntryViewModel">
+                        <TextBlock Text="{Binding Heading}" FontWeight="SemiBold" />
+                        <TextBlock Text="{Binding Consequences}" TextWrapping="Wrap" />
+                        <TextBlock Text="{Binding WhatHappensNext}" TextWrapping="Wrap" Foreground="{DynamicResource Text.Secondary.Brush}" />
+                    </StackPanel>
+                    <StackPanel Spacing="4" DataContext="{Binding SyncRootChange}" x:DataType="vm:SettingsEntryViewModel">
+                        <TextBlock Text="{Binding Heading}" FontWeight="SemiBold" />
+                        <TextBlock Text="{Binding Consequences}" TextWrapping="Wrap" />
+                        <TextBlock Text="{Binding WhatHappensNext}" TextWrapping="Wrap" Foreground="{DynamicResource Text.Secondary.Brush}" />
+                    </StackPanel>
                 </StackPanel>
                 <StackPanel Spacing="8" IsVisible="{Binding IsAppearance}">
                     <TextBlock Text="{loc:Loc Settings.Appearance.Heading}" FontSize="18" FontWeight="SemiBold" />
-                    <TextBlock Text="{loc:Loc Settings.Appearance.Placeholder}" TextWrapping="Wrap" />
+                    <TextBlock Text="{loc:Loc Settings.Appearance.Theme}" />
+                    <ComboBox ItemsSource="{Binding Themes}" SelectedItem="{Binding Theme, Mode=TwoWay}" />
                 </StackPanel>
                 <StackPanel Spacing="8" IsVisible="{Binding IsNotifications}">
                     <TextBlock Text="{loc:Loc Settings.Notifications.Heading}" FontSize="18" FontWeight="SemiBold" />
-                    <TextBlock Text="{loc:Loc Settings.Notifications.Placeholder}" TextWrapping="Wrap" />
+                    <CheckBox Content="{loc:Loc Settings.Notifications.Conflicts}" IsChecked="{Binding NotifyOnConflict, Mode=TwoWay}" />
+                    <CheckBox Content="{loc:Loc Settings.Notifications.Errors}" IsChecked="{Binding NotifyOnError, Mode=TwoWay}" />
+                    <CheckBox Content="{loc:Loc Settings.Notifications.Completion}" IsChecked="{Binding NotifyOnCompletion, Mode=TwoWay}" />
                 </StackPanel>
                 <StackPanel Spacing="8" IsVisible="{Binding IsAdvanced}">
                     <TextBlock Text="{Binding AdvancedHeading}" FontSize="18" FontWeight="SemiBold" />

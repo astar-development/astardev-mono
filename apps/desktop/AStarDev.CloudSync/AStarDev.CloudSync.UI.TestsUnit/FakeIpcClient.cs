@@ -35,6 +35,8 @@ internal sealed class FakeIpcClient(List<string> calls, bool available) : IIpcCl
 
     public Func<IQuery<ExportView>, Result<ExportView, IpcError>> ExportReply { get; set; } = _ => new Ok<ExportView>(new ExportView(""));
 
+    public Result<SettingsView, IpcError> SettingsReply { get; set; } = new Ok<SettingsView>(new SettingsView(new Dictionary<string, string>()));
+
     public List<GetRemoteFolders> FolderQueries { get; } = [];
 
     private readonly List<Delegate> eventHandlers = [];
@@ -87,6 +89,7 @@ internal sealed class FakeIpcClient(List<string> calls, bool available) : IIpcCl
             ExportHistory or ExportAudit => (Result<TResult, IpcError>)(object)ExportReply((IQuery<ExportView>)query),
             GetAudit audit => (Result<TResult, IpcError>)(object)AuditReply(audit),
             GetLogs logs => (Result<TResult, IpcError>)(object)LogsReply(logs),
+            GetSettings => (Result<TResult, IpcError>)(object)SettingsReply,
             GetSyncScopes scopes => (Result<TResult, IpcError>)(object)ScopesReply(scopes),
             GetRemoteFolders folders => (Result<TResult, IpcError>)(object)Record(folders),
             _ => new Ok<TResult>((TResult)(object)Status)

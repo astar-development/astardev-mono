@@ -9,8 +9,11 @@ internal interface INotificationService
     /// <summary>The notifications still tracked for aggregation, oldest first.</summary>
     IReadOnlyList<Notification> Active { get; }
 
+    /// <summary>What the user wants to hear about. <see cref="NotificationPreferences.Default"/> until the saved settings are applied; assigning takes effect for the next event.</summary>
+    NotificationPreferences Preferences { get; set; }
+
     /// <summary>
-    /// Handles <paramref name="notificationEvent"/>. A routine success does nothing. A repeat of an event still inside the aggregation window raises the count of
+    /// Handles <paramref name="notificationEvent"/>. An event the <see cref="Preferences"/> switch off does nothing, and so does a routine success unless completion is switched on. A repeat of an event still inside the aggregation window raises the count of
     /// <see cref="Active"/> without presenting again; anything else is presented.
     /// </summary>
     /// <param name="notificationEvent">What happened.</param>

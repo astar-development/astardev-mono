@@ -1,6 +1,9 @@
 using System.Diagnostics;
 using AStarDev.CloudSync.UI.Localisation;
+using AStarDev.CloudSync.UI.Navigation;
 using AStarDev.CloudSync.UI.Theming;
+using AStarDev.CloudSync.UI.ViewModels;
+using AStarDev.CloudSync.UI.ViewModels.Screens;
 using AStarDev.SingleInstance;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting;
@@ -77,6 +80,15 @@ public sealed class UiServiceCollectionExtensionsShould
         using var host = CreateHost();
 
         host.Services.GetRequiredService<IThemeService>().Current.ShouldBeNull();
+    }
+
+    [Fact]
+    public void compose_the_settings_startup_with_the_settings_screen_and_the_themes_that_exist()
+    {
+        using var host = CreateHost();
+
+        host.Services.GetRequiredService<SettingsStartup>().ShouldBeSameAs(host.Services.GetRequiredService<SettingsStartup>());
+        host.Services.GetServices<IScreen>().OfType<SettingsViewModel>().Single().Themes.ShouldBe(["Dark"]);
     }
 
     [Fact]
