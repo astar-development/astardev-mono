@@ -23,6 +23,22 @@ public sealed class ExportQueryShould
         lines[1].ShouldEndWith("\"{\"\"choice\"\":\"\"KeepLocal\"\"}\"");
     }
 
+    [Theory]
+    [InlineData("=1+1", "'=1+1")]
+    [InlineData("+1", "'+1")]
+    [InlineData("-1", "'-1")]
+    [InlineData("@SUM(A1)", "'@SUM(A1)")]
+    [InlineData("=a,b", "\"'=a,b\"")]
+    [InlineData("a=b+c-d@e", "a=b+c-d@e")]
+    public async Task guard_cells_that_start_a_formula(string details, string expected)
+    {
+        await using var host = await SeededHostAsync(("ConflictResolved", -1, details));
+
+        var result = await host.Services.GetRequiredService<ExportQuery>().HandleAsync(new ExportAudit(Everything([])), Token);
+
+        result.Value.ShouldBeOfType<Ok<ExportView>>().Value.Csv.Split("\r\n", StringSplitOptions.RemoveEmptyEntries)[1].ShouldEndWith("," + expected);
+    }
+
     [Fact]
     public async Task respect_the_filters()
     {
