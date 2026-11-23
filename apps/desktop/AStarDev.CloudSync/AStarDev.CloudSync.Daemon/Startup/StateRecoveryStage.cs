@@ -30,7 +30,7 @@ internal sealed class StateRecoveryStage(IAccountStore store, ICloudProvider pro
 
     private Ok<Unit> Skip()
     {
-        logger.LogWarning("The database is in recovery mode, so stored accounts are not reconnected");
+        StartupLog.AccountsNotReconnected(logger);
 
         return new Ok<Unit>(default);
     }
@@ -55,14 +55,14 @@ internal sealed class StateRecoveryStage(IAccountStore store, ICloudProvider pro
 
     private async Task<Result<Unit, StoreError>> RequireReauthenticationAsync(Account account, AuthenticationFailed refused, CancellationToken cancellationToken)
     {
-        logger.LogWarning("Account {AccountId} must sign in again: {Reason}", account.Id.Value, refused.Message);
+        StartupLog.AccountMustSignInAgain(logger, account.Id.Value, refused.Message);
 
         return await MarkAsync(account, AccountStatus.ReauthenticationRequired, cancellationToken);
     }
 
     private Ok<Unit> Unreachable(Account account, ProviderError error)
     {
-        logger.LogWarning("Account {AccountId} could not be reconnected now and keeps its status: {Message}", account.Id.Value, ProviderErrorMessages.Describe(error));
+        StartupLog.AccountReconnectDeferred(logger, account.Id.Value, ProviderErrorMessages.Describe(error));
 
         return new Ok<Unit>(default);
     }

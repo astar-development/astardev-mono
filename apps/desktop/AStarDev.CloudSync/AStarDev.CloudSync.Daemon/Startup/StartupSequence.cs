@@ -17,16 +17,16 @@ internal sealed class StartupSequence(IEnumerable<IStartupStage> stages, ILogger
             cancellationToken.ThrowIfCancellationRequested();
 
             var stage = stages[index];
-            logger.LogInformation("Startup stage {Number}/{Total} starting: {Stage}", index + 1, stages.Count, stage.Name);
+            StartupLog.StageStarting(logger, index + 1, stages.Count, stage.Name);
 
             var result = await stage.ExecuteAsync(cancellationToken);
             if (result is Fail<StartupError> fail)
             {
-                logger.LogCritical(fail.Error.Exception, "Startup stage {Number}/{Total} failed: {Stage}: {Cause}. Stopping.", index + 1, stages.Count, stage.Name, fail.Error.Cause);
+                StartupLog.StageFailed(logger, fail.Error.Exception, index + 1, stages.Count, stage.Name, fail.Error.Cause);
                 return result;
             }
 
-            logger.LogInformation("Startup stage {Number}/{Total} complete: {Stage}", index + 1, stages.Count, stage.Name);
+            StartupLog.StageComplete(logger, index + 1, stages.Count, stage.Name);
         }
 
         return new Ok<Unit>(default);

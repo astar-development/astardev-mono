@@ -29,7 +29,7 @@ internal sealed class QueueRecoveryStage(IOperationStore operations, IDatabaseSt
 
     private Result<Unit, StartupError> Log(int requeued)
     {
-        if (requeued > 0) logger.LogWarning("{Count} operations were interrupted by the last shutdown and were requeued.", requeued);
+        if (requeued > 0) StartupLog.OperationsRequeued(logger, requeued);
 
         return new Ok<Unit>(default);
     }

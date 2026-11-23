@@ -1,6 +1,7 @@
 using AStarDev.CloudSync.Daemon.Startup;
 using AStarDev.FunctionalParadigm;
 using Microsoft.Extensions.DependencyInjection;
+using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Logging.Abstractions;
 
 namespace AStarDev.CloudSync.Daemon.TestsUnit;
@@ -74,5 +75,18 @@ public sealed class StartupSequenceShould
 
         first.ReceivedToken.ShouldBe(source.Token);
         second.ReceivedToken.ShouldBe(source.Token);
+    }
+
+    [Fact]
+    public async Task log_each_stage_through_the_generated_messages()
+    {
+        var logs = new EventCapturingLoggerProvider();
+        using var factory = LoggerFactory.Create(builder => builder.AddProvider(logs));
+        var ran = new List<string>();
+        var sequence = new StartupSequence([new FakeStage("one", ran), new FakeStage("two", ran, fails: true)], factory.CreateLogger<StartupSequence>());
+
+        await sequence.RunAsync(TestContext.Current.CancellationToken);
+
+        logs.Entries.Select(entry => entry.EventId).ShouldBe([6100, 6102, 6100, 6101]);
     }
 }
