@@ -15,7 +15,7 @@ public sealed class QueuePublisherShould
     private static QueuePublisher PublisherOf(DaemonTestHost host) => host.Services.GetServices<IHostedService>().OfType<QueuePublisher>().Single();
 
     [Fact]
-    public async Task publish_the_queue_and_the_dashboard_when_operations_move_without_a_crawl()
+    public async Task publish_the_queue_the_status_and_the_dashboard_when_operations_move_without_a_crawl()
     {
         var server = new RecordingIpcServer();
         await using var host = DaemonTestHost.Create(configureServices: services => services.RemoveAll<ICloudProvider>().AddSingleton<ICloudProvider>(new StubCloudProvider()).RemoveAll<IIpcServer>().AddSingleton<IIpcServer>(server));
@@ -29,6 +29,7 @@ public sealed class QueuePublisherShould
 
         server.Published.OfType<QueueChanged>().Select(changed => changed.Queue.Running).ShouldBe([0, 1]);
         server.Published.OfType<DashboardChanged>().Select(changed => changed.Dashboard.Running).ShouldBe([0, 1]);
+        server.Published.OfType<SyncStatusChanged>().Select(changed => changed.Status.QueueDepth).ShouldBe([0, 1]);
     }
 
     [Fact]

@@ -86,8 +86,8 @@ internal sealed class DashboardViewModel : ViewModelBase, IScreen, IDisposable
     /// <summary>Heading of the Sync Progress card.</summary>
     public string ProgressHeading => localisation.Get("Dashboard.Progress.Heading");
 
-    /// <summary>Items analysed out of the total, for example "183,442 / 702,144 items analysed".</summary>
-    public string ItemsAnalysedText => localisation.Format("Dashboard.Progress.ItemsAnalysed", ("done", snapshot.ItemsAnalysed), ("total", snapshot.ItemsTotal));
+    /// <summary>Items done out of the total: "183,442 / 702,144 items analysed" while indexing, "70 / 607 items synced" afterwards.</summary>
+    public string ItemsAnalysedText => localisation.Format(snapshot.Stage.Value is Some<ReconciliationStage> { Value: ReconciliationStage.EnumerateRemoteState } ? "Dashboard.Progress.ItemsAnalysed" : "Dashboard.Progress.ItemsSynced", ("done", snapshot.ItemsAnalysed), ("total", snapshot.ItemsTotal));
 
     /// <summary>Share of items analysed, 0 to 100; 0 while the total is unknown (zero).</summary>
     public double ProgressPercent => snapshot.ItemsTotal == 0 ? 0 : Math.Min(100, 100d * snapshot.ItemsAnalysed / snapshot.ItemsTotal);

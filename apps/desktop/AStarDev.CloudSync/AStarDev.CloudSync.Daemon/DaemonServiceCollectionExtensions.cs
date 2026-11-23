@@ -72,6 +72,7 @@ internal static class DaemonServiceCollectionExtensions
         services.AddSingleton<ResolveConflictHandler>();
         services.AddSingleton<SettingsQuery>();
         services.AddSingleton<SetSettingHandler>();
+        services.AddSingleton<TransferRate>();
         services.AddSingleton<SyncStatusQuery>();
         services.AddSingleton<DashboardSnapshotQuery>();
         services.AddSingleton<OperationLookup>();

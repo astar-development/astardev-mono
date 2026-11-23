@@ -91,6 +91,16 @@ public sealed class DashboardViewModelShould
     }
 
     [Fact]
+    public void call_the_progress_items_analysed_while_indexing_and_synced_afterwards()
+    {
+        var (indexing, _) = Create(Snapshot(SyncHealth.Active, stage: Option.Some(ReconciliationStage.EnumerateRemoteState)));
+        var (transferring, _) = Create(Snapshot(SyncHealth.Active, stage: Option.Some(ReconciliationStage.ExecuteQueue)));
+
+        indexing.ItemsAnalysedText.ShouldContain("items analysed");
+        transferring.ItemsAnalysedText.ShouldContain("items synced");
+    }
+
+    [Fact]
     public void show_every_stage_as_pending_and_none_as_current_before_any_sync_has_run()
     {
         var (dashboard, _) = Create(Snapshot(SyncHealth.Active, stage: Option.None<ReconciliationStage>()));
