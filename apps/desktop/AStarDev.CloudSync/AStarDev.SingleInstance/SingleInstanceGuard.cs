@@ -65,7 +65,7 @@ internal sealed class SingleInstanceGuard(ILogger<SingleInstanceGuard> logger) :
 
     private Unit LogHandOffUnavailable()
     {
-        logger.LogWarning("{Location}: the hand-off socket could not be opened; second launches will not be answered.", Location);
+        SingleInstanceLog.HandOffSocketUnavailable(logger, Location);
 
         return default;
     }
@@ -98,21 +98,21 @@ internal sealed class SingleInstanceGuard(ILogger<SingleInstanceGuard> logger) :
 
     private InstanceClaim HandedOff()
     {
-        logger.LogInformation("{Location}: another instance is running and was asked to show its window.", Location);
+        SingleInstanceLog.HandedOff(logger, Location);
 
         return InstanceClaimFactory.CreateHandedOff();
     }
 
     private InstanceClaim NotAnswered(string errorType)
     {
-        logger.LogWarning("{Location}: another instance holds the lock but did not answer the hand-off ({ErrorType}).", Location, errorType);
+        SingleInstanceLog.HandOffNotAnswered(logger, Location, errorType);
 
         return InstanceClaimFactory.CreateNotAnswered();
     }
 
     private InstanceClaim LockUnavailable(Exception exception)
     {
-        logger.LogError("{Location}: the single-instance lock could not be created ({ErrorType}).", Location, exception.GetType().Name);
+        SingleInstanceLog.LockUnavailable(logger, Location, exception.GetType().Name);
 
         return InstanceClaimFactory.CreateLockUnavailable();
     }
