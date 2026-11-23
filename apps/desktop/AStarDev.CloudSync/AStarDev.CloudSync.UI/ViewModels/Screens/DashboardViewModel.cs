@@ -59,6 +59,18 @@ internal sealed class DashboardViewModel : ViewModelBase, IScreen, IDisposable
     /// <summary>Whether the daemon values are missing: the link is down, or its first snapshot has not arrived. The view shows <see cref="DisconnectedNotice"/> then.</summary>
     public bool IsDisconnected => shown.Value is not Some<DashboardSnapshot>;
 
+    /// <summary>Whether sync cannot run yet because no account is connected or no folder is selected. The view then shows <see cref="SetupNotice"/> in place of the sync progress.</summary>
+    public bool IsSetupNeeded => !IsDisconnected && snapshot.Setup != IPC.DashboardSetup.Ready;
+
+    /// <summary>Whether the sync progress is meaningful, which is the opposite of <see cref="IsSetupNeeded"/>.</summary>
+    public bool IsSetupComplete => !IsSetupNeeded;
+
+    /// <summary>Tells the user what to do next: connect an account, or select folders to sync.</summary>
+    public string SetupNotice => localisation.Get($"Dashboard.Setup.{(snapshot.Setup == IPC.DashboardSetup.NoAccount ? "NoAccount" : "NoFolders")}");
+
+    /// <summary>Text of the button that opens the Providers screen, where accounts are connected and folders selected.</summary>
+    public string SetupActionText => localisation.Get("Dashboard.Setup.Action");
+
     /// <summary>Headline, summary, colour and icon of the Trust Status card.</summary>
     public SyncHealthPresentation Health => SyncHealthPresentation.For(snapshot.Health, localisation);
 
@@ -81,7 +93,7 @@ internal sealed class DashboardViewModel : ViewModelBase, IScreen, IDisposable
     public double ProgressPercent => snapshot.ItemsTotal == 0 ? 0 : Math.Min(100, 100d * snapshot.ItemsAnalysed / snapshot.ItemsTotal);
 
     /// <summary>The pipeline stage running now, in words.</summary>
-    public string PhaseText => localisation.Format("Dashboard.Progress.Phase", ("phase", localisation.Get($"Dashboard.Stage.{snapshot.Stage}")));
+    public string PhaseText => localisation.Format("Dashboard.Progress.Phase", ("phase", snapshot.Stage.Value is Some<ReconciliationStage> stage ? localisation.Get($"Dashboard.Stage.{stage.Value}") : localisation.Get("Dashboard.Stage.None")));
 
     /// <summary>Items per second.</summary>
     public string ThroughputText => localisation.Format("Dashboard.Progress.Throughput", ("rate", snapshot.ItemsPerSecond));
@@ -149,6 +161,9 @@ internal sealed class DashboardViewModel : ViewModelBase, IScreen, IDisposable
     /// <summary>Text of the button that opens the Activity screen.</summary>
     public string OpenActivityText => localisation.Get("Dashboard.Open.Activity");
 
+    /// <summary>Opens the Providers screen from the setup notice.</summary>
+    public ICommand OpenSetupCommand => OpenProvidersCommand;
+
     /// <summary>Opens the Conflicts screen.</summary>
     public ICommand OpenConflictsCommand => new RelayCommand(() => navigation().Navigate(ScreenId.Conflicts));
 
@@ -201,13 +216,14 @@ internal sealed class DashboardViewModel : ViewModelBase, IScreen, IDisposable
 
     private PipelineStageRow StageRow(ReconciliationStage stage)
     {
-        var state = stage.CompareTo(snapshot.Stage) switch
+        var current = snapshot.Stage.Value is Some<ReconciliationStage> some ? (ReconciliationStage?)some.Value : null;
+        var state = current is null ? "Pending" : stage.CompareTo(current.Value) switch
         {
             < 0 => "Done",
             0 => "Running",
             _ => "Pending"
         };
 
-        return new PipelineStageRow(localisation.Get($"Dashboard.Stage.{stage}"), localisation.Get($"Dashboard.StageState.{state}"), stage == snapshot.Stage);
+        return new PipelineStageRow(localisation.Get($"Dashboard.Stage.{stage}"), localisation.Get($"Dashboard.StageState.{state}"), stage == current);
     }
 }

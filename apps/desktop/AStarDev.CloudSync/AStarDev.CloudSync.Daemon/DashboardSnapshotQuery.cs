@@ -11,7 +11,7 @@ namespace AStarDev.CloudSync.Daemon;
 /// Answers <see cref="GetDashboardSnapshot"/> from the operation, conflict, account and journal stores, the provider health check and the <see cref="ActivityTracker"/>, and publishes <see cref="DashboardChanged"/> when the answer changes.
 /// Items done and total come from the <see cref="ActivityTracker"/>; throughput and time left are the tracker's job-level 60 second figures (<see cref="ActivityView.ItemsPerSecond"/>, <see cref="ActivityView.EtaSeconds"/>), the same the Activity screen shows.
 /// </summary>
-internal sealed class DashboardSnapshotQuery(IOperationStore operations, IConflictStore conflicts, IAccountStore accounts, IEventJournal journal, CanonicalStateReader states, HealthCheckService health, ActivityTracker tracker, IIpcServer server, TimeProvider timeProvider)
+internal sealed class DashboardSnapshotQuery(IOperationStore operations, IConflictStore conflicts, IAccountStore accounts, ISyncJobStore jobs, ISyncScopeStore scopes, IEventJournal journal, CanonicalStateReader states, HealthCheckService health, ActivityTracker tracker, IIpcServer server, TimeProvider timeProvider)
 {
     private static readonly string[] ScopeEvents = ["SyncScopeAdded", "SyncScopeRemoved"];
 
@@ -32,6 +32,9 @@ internal sealed class DashboardSnapshotQuery(IOperationStore operations, IConfli
         var accountList = await accounts.ListAsync(cancellationToken);
         if (accountList.Value is Fail<StoreError> accountsFailure) return Failure(accountsFailure.Error, "accounts");
 
+        var setup = await SetupAsync(((Ok<IReadOnlyList<Account>>)accountList.Value).Value, cancellationToken);
+        if (setup.Value is Fail<StoreError> setupFailure) return Failure(setupFailure.Error, "folder selection");
+
         var all = await operations.ListAsync(cancellationToken);
         if (all.Value is Fail<StoreError> allFailure) return Failure(allFailure.Error, "operation queue");
 
@@ -42,7 +45,7 @@ internal sealed class DashboardSnapshotQuery(IOperationStore operations, IConfli
         var running = await RunningAsync(queue.Where(operation => operation.Status == OperationStatus.Running).ToList(), cancellationToken);
         if (running.Value is Fail<StoreError> runningFailure) return Failure(runningFailure.Error, "running operations");
 
-        var view = ViewOf(report.Status, ((Ok<IReadOnlyDictionary<OperationStatus, int>>)counts.Value).Value, ((Ok<int>)open.Value).Value, ((Ok<IReadOnlyList<Account>>)accountList.Value).Value, queue, ((Ok<IReadOnlyList<DashboardOperationView>>)running.Value).Value, ((Ok<IReadOnlyList<JournalEntry>>)scopeEntries.Value).Value);
+        var view = ViewOf(report.Status, ((Ok<IReadOnlyDictionary<OperationStatus, int>>)counts.Value).Value, ((Ok<int>)open.Value).Value, ((Ok<IReadOnlyList<Account>>)accountList.Value).Value, queue, ((Ok<IReadOnlyList<DashboardOperationView>>)running.Value).Value, ((Ok<IReadOnlyList<JournalEntry>>)scopeEntries.Value).Value, ((Ok<DashboardSetup>)setup.Value).Value);
 
         return new Ok<DashboardView>(view);
     }
@@ -88,7 +91,7 @@ internal sealed class DashboardSnapshotQuery(IOperationStore operations, IConfli
             && left.Activities.SequenceEqual(right.Activities)
             && left.Events.SequenceEqual(right.Events);
 
-    private DashboardView ViewOf(HealthStatus providerHealth, IReadOnlyDictionary<OperationStatus, int> counts, int openConflicts, IReadOnlyList<Account> accountList, IReadOnlyList<Operation> queue, IReadOnlyList<DashboardOperationView> running, IReadOnlyList<JournalEntry> scopeEntries)
+    private DashboardView ViewOf(HealthStatus providerHealth, IReadOnlyDictionary<OperationStatus, int> counts, int openConflicts, IReadOnlyList<Account> accountList, IReadOnlyList<Operation> queue, IReadOnlyList<DashboardOperationView> running, IReadOnlyList<JournalEntry> scopeEntries, DashboardSetup setup)
     {
         var activities = tracker.Current().Activities;
         var pending = counts.GetValueOrDefault(OperationStatus.Pending);
@@ -101,7 +104,7 @@ internal sealed class DashboardSnapshotQuery(IOperationStore operations, IConfli
 
         return new DashboardView(
             ProviderHealthOf(providerHealth),
-            StageOf(activities, pending + executing),
+            StageOf(activities, pending + executing, completed),
             reconciled,
             activities.Select(activity => (DateTimeOffset?)activity.UpdatedUtc).Max(),
             queued,
@@ -118,7 +121,8 @@ internal sealed class DashboardSnapshotQuery(IOperationStore operations, IConfli
             counts.GetValueOrDefault(OperationStatus.DeadLetter),
             providers.Count(provider => provider.Health != ProviderHealthState.Healthy),
             running,
-            EventsOf(reconciled, pending + executing == 0 && completed > 0 ? queued ?? DateTimeOffset.UnixEpoch : null, scopeEntries.Select(entry => (DateTimeOffset?)entry.OccurredUtc).Max()));
+            EventsOf(reconciled, pending + executing == 0 && completed > 0 ? queued ?? DateTimeOffset.UnixEpoch : null, scopeEntries.Select(entry => (DateTimeOffset?)entry.OccurredUtc).Max()),
+            setup);
     }
 
     private static (double? Rate, TimeSpan? Remaining) CrawlEstimate(IReadOnlyList<ActivityView> activities)
@@ -139,12 +143,30 @@ internal sealed class DashboardSnapshotQuery(IOperationStore operations, IConfli
     private static IReadOnlyList<DashboardProviderView> ProvidersOf(IReadOnlyList<Account> accountList)
         => accountList.GroupBy(account => account.ProviderType).Select(group => new DashboardProviderView(group.Key, group.Any(account => account.Status == AccountStatus.ReauthenticationRequired) ? ProviderHealthState.Degraded : ProviderHealthState.Healthy)).ToList();
 
-    private static DashboardStage StageOf(IReadOnlyList<ActivityView> activities, int queued)
+    private async Task<Result<DashboardSetup, StoreError>> SetupAsync(IReadOnlyList<Account> accountList, CancellationToken cancellationToken)
+    {
+        if (accountList.Count == 0) return new Ok<DashboardSetup>(DashboardSetup.NoAccount);
+
+        var jobList = await jobs.ListAsync(cancellationToken);
+        if (jobList.Value is Fail<StoreError> jobsFailure) return jobsFailure;
+
+        foreach (var job in ((Ok<IReadOnlyList<SyncJob>>)jobList.Value).Value)
+        {
+            var selected = await scopes.ListAsync(job.Id, cancellationToken);
+            if (selected.Value is Fail<StoreError> scopesFailure) return scopesFailure;
+            if (((Ok<IReadOnlyList<SyncScope>>)selected.Value).Value.Count > 0) return new Ok<DashboardSetup>(DashboardSetup.Ready);
+        }
+
+        return new Ok<DashboardSetup>(DashboardSetup.NoFolders);
+    }
+
+    private static DashboardStage? StageOf(IReadOnlyList<ActivityView> activities, int queued, int completed)
     {
         if (activities.Any(activity => activity.State == ActivityState.InitialIndexing)) return DashboardStage.EnumerateRemoteState;
         if (queued > 0) return DashboardStage.ExecuteQueue;
+        if (activities.Any(activity => activity.State == ActivityState.Working)) return DashboardStage.AnalyseChanges;
 
-        return activities.Any(activity => activity.State == ActivityState.Working) ? DashboardStage.AnalyseChanges : DashboardStage.ExecuteQueue;
+        return completed > 0 || activities.Any(activity => activity.State == ActivityState.Healthy) ? DashboardStage.ExecuteQueue : null;
     }
 
     private static ProviderHealthState ProviderHealthOf(HealthStatus health) => health switch

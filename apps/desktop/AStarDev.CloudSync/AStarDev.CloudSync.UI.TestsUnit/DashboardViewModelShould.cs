@@ -17,9 +17,9 @@ public sealed class DashboardViewModelShould
 
     private static readonly DateTimeOffset Moment = new(2026, 11, 21, 14, 32, 11, TimeSpan.Zero);
 
-    private static DashboardSnapshot Snapshot(SyncHealth health, int conflicts = 0, int errors = 0, int warnings = 0) => new(
-        health, Option.Some(Moment), Option.Some(Moment), Option.Some(Moment), 183442, 702144, ReconciliationStage.EnumerateRemoteState, 4232, TimeSpan.FromMinutes(17),
-        [("OneDrive", SyncHealth.Healthy)], 1245, 8, 181223, 0, conflicts, errors, warnings, [(DashboardOperation.Download, "Documents/Design.md")], [DashboardEvent.QueueDrained]);
+    private static DashboardSnapshot Snapshot(SyncHealth health, int conflicts = 0, int errors = 0, int warnings = 0, Option<ReconciliationStage>? stage = null, IPC.DashboardSetup setup = IPC.DashboardSetup.Ready) => new(
+        health, Option.Some(Moment), Option.Some(Moment), Option.Some(Moment), 183442, 702144, stage ?? Option.Some(ReconciliationStage.EnumerateRemoteState), 4232, TimeSpan.FromMinutes(17),
+        [("OneDrive", SyncHealth.Healthy)], 1245, 8, 181223, 0, conflicts, errors, warnings, [(DashboardOperation.Download, "Documents/Design.md")], [DashboardEvent.QueueDrained], setup);
 
     private static LocalisationService RealLocalisation(CultureService culture)
     {
@@ -88,6 +88,48 @@ public sealed class DashboardViewModelShould
         dashboard.Stages.Count.ShouldBe(6);
         dashboard.Stages.Select(stage => stage.State).Distinct().Count().ShouldBe(3);
         dashboard.Stages.Single(stage => stage.IsCurrent).Name.ShouldBe(dashboard.Stages[1].Name);
+    }
+
+    [Fact]
+    public void show_every_stage_as_pending_and_none_as_current_before_any_sync_has_run()
+    {
+        var (dashboard, _) = Create(Snapshot(SyncHealth.Active, stage: Option.None<ReconciliationStage>()));
+
+        dashboard.Stages.Select(stage => stage.State).Distinct().ShouldBe(["Pending"]);
+        dashboard.Stages.ShouldAllBe(stage => !stage.IsCurrent);
+        dashboard.PhaseText.ShouldContain("Not started");
+    }
+
+    [Theory]
+    [InlineData(IPC.DashboardSetup.NoAccount, "No account is connected")]
+    [InlineData(IPC.DashboardSetup.NoFolders, "No folders are selected")]
+    public void ask_for_setup_instead_of_showing_sync_progress(IPC.DashboardSetup setup, string notice)
+    {
+        var (dashboard, _) = Create(Snapshot(SyncHealth.SetupRequired, setup: setup));
+
+        dashboard.IsSetupNeeded.ShouldBeTrue();
+        dashboard.IsSetupComplete.ShouldBeFalse();
+        dashboard.SetupNotice.ShouldContain(notice);
+        dashboard.Health.Headline.ShouldBe("SET UP SYNC");
+    }
+
+    [Fact]
+    public void not_ask_for_setup_once_an_account_and_folders_exist()
+    {
+        var (dashboard, _) = Create();
+
+        dashboard.IsSetupNeeded.ShouldBeFalse();
+        dashboard.IsSetupComplete.ShouldBeTrue();
+    }
+
+    [Fact]
+    public void open_providers_from_the_setup_notice()
+    {
+        var (dashboard, navigation) = Create(Snapshot(SyncHealth.SetupRequired, setup: IPC.DashboardSetup.NoAccount));
+
+        dashboard.OpenSetupCommand.Execute(null);
+
+        navigation.Current.Id.ShouldBe(ScreenId.Providers);
     }
 
     [Fact]
@@ -178,7 +220,7 @@ public sealed class DashboardViewModelShould
         var run = connection.RunAsync(source.Token);
         await WaitForAsync(() => connection.State == ConnectionState.Connected);
 
-        client.Raise(new DashboardChanged(new DashboardView(ProviderHealthState.Healthy, DashboardStage.ExecuteQueue, null, null, null, 5, 10, null, null, [], 3, 0, 0, 0, 0, 0, 0, [new DashboardOperationView("DownloadFile", "a.txt")], ["QueueDrained"])));
+        client.Raise(new DashboardChanged(new DashboardView(ProviderHealthState.Healthy, DashboardStage.ExecuteQueue, null, null, null, 5, 10, null, null, [], 3, 0, 0, 0, 0, 0, 0, [new DashboardOperationView("DownloadFile", "a.txt")], ["QueueDrained"], IPC.DashboardSetup.Ready)));
 
         dashboard.PendingText.ShouldBe("Pending : 3");
         dashboard.ItemsAnalysedText.ShouldContain("5 / 10");

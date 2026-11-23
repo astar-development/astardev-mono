@@ -48,6 +48,43 @@ public sealed class DashboardSnapshotQueryShould
     }
 
     [Fact]
+    public async Task report_no_account_when_none_is_connected()
+    {
+        await using var host = DaemonTestHost.CreateWith(new StubCloudProvider());
+        await host.InitialiseDatabaseAsync(Token);
+
+        var dashboard = await SnapshotAsync(host);
+
+        dashboard.Setup.ShouldBe(DashboardSetup.NoAccount);
+        dashboard.Stage.ShouldBeNull();
+    }
+
+    [Fact]
+    public async Task report_no_folders_when_the_account_has_no_selected_folder()
+    {
+        var (host, _) = await HostWithJobAsync();
+        await using var _ = host;
+
+        var dashboard = await SnapshotAsync(host);
+
+        dashboard.Setup.ShouldBe(DashboardSetup.NoFolders);
+        dashboard.Stage.ShouldBeNull();
+    }
+
+    [Fact]
+    public async Task report_ready_with_no_stage_before_any_sync_has_run()
+    {
+        var (host, job) = await HostWithJobAsync();
+        await using var _ = host;
+        await host.Services.GetRequiredService<ISyncScopeStore>().AddAsync(new SyncScope(job.Id, new RemoteItemId("docs")), Token);
+
+        var dashboard = await SnapshotAsync(host);
+
+        dashboard.Setup.ShouldBe(DashboardSetup.Ready);
+        dashboard.Stage.ShouldBeNull();
+    }
+
+    [Fact]
     public async Task report_the_running_operations()
     {
         var (host, job) = await HostWithJobAsync();

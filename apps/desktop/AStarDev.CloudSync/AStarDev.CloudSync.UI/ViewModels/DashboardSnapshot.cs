@@ -10,7 +10,7 @@ namespace AStarDev.CloudSync.UI.ViewModels;
 /// <param name="LastQueueActivity">When the queue last did anything.</param>
 /// <param name="ItemsAnalysed">Items analysed so far.</param>
 /// <param name="ItemsTotal">Items to analyse in total; never below <paramref name="ItemsAnalysed"/> for a sensible display.</param>
-/// <param name="Stage">The pipeline stage running now; earlier stages show as done, later ones as pending.</param>
+/// <param name="Stage">The pipeline stage running now; earlier stages show as done, later ones as pending. None before any sync has run: every stage is pending and none is current.</param>
 /// <param name="ItemsPerSecond">Current throughput.</param>
 /// <param name="EstimatedRemaining">Estimated time left, shown in whole minutes.</param>
 /// <param name="Providers">Each connected provider with its health.</param>
@@ -23,6 +23,7 @@ namespace AStarDev.CloudSync.UI.ViewModels;
 /// <param name="Warnings">Warnings. Zero is still shown.</param>
 /// <param name="Activities">Operations running now, each with its path.</param>
 /// <param name="Events">Recent events, newest first.</param>
+/// <param name="Setup">Whether an account is connected and folders are selected.</param>
 internal sealed record DashboardSnapshot(
     SyncHealth Health,
     Option<DateTimeOffset> LastReconciliation,
@@ -30,7 +31,7 @@ internal sealed record DashboardSnapshot(
     Option<DateTimeOffset> LastQueueActivity,
     long ItemsAnalysed,
     long ItemsTotal,
-    ReconciliationStage Stage,
+    Option<ReconciliationStage> Stage,
     long ItemsPerSecond,
     TimeSpan EstimatedRemaining,
     IReadOnlyList<(string Name, SyncHealth Health)> Providers,
@@ -42,14 +43,15 @@ internal sealed record DashboardSnapshot(
     int Errors,
     int Warnings,
     IReadOnlyList<(DashboardOperation Operation, string Path)> Activities,
-    IReadOnlyList<DashboardEvent> Events)
+    IReadOnlyList<DashboardEvent> Events,
+    DashboardSetup Setup)
 {
-    /// <summary>What the dashboard shows while the daemon link is down: nothing known, so critical health, zero counts and empty lists.</summary>
-    public static DashboardSnapshot Disconnected { get; } = new(SyncHealth.Critical, Option.None<DateTimeOffset>(), Option.None<DateTimeOffset>(), Option.None<DateTimeOffset>(), 0, 0, ReconciliationStage.EnumerateLocalState, 0, TimeSpan.Zero, [], 0, 0, 0, 0, 0, 0, 0, [], []);
+    /// <summary>What the dashboard shows while the daemon link is down: nothing known, so critical health, no stage, zero counts and empty lists.</summary>
+    public static DashboardSnapshot Disconnected { get; } = new(SyncHealth.Critical, Option.None<DateTimeOffset>(), Option.None<DateTimeOffset>(), Option.None<DateTimeOffset>(), 0, 0, Option.None<ReconciliationStage>(), 0, TimeSpan.Zero, [], 0, 0, 0, 0, 0, 0, 0, [], [], DashboardSetup.Ready);
 
     /// <summary>Shows what the daemon reported, as reported.</summary>
     /// <param name="view">The daemon's dashboard. A throughput or estimate it does not know shows as zero; an event or operation name this version does not know is left out.</param>
-    /// <returns>The snapshot. Health is critical when the provider is unhealthy, attention required when a conflict or an error waits, degraded when the provider needs the user, active while work is queued, running or unfinished, otherwise healthy.</returns>
+    /// <returns>The snapshot. Health is setup required while no account or no folder is selected, otherwise critical when the provider is unhealthy, attention required when a conflict or an error waits, degraded when the provider needs the user, active while work is queued, running, unfinished or no reconciliation has completed yet, otherwise healthy.</returns>
     public static DashboardSnapshot From(DashboardView view)
         => new(
             HealthOf(view),
@@ -58,7 +60,7 @@ internal sealed record DashboardSnapshot(
             Option.FromNullable(view.LastQueueActivity),
             view.ItemsAnalysed,
             view.ItemsTotal ?? 0,
-            StageOf(view.Stage),
+            Option.FromNullable(view.Stage).Map(StageOf),
             (long)Math.Round(view.ItemsPerSecond ?? 0),
             view.EstimatedRemaining ?? TimeSpan.Zero,
             [.. view.Providers.Select(provider => (provider.Name, ProviderHealthOf(provider.Health)))],
@@ -70,15 +72,17 @@ internal sealed record DashboardSnapshot(
             view.Errors,
             view.Warnings,
             [.. view.Activities.Select(activity => (OperationOf(activity.Type), activity.Path))],
-            [.. view.Events.Where(name => Enum.IsDefined(typeof(DashboardEvent), name)).Select(Enum.Parse<DashboardEvent>)]);
+            [.. view.Events.Where(name => Enum.IsDefined(typeof(DashboardEvent), name)).Select(Enum.Parse<DashboardEvent>)],
+            view.Setup);
 
     private static SyncHealth HealthOf(DashboardView view)
     {
+        if (view.Setup != DashboardSetup.Ready) return SyncHealth.SetupRequired;
         if (view.ProviderHealth == ProviderHealthState.Unhealthy) return SyncHealth.Critical;
         if (view.Conflicts > 0 || view.Errors > 0) return SyncHealth.AttentionRequired;
         if (view.ProviderHealth == ProviderHealthState.Degraded) return SyncHealth.Degraded;
 
-        return view.Pending > 0 || view.Running > 0 || view.ItemsAnalysed < view.ItemsTotal ? SyncHealth.Active : SyncHealth.Healthy;
+        return view.Pending > 0 || view.Running > 0 || view.ItemsAnalysed < view.ItemsTotal || view.LastReconciliation is null ? SyncHealth.Active : SyncHealth.Healthy;
     }
 
     private static SyncHealth ProviderHealthOf(ProviderHealthState health) => health switch
