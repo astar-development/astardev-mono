@@ -72,7 +72,7 @@ internal sealed class LocalObserver(ILocalFileSystem fileSystem, ILocalObservati
             var (overflowed, paths) = pending.Take();
             if (await ScanChangesAsync(job, overflowed, paths, cancellationToken) is Fail<LocalObservationError> failed)
             {
-                logger.LogWarning("Local observation of job {Job} failed and will scan the whole root at the next change: {Failure}", job.Id.Value, failed.Error.Value);
+                EngineLog.LocalObservationFailed(logger, job.Id.Value, failed.Error.Value);
                 pending.RequestRescan();
             }
         }

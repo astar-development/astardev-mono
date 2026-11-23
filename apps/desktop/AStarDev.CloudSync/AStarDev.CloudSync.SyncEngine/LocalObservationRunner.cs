@@ -72,7 +72,7 @@ public sealed class LocalObservationRunner : IAsyncDisposable
     {
         try
         {
-            if (await observer.RunAsync(job, cancellationToken) is Fail<LocalObservationError> fail) logger.LogWarning("Local observation of job {Job} ended: {Failure}", job.Id.Value, fail.Error.Value);
+            if (await observer.RunAsync(job, cancellationToken) is Fail<LocalObservationError> fail) EngineLog.LocalObservationEnded(logger, job.Id.Value, fail.Error.Value);
         }
         finally
         {

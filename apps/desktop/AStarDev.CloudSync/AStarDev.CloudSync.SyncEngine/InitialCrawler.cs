@@ -128,7 +128,7 @@ internal sealed class InitialCrawler(ICloudProvider provider, IItemIndexStore in
             var page = await provider.GetSnapshotAsync(root, current.ResumeToken, cancellationToken);
             if (page is not Fail<ProviderError> fail || attempt == ApplicationConstants.MaxPageAttempts || RetryDelay(fail.Error, attempt) is not { } delay) return page;
 
-            logger.LogWarning("Listing {Root} failed, retrying in {Delay} (attempt {Attempt}): {Error}", root.Value, delay, attempt, fail.Error.Value);
+            EngineLog.ListingRetrying(logger, root.Value, delay, attempt, fail.Error.Value);
             await progress.ReportAsync(new CrawlProgress(scope.SyncJobId, root, current.ItemsIndexed, false, RetryIn: delay), cancellationToken);
             await Task.Delay(delay, timeProvider, cancellationToken);
         }
@@ -145,7 +145,7 @@ internal sealed class InitialCrawler(ICloudProvider provider, IItemIndexStore in
 
     private bool Failed(SyncScope scope, string reason)
     {
-        logger.LogError("Crawling {Root} of job {Job} stopped; its checkpoint is kept so the next run continues: {Reason}", scope.RemoteRootId.Value, scope.SyncJobId.Value, reason);
+        EngineLog.CrawlStopped(logger, scope.RemoteRootId.Value, scope.SyncJobId.Value, reason);
 
         return false;
     }

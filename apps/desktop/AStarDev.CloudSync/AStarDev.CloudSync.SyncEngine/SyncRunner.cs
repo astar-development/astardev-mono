@@ -90,7 +90,7 @@ public sealed class SyncRunner : IAsyncDisposable
             while (true)
             {
                 var summary = await crawler.CrawlAsync(syncJobId, cancellationToken);
-                logger.LogInformation("Crawl of job {Job} ended: {Summary}", syncJobId.Value, summary.Value);
+                EngineLog.CrawlEnded(logger, syncJobId.Value, summary.Value);
                 if (summary is Ok<CrawlSummary> { Value: { ScopesFailed: 0 } crawled })
                 {
                     if (!completedLogged) SyncLog.SyncCompleted(logger, syncJobId.Value, crawled.ScopesCompleted);

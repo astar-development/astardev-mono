@@ -206,7 +206,7 @@ public sealed class ConflictResolver
 
     private async Task ReplanAsync(SyncJobId jobId, CancellationToken cancellationToken)
     {
-        if (await planner.PlanAsync(jobId, cancellationToken) is { Value: Fail<StoreError> failure }) logger.LogWarning("Planning job {Job} after keep both failed: {Error}", jobId.Value, failure.Error.Value);
+        if (await planner.PlanAsync(jobId, cancellationToken) is { Value: Fail<StoreError> failure }) EngineLog.PlanningAfterKeepBothFailed(logger, jobId.Value, failure.Error.Value);
     }
 
     private sealed record Loaded(SyncJob Job, CanonicalItemState State, IReadOnlyList<StoredItem> Items);
