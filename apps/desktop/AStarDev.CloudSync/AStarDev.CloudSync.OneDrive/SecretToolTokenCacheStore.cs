@@ -1,5 +1,6 @@
 using System.Diagnostics;
 using System.Text;
+using AStarDev.CloudSync.Errors;
 using AStarDev.CloudSync.Ports;
 using AStarDev.FunctionalParadigm;
 
@@ -78,6 +79,12 @@ internal sealed class SecretToolTokenCacheStore(string executable = "secret-tool
             Fail<ProviderError> => new Ok<byte[]>([])
         };
 
+    /// <summary>Returns the started process, or throws <see cref="InvalidOperationException"/> carrying a help link when the operating system started nothing.</summary>
+    /// <param name="started">The result of <see cref="Process.Start(ProcessStartInfo)"/>, which is <c>null</c> when no process was started.</param>
+    /// <param name="executable">The tool name used in the exception message.</param>
+    internal static Process Started(Process? started, string executable)
+        => started ?? throw new InvalidOperationException($"{executable} did not start.").WithHelpLink(OneDriveErrorCodes.SecretToolDidNotStart);
+
     private Task<Exceptional<ToolRun>> RunAsync(string[] arguments, string? stdin, CancellationToken cancellationToken)
         => Try.RunAsync(async token =>
         {
@@ -92,7 +99,7 @@ internal sealed class SecretToolTokenCacheStore(string executable = "secret-tool
                 info.ArgumentList.Add(argument);
             }
 
-            using var process = Process.Start(info) ?? throw new InvalidOperationException($"{executable} did not start.");
+            using var process = Started(Process.Start(info), executable);
             using var killOnCancel = token.Register(() => process.Kill());
             await process.StandardInput.WriteAsync(stdin ?? string.Empty).ConfigureAwait(false);
             process.StandardInput.Close();

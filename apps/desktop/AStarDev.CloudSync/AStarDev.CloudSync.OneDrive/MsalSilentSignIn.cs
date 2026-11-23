@@ -1,3 +1,4 @@
+using AStarDev.CloudSync.Errors;
 using AStarDev.CloudSync.Ports;
 using Microsoft.Identity.Client;
 
@@ -15,7 +16,7 @@ internal sealed class MsalSilentSignIn(OneDriveOptions options) : ISilentSignIn
     public async Task<SignInOutcome> AcquireAsync(byte[] cache, string accountIdentifier, CancellationToken cancellationToken)
     {
         var application = MsalApplication.Create(options, cache);
-        var account = await application.Client.GetAccountAsync(accountIdentifier).ConfigureAwait(false) ?? throw new MsalUiRequiredException(MsalError.UserNullError, AccountMissingMessage);
+        var account = await application.Client.GetAccountAsync(accountIdentifier).ConfigureAwait(false) ?? throw new MsalUiRequiredException(MsalError.UserNullError, AccountMissingMessage).WithHelpLink(OneDriveErrorCodes.AccountNotSignedIn);
         var result = await application.Client.AcquireTokenSilent(Scopes, account).ExecuteAsync(cancellationToken).ConfigureAwait(false);
 
         return new SignInOutcome(new ProviderAccount(result.Account.HomeAccountId.Identifier, result.Account.Username), application.Cache, result.AccessToken);
