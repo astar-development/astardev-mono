@@ -46,4 +46,8 @@ internal static class ApplicationConstants
     public static string JobSummaryFormat => "Syncing {0} ({1} mode)";
 
     public static string PickFolderTitle => "Choose the local sync folder";
+
+    public static string SaveFileTitle => "Save the export";
+
+    public static string CsvExtension => "csv";
 }

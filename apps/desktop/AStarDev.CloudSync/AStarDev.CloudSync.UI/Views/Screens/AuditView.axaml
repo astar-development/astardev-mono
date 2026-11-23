@@ -6,6 +6,7 @@
     <DockPanel Margin="16">
         <TextBlock DockPanel.Dock="Top" Text="{Binding Title}" FontSize="24" FontWeight="SemiBold" Foreground="{DynamicResource Text.Primary.Brush}" />
         <Button DockPanel.Dock="Top" Content="{Binding RefreshText}" Command="{Binding RefreshCommand}" Margin="0,8,0,8" />
+        <Button DockPanel.Dock="Top" Content="{Binding ExportText}" Command="{Binding ExportCommand}" Margin="0,0,0,8" />
         <TextBlock DockPanel.Dock="Top" Text="{Binding ErrorMessage}" IsVisible="{Binding ErrorMessage, Converter={x:Static ObjectConverters.IsNotNull}}" TextWrapping="Wrap" Foreground="{DynamicResource Trust.Degraded.Brush}" />
         <TextBlock DockPanel.Dock="Top" Text="{Binding EmptyText}" IsVisible="{Binding IsEmpty}" Foreground="{DynamicResource Text.Secondary.Brush}" />
         <ScrollViewer>

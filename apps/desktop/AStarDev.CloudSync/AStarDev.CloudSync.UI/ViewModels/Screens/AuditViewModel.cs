@@ -17,6 +17,7 @@ internal sealed class AuditViewModel : ViewModelBase, IScreen
     private readonly ICultureService culture;
     private readonly Func<IIpcClient> createClient;
     private readonly TimeProvider time;
+    private readonly ExportCommand exporter;
     private string? errorMessage;
 
     /// <summary>Creates the screen with no entries until the first refresh.</summary>
@@ -24,13 +25,16 @@ internal sealed class AuditViewModel : ViewModelBase, IScreen
     /// <param name="culture">Formats every date and time.</param>
     /// <param name="createClient">Creates a fresh client per refresh; one client is one connection.</param>
     /// <param name="time">The clock the end of the listed range is measured from.</param>
-    public AuditViewModel(ILocalisationService localisation, ICultureService culture, Func<IIpcClient> createClient, TimeProvider time)
+    /// <param name="exporter">Saves the export the Export button asks for.</param>
+    public AuditViewModel(ILocalisationService localisation, ICultureService culture, Func<IIpcClient> createClient, TimeProvider time, ExportCommand exporter)
     {
+        this.exporter = exporter;
         this.localisation = localisation;
         this.culture = culture;
         this.createClient = createClient;
         this.time = time;
         RefreshCommand = new AsyncRelayCommand(RefreshAsync);
+        ExportCommand = new AsyncRelayCommand(ExportAsync);
     }
 
     /// <inheritdoc/>
@@ -58,6 +62,12 @@ internal sealed class AuditViewModel : ViewModelBase, IScreen
     /// <summary>Reads the entries again.</summary>
     public IAsyncRelayCommand RefreshCommand { get; }
 
+    /// <summary>Saves the entries to a file the user chooses.</summary>
+    public IAsyncRelayCommand ExportCommand { get; }
+
+    /// <summary>Label of the export button.</summary>
+    public string ExportText => localisation.Get("Audit.Export");
+
     /// <summary>Label of the refresh button.</summary>
     public string RefreshText => localisation.Get("Audit.Refresh");
 
@@ -80,6 +90,17 @@ internal sealed class AuditViewModel : ViewModelBase, IScreen
         });
     }
 
+    /// <summary>Saves every kept entry to a file the user chooses. A failure lands in <see cref="ErrorMessage"/>; a dismissed dialog changes nothing.</summary>
+    /// <param name="cancellationToken">Cancelling abandons the dialog or the write and surfaces as <see cref="OperationCanceledException"/>.</param>
+    public async Task ExportAsync(CancellationToken cancellationToken)
+        => ErrorMessage = await exporter.RunAsync(new ExportAudit(Everything()), localisation.Get("Audit.ExportFileName"), cancellationToken) switch
+        {
+            Ok<Unit> => null,
+            Fail<ConnectFailure> fail => fail.Error.Message
+        };
+
+    private GetAudit Everything() => new(DateTimeOffset.UnixEpoch, time.GetUtcNow().AddDays(1), []);
+
     private static async Task<Result<Unit, ConnectFailure>> ConnectAsync(IIpcClient client, CancellationToken cancellationToken)
         => await client.ConnectAsync(cancellationToken) switch
         {
@@ -88,7 +109,7 @@ internal sealed class AuditViewModel : ViewModelBase, IScreen
         };
 
     private async Task<Result<AuditView, ConnectFailure>> ListAsync(IIpcClient client, CancellationToken cancellationToken)
-        => await client.QueryAsync(new GetAudit(DateTimeOffset.UnixEpoch, time.GetUtcNow().AddDays(1), []), cancellationToken) switch
+        => await client.QueryAsync(Everything(), cancellationToken) switch
         {
             Ok<AuditView> ok => ok,
             Fail<IpcError> fail => new Fail<ConnectFailure>(ConnectFailure.From(fail.Error))
