@@ -50,7 +50,7 @@ public sealed class ScreenRegistrationShould
     {
         using var host = CreateHost();
 
-        var stub = host.Services.GetServices<IScreen>().OfType<StubScreenViewModel>().First();
+        var stub = new SampleStub(host.Services.GetRequiredService<Localisation.ILocalisationService>());
 
         stub.NotAvailableText.ShouldNotStartWith("!");
     }
@@ -75,4 +75,6 @@ public sealed class ScreenRegistrationShould
         bar.ErrorStateText.ShouldNotStartWith("!");
         bar.LastActivityText.ShouldNotStartWith("!");
     }
+
+    private sealed class SampleStub(Localisation.ILocalisationService localisation) : StubScreenViewModel(ScreenId.Metrics, localisation);
 }

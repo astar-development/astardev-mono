@@ -1,0 +1,27 @@
+<UserControl xmlns="https://github.com/avaloniaui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:vm="using:AStarDev.CloudSync.UI.ViewModels.Screens"
+             x:Class="AStarDev.CloudSync.UI.Views.Screens.MetricsView"
+             x:DataType="vm:MetricsViewModel">
+    <DockPanel Margin="16">
+        <TextBlock DockPanel.Dock="Top" Text="{Binding Title}" FontSize="24" FontWeight="SemiBold" Foreground="{DynamicResource Text.Primary.Brush}" />
+        <StackPanel DockPanel.Dock="Top" Orientation="Horizontal" Spacing="8" Margin="0,8,0,8">
+            <Button Content="{Binding RefreshText}" Command="{Binding RefreshCommand}" />
+        </StackPanel>
+        <TextBlock DockPanel.Dock="Top" Text="{Binding ErrorMessage}" IsVisible="{Binding ErrorMessage, Converter={x:Static ObjectConverters.IsNotNull}}" TextWrapping="Wrap" Foreground="{DynamicResource Trust.Degraded.Brush}" />
+        <TextBlock DockPanel.Dock="Top" Text="{Binding EmptyText}" IsVisible="{Binding IsEmpty}" Foreground="{DynamicResource Text.Secondary.Brush}" />
+        <ScrollViewer>
+            <ItemsControl ItemsSource="{Binding Rows}">
+                <ItemsControl.ItemTemplate>
+                    <DataTemplate x:DataType="vm:MetricRowViewModel">
+                        <StackPanel Margin="0,0,0,8">
+                            <TextBlock Text="{Binding Name}" Foreground="{DynamicResource Text.Primary.Brush}" />
+                            <TextBlock Text="{Binding Current}" FontWeight="SemiBold" Foreground="{DynamicResource Text.Primary.Brush}" />
+                            <TextBlock Text="{Binding History}" TextWrapping="Wrap" Foreground="{DynamicResource Text.Secondary.Brush}" />
+                        </StackPanel>
+                    </DataTemplate>
+                </ItemsControl.ItemTemplate>
+            </ItemsControl>
+        </ScrollViewer>
+    </DockPanel>
+</UserControl>

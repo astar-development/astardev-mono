@@ -53,5 +53,7 @@ internal static class ApplicationConstants
 
     public static string ActivitySourcePrefix => "AStarDev.CloudSync.";
 
+    public static TimeSpan MetricSampleInterval => TimeSpan.FromMinutes(1);
+
     public static string InterruptedOperationReason => "Interrupted by a daemon restart.";
 }
