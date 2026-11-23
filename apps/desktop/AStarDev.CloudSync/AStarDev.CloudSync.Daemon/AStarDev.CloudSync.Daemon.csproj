@@ -2,6 +2,7 @@
 
   <ItemGroup>
     <ProjectReference Include="..\AStarDev.CloudSync.Domain\AStarDev.CloudSync.Domain.csproj" />
+    <ProjectReference Include="..\AStarDev.CloudSync.Errors\AStarDev.CloudSync.Errors.csproj" />
     <ProjectReference Include="..\AStarDev.CloudSync.SyncEngine\AStarDev.CloudSync.SyncEngine.csproj" />
     <ProjectReference Include="..\AStarDev.CloudSync.Persistence\AStarDev.CloudSync.Persistence.csproj" />
     <ProjectReference Include="..\AStarDev.CloudSync.OneDrive\AStarDev.CloudSync.OneDrive.csproj" />
