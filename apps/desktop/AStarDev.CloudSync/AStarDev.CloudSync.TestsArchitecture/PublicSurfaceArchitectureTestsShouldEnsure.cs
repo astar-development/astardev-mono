@@ -17,7 +17,7 @@ public sealed class PublicSurfaceArchitectureTestsShouldEnsure
     public void the_ports_expose_only_their_approved_public_types()
         => ShouldExposeExactly(typeof(ICloudProvider).Assembly,
             "AccountAlreadyExists", "AccountNotFound", "AuthenticationFailed", "ChangeKind", "ConflictNotFound", "CrawlCheckpoint", "IAccountStore", "ICloudProvider", "IConflictStore", "IEventJournal", "IItemIndexStore", "IItemStateStore", "IKnownSnapshotStore", "ILocalObservationStore", "InvalidDeltaToken", "InvalidSettingValue", "IOperationStore", "ISettingsStore", "JournalEntry", "KnownEntry", "ISyncJobStore", "ISyncScopeStore", "OperationNotDeadLettered", "OperationNotRunning", "Permanent", "ProviderAccount",
-            "ProviderChange", "ProviderDeltaPage", "ProviderError", "ProviderItem", "ProviderSnapshotPage", "RateLimited", "SettingNames", "StorageFailed", "StoredItem", "StoreError", "SyncJobAlreadyExists", "SyncJobNotFound", "UploadRequest",
+            "ProviderChange", "ProviderDeltaPage", "ProviderDriveInfo", "ProviderError", "ProviderItem", "ProviderSnapshotPage", "RateLimited", "SettingNames", "StorageFailed", "StoredItem", "StoreError", "SyncJobAlreadyExists", "SyncJobNotFound", "UploadRequest",
             "SyncScopeAlreadyExists", "SyncScopeNotFound", "Transient", "UnknownSetting");
 
     [Fact]

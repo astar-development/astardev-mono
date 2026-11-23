@@ -81,6 +81,11 @@ internal sealed class OneDriveProvider(IOptions<OneDriveSettings> settings, ITok
     public Task<Result<Unit, ProviderError>> DeleteAsync(RemoteItemId itemId, CancellationToken cancellationToken)
         => ObserveAsync("Delete", null, itemId.Value, token => transfer.DeleteAsync(itemId, token), cancellationToken);
 
+    /// <inheritdoc/>
+    /// <remarks>Reads the quota of the signed-in drive from Graph. Graph has no item count, so <see cref="ProviderDriveInfo.ItemCountEstimate"/> is always none. Without a successful <see cref="ConnectAsync"/> first the result is <see cref="AuthenticationFailed"/>.</remarks>
+    public Task<Result<ProviderDriveInfo, ProviderError>> GetDriveInfoAsync(CancellationToken cancellationToken)
+        => ObserveAsync("GetDriveInfo", null, null, enumerator.GetDriveInfoAsync, cancellationToken);
+
     private async Task<Result<T, ProviderError>> ObserveAsync<T>(string call, string? accountId, string? remoteItemId, Func<CancellationToken, Task<Result<T, ProviderError>>> invoke, CancellationToken cancellationToken)
     {
         using var scope = CorrelationScope.Begin(logger, accountId: accountId, remoteItemId: remoteItemId);

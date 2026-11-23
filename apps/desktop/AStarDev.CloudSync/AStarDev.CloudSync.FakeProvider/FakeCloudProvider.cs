@@ -24,6 +24,8 @@ internal sealed class FakeCloudProvider(int pageSize) : ICloudProvider
 
     public Action<int>? BeforePage { get; set; }
 
+    public ProviderDriveInfo DriveInfo { get; set; } = new(0, 0, 0, Option.None<long>());
+
     public bool ServeGeneratedContent { get; set; }
 
     public Dictionary<RemoteItemId, byte[]> Contents { get; } = [];
@@ -104,6 +106,17 @@ internal sealed class FakeCloudProvider(int pageSize) : ICloudProvider
         cancellationToken.ThrowIfCancellationRequested();
 
         return Task.FromResult<Result<Unit, ProviderError>>(new Ok<Unit>(default));
+    }
+
+    public Task<Result<ProviderDriveInfo, ProviderError>> GetDriveInfoAsync(CancellationToken cancellationToken)
+    {
+        cancellationToken.ThrowIfCancellationRequested();
+
+        Result<ProviderDriveInfo, ProviderError> result = scriptedFailures.TryDequeue(out var failure)
+            ? new Fail<ProviderError>(failure)
+            : new Ok<ProviderDriveInfo>(DriveInfo);
+
+        return Task.FromResult(result);
     }
 
     public Task<Result<IReadOnlyList<ProviderItem>, ProviderError>> ListChildrenAsync(RemoteItemId parent, CancellationToken cancellationToken)
