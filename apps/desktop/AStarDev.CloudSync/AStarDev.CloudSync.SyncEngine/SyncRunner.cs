@@ -1,4 +1,5 @@
 using AStarDev.CloudSync.Domain;
+using AStarDev.CloudSync.Errors;
 using AStarDev.CloudSync.Observability;
 using AStarDev.CloudSync.Ports;
 using AStarDev.FunctionalParadigm;
@@ -8,7 +9,7 @@ using Microsoft.Extensions.Options;
 namespace AStarDev.CloudSync.SyncEngine;
 
 /// <summary>
-/// Runs the initial crawl of a job in the background, at most one run per job, then applies the provider's changes every <see cref="DeltaPollingOptions.Interval"/> once every scope has crawled; a scope that failed is crawled again each round.
+/// Runs the initial crawl of a job in the background, at most one run per job, then applies the provider's changes and plans the job into operations every <see cref="DeltaPollingOptions.Interval"/> once every scope has crawled; a scope that failed is crawled again each round.
 /// Starting a job that already runs wakes it, so a scope added meanwhile crawls at once. Stops on request or when the process shuts down.
 /// </summary>
 public sealed class SyncRunner : IAsyncDisposable
@@ -17,15 +18,17 @@ public sealed class SyncRunner : IAsyncDisposable
     private readonly ISyncJobStore jobs;
     private readonly InitialCrawler crawler;
     private readonly DeltaProcessingService deltas;
+    private readonly SyncPlanner planner;
     private readonly DeltaPollingOptions options;
     private readonly TimeProvider timeProvider;
     private readonly ILogger<SyncRunner> logger;
 
-    internal SyncRunner(ISyncJobStore jobs, InitialCrawler crawler, DeltaProcessingService deltas, IOptions<DeltaPollingOptions> options, TimeProvider timeProvider, ILogger<SyncRunner> logger)
+    internal SyncRunner(ISyncJobStore jobs, InitialCrawler crawler, DeltaProcessingService deltas, SyncPlanner planner, IOptions<DeltaPollingOptions> options, TimeProvider timeProvider, ILogger<SyncRunner> logger)
     {
         this.jobs = jobs;
         this.crawler = crawler;
         this.deltas = deltas;
+        this.planner = planner;
         this.options = options.Value;
         this.timeProvider = timeProvider;
         this.logger = logger;
@@ -103,6 +106,7 @@ public sealed class SyncRunner : IAsyncDisposable
 
                     completedLogged = true;
                     await deltas.ProcessJobAsync(syncJobId, cancellationToken);
+                    await PlanAsync(syncJobId, cancellationToken);
                 }
 
                 await SleepAsync(wake, cancellationToken);
@@ -113,6 +117,11 @@ public sealed class SyncRunner : IAsyncDisposable
             SyncMetrics.Shared.JobStopped();
             lock (running) running.Remove(syncJobId);
         }
+    }
+
+    private async Task PlanAsync(SyncJobId syncJobId, CancellationToken cancellationToken)
+    {
+        if (await planner.PlanAsync(syncJobId, cancellationToken) is { Value: Fail<StoreError> failure }) EngineLog.PlanningAfterCrawlFailed(logger, syncJobId.Value, failure.Error.Value, ErrorInfo.CodeOf(failure.Error.Value));
     }
 
     private async Task SleepAsync(SemaphoreSlim wake, CancellationToken cancellationToken)

@@ -30,6 +30,19 @@ public sealed class StartSyncHandlerShould : IDisposable
     }
 
     [Fact]
+    public async Task plan_the_crawled_items_into_operations()
+    {
+        var provider = new StubCloudProvider { SnapshotResult = new Ok<ProviderSnapshotPage>(new ProviderSnapshotPage([StubCloudProvider.Item("a")], null, new DeltaToken("delta-1"))) };
+        await using var host = DaemonTestHost.CreateWith(provider);
+        var job = await NewJobAsync(host);
+        await host.Services.GetRequiredService<ISyncScopeStore>().AddAsync(new SyncScope(job.Id, new RemoteItemId("docs")), Token);
+
+        await host.Services.GetRequiredService<StartSyncHandler>().HandleAsync(new StartSync(job.Id.Value), Token);
+
+        (await QueuedAsync(host)).Select(operation => operation.Type).ShouldBe([OperationType.DownloadFile]);
+    }
+
+    [Fact]
     public async Task accept_a_job_that_is_already_running()
     {
         await using var host = DaemonTestHost.CreateWith(new StubCloudProvider());
@@ -112,5 +125,20 @@ public sealed class StartSyncHandlerShould : IDisposable
         }
 
         return checkpoint;
+    }
+
+    private static async Task<IReadOnlyList<Operation>> QueuedAsync(DaemonTestHost host)
+    {
+        var store = host.Services.GetRequiredService<IOperationStore>();
+        var deadline = DateTimeOffset.UtcNow.AddSeconds(10);
+        IReadOnlyList<Operation> operations = [];
+
+        while (operations.Count == 0 && DateTimeOffset.UtcNow < deadline)
+        {
+            await Task.Delay(20, Token);
+            operations = (await store.ListAsync(Token)).Value.ShouldBeOfType<Ok<IReadOnlyList<Operation>>>().Value;
+        }
+
+        return operations;
     }
 }
