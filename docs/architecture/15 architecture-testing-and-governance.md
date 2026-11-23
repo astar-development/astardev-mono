@@ -256,6 +256,18 @@ AStarDev.CloudSync.Ports
 
 Forbidden.
 
+### Errors Depends On FunctionalParadigm Only
+
+```text
+AStarDev.CloudSync.Errors
+    ↓
+Domain, Ports, SyncEngine, Persistence, OneDrive, IPC, Daemon, UI, Observability
+```
+
+Forbidden. The Errors project may reference only `AStarDev.FunctionalParadigm`.
+
+---
+
 ### SyncEngine Must Not Reference Microsoft Graph
 
 ```text
