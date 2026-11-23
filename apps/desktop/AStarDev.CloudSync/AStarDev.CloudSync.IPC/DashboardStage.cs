@@ -1,6 +1,6 @@
 namespace AStarDev.CloudSync.IPC;
 
-/// <summary>The reconciliation pipeline stage the daemon is in, in execution order. An idle daemon reports <see cref="ExecuteQueue"/>, the last stage.</summary>
+/// <summary>The reconciliation pipeline stage the daemon is in, in execution order. A daemon that has synced and is idle reports <see cref="ExecuteQueue"/>, the last stage; <see cref="DashboardView.Stage"/> is <see langword="null"/> before any sync has run.</summary>
 public enum DashboardStage
 {
     /// <summary>Reading the local file tree.</summary>

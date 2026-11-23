@@ -10,6 +10,13 @@
             <TextBlock Text="{Binding Title}" FontSize="24" FontWeight="SemiBold" Foreground="{DynamicResource Text.Primary.Brush}" />
             <TextBlock Text="{Binding DisconnectedNotice}" IsVisible="{Binding IsDisconnected}" Foreground="{DynamicResource Text.Secondary.Brush}" TextWrapping="Wrap" />
 
+            <Border Classes="card" Padding="0" IsVisible="{Binding IsSetupNeeded}">
+                <Grid ColumnDefinitions="*,Auto" Margin="16,12">
+                    <TextBlock Text="{Binding SetupNotice}" VerticalAlignment="Center" TextWrapping="Wrap" Foreground="{DynamicResource Text.Primary.Brush}" />
+                    <Button Grid.Column="1" Classes="action" Content="{Binding SetupActionText}" Command="{Binding OpenSetupCommand}" />
+                </Grid>
+            </Border>
+
             <Border Classes="card" Padding="0">
                 <UniformGrid Rows="1" Columns="4">
                     <Border Classes="tile">
@@ -39,7 +46,7 @@
                 </UniformGrid>
             </Border>
 
-            <Border Classes="card" Padding="0">
+            <Border Classes="card" Padding="0" IsVisible="{Binding IsSetupComplete}">
                 <StackPanel>
                     <Grid ColumnDefinitions="*,Auto" Margin="16,12">
                         <StackPanel Spacing="2" VerticalAlignment="Center" DataContext="{Binding Health}" x:DataType="vm:SyncHealthPresentation">

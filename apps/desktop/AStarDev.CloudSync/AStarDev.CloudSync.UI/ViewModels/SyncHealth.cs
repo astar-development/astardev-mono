@@ -1,6 +1,6 @@
 namespace AStarDev.CloudSync.UI.ViewModels;
 
-/// <summary>The overall health the Trust Status card reports, from best to worst.</summary>
+/// <summary>The overall health the Trust Status card reports, from best to worst, with the not-yet-set-up state last.</summary>
 internal enum SyncHealth
 {
     /// <summary>All selected scopes are synchronised and nothing needs doing.</summary>
@@ -16,5 +16,8 @@ internal enum SyncHealth
     AttentionRequired,
 
     /// <summary>Sync has stopped or data may be at risk.</summary>
-    Critical
+    Critical,
+
+    /// <summary>No account is connected or no folder is selected, so nothing is syncing yet.</summary>
+    SetupRequired
 }

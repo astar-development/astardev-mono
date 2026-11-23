@@ -102,7 +102,7 @@ The most important component in the application. Health states: Healthy, Active,
 ## Formal Health Model
 
 ```text
-SyncHealth = Healthy | Active | Degraded | AttentionRequired | Critical
+SyncHealth = Healthy | Active | Degraded | AttentionRequired | Critical | SetupRequired
 ```
 
 ## Progress Visibility
@@ -119,6 +119,15 @@ Expose pipeline stages:
 - Analyse Changes
 - Generate Operations
 - Execute Queue
+
+## Setup And Idle States
+
+The dashboard never implies sync has happened when it has not.
+
+- No account connected: health is `SetupRequired`, a notice asks the user to connect an account and the progress card is hidden.
+- Account connected, no folder selected: health is `SetupRequired`, a notice asks the user to choose folders and the progress card is hidden. Both notices link to the Providers screen, so the dashboard still configures nothing itself.
+- Folders selected, no sync run yet: all six stages are Pending and none is current; health is `Active`, not `Healthy`.
+- Healthy is reported only after a reconciliation has completed.
 
 ## Queue Visibility
 

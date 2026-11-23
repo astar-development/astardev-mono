@@ -22,7 +22,7 @@ internal sealed record SyncHealthPresentation(string Headline, string Summary, S
         SyncHealth.Healthy => TrustLevel.Healthy,
         SyncHealth.Active => TrustLevel.Active,
         SyncHealth.Degraded => TrustLevel.Degraded,
-        SyncHealth.AttentionRequired => TrustLevel.Attention,
+        SyncHealth.AttentionRequired or SyncHealth.SetupRequired => TrustLevel.Attention,
         _ => TrustLevel.Critical
     };
 }
