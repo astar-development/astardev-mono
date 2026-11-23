@@ -235,7 +235,7 @@ AStarDev.CloudSync.SyncEngine
 
 Forbidden.
 
-### Ports Depends On Domain And FunctionalParadigm Only
+### Ports Depends On Domain, Errors And FunctionalParadigm Only
 
 ```text
 AStarDev.CloudSync.Ports
@@ -243,7 +243,7 @@ AStarDev.CloudSync.Ports
 SyncEngine, Persistence, OneDrive, IPC, Daemon, UI, Observability
 ```
 
-Forbidden. Ports may reference only Domain and `AStarDev.FunctionalParadigm`,
+Forbidden. Ports may reference only Domain, Errors and `AStarDev.FunctionalParadigm`,
 checked both on types and on the project file.
 
 ### Only Implementations Reference Ports

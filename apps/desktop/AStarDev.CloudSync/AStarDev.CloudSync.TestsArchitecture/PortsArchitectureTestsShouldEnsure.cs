@@ -54,11 +54,11 @@ public sealed class PortsArchitectureTestsShouldEnsure
     }
 
     [Fact]
-    public void the_ports_project_file_references_only_domain_and_the_functional_paradigm_library()
+    public void the_ports_project_file_references_only_domain_errors_and_the_functional_paradigm_library()
     {
         var project = LoadProject(PortsProject);
 
-        ProjectReferences(project).Order().ShouldBe(["AStarDev.CloudSync.Domain", FunctionalParadigm]);
+        ProjectReferences(project).Order().ShouldBe(["AStarDev.CloudSync.Domain", "AStarDev.CloudSync.Errors", FunctionalParadigm]);
         PackageReferences(project).ShouldBeEmpty();
     }
 
