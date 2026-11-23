@@ -9,27 +9,14 @@ namespace AStarDev.CloudSync.Daemon;
 
 /// <summary>
 /// Answers <see cref="GetDashboardSnapshot"/> from the operation, conflict, account and journal stores, the provider health check and the <see cref="ActivityTracker"/>, and publishes <see cref="DashboardChanged"/> when the answer changes.
-/// Items done and total come from the <see cref="ActivityTracker"/>; throughput and time left come only from the crawl's own estimate (<see cref="CrawlProgress.ItemsPerSecond"/>), not from the tracker's per-job estimate.
+/// Items done and total come from the <see cref="ActivityTracker"/>; throughput and time left are the tracker's job-level 60 second figures (<see cref="ActivityView.ItemsPerSecond"/>, <see cref="ActivityView.EtaSeconds"/>), the same the Activity screen shows.
 /// </summary>
 internal sealed class DashboardSnapshotQuery(IOperationStore operations, IConflictStore conflicts, IAccountStore accounts, IEventJournal journal, CanonicalStateReader states, HealthCheckService health, ActivityTracker tracker, IIpcServer server, TimeProvider timeProvider)
 {
     private static readonly string[] ScopeEvents = ["SyncScopeAdded", "SyncScopeRemoved"];
 
     private readonly object gate = new();
-    private readonly Dictionary<(Guid Job, string Root), (double? Rate, TimeSpan? Remaining)> crawls = [];
     private Option<DashboardView> published = Option.None<DashboardView>();
-
-    /// <summary>Remembers the crawl's own throughput and estimate for the folder, until the folder completes or fails.</summary>
-    /// <param name="progress">The report. One without a rate clears the folder's earlier rate.</param>
-    public void Observe(CrawlProgress progress)
-    {
-        lock (gate)
-        {
-            var key = (progress.SyncJobId.Value, progress.RemoteRootId.Value);
-            if (progress.Completed || progress.Failed) crawls.Remove(key);
-            else crawls[key] = (progress.ItemsPerSecond, progress.EstimatedRemaining);
-        }
-    }
 
     /// <summary>Reads the dashboard values now.</summary>
     /// <returns>The snapshot, or <see cref="HandlerFailed"/> carrying the first store failure worded for the user. Cancellation propagates as <see cref="OperationCanceledException"/>.</returns>
@@ -110,7 +97,7 @@ internal sealed class DashboardSnapshotQuery(IOperationStore operations, IConfli
         var providers = ProvidersOf(accountList);
         var reconciled = activities.Where(activity => activity.State == ActivityState.Healthy).Select(activity => (DateTimeOffset?)activity.UpdatedUtc).Max();
         var queued = queue.Select(operation => (DateTimeOffset?)operation.CreatedUtc).Max();
-        var (rate, remaining) = CrawlEstimate();
+        var (rate, remaining) = CrawlEstimate(activities);
 
         return new DashboardView(
             ProviderHealthOf(providerHealth),
@@ -134,15 +121,12 @@ internal sealed class DashboardSnapshotQuery(IOperationStore operations, IConfli
             EventsOf(reconciled, pending + executing == 0 && completed > 0 ? queued ?? DateTimeOffset.UnixEpoch : null, scopeEntries.Select(entry => (DateTimeOffset?)entry.OccurredUtc).Max()));
     }
 
-    private (double? Rate, TimeSpan? Remaining) CrawlEstimate()
+    private static (double? Rate, TimeSpan? Remaining) CrawlEstimate(IReadOnlyList<ActivityView> activities)
     {
-        lock (gate)
-        {
-            var rates = crawls.Values.Where(crawl => crawl.Rate is not null).Select(crawl => crawl.Rate!.Value).ToList();
-            var remaining = crawls.Values.Where(crawl => crawl.Remaining is not null).Select(crawl => (TimeSpan?)crawl.Remaining!.Value).Max();
+        var rates = activities.Where(activity => activity.ItemsPerSecond is not null).Select(activity => activity.ItemsPerSecond!.Value).ToList();
+        var remaining = activities.Where(activity => activity.EtaSeconds is not null).Select(activity => (int?)activity.EtaSeconds!.Value).Max();
 
-            return (rates.Count == 0 ? null : rates.Sum(), remaining);
-        }
+        return (rates.Count == 0 ? null : rates.Sum(), remaining is { } seconds ? TimeSpan.FromSeconds(seconds) : null);
     }
 
     private static IReadOnlyList<string> EventsOf(DateTimeOffset? reconciled, DateTimeOffset? drained, DateTimeOffset? scopeUpdated)

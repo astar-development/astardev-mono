@@ -12,6 +12,8 @@ namespace AStarDev.CloudSync.Daemon;
 /// </summary>
 internal sealed class ActivityTracker(ISyncJobStore jobs, TimeProvider timeProvider)
 {
+    private static readonly TimeSpan RateWindow = TimeSpan.FromSeconds(60);
+
     private readonly Dictionary<SyncJobId, JobState> states = [];
 
     /// <summary>Records one progress report and returns the job's activity after it.</summary>
@@ -53,6 +55,7 @@ internal sealed class ActivityTracker(ISyncJobStore jobs, TimeProvider timeProvi
     private sealed class JobState(string name, DateTimeOffset started)
     {
         private readonly Dictionary<RemoteItemId, ScopeState> scopes = [];
+        private readonly Queue<(DateTimeOffset At, long Counted)> samples = [];
         private DateTimeOffset? updated;
         private TimeSpan? retryIn;
 
@@ -79,6 +82,7 @@ internal sealed class ActivityTracker(ISyncJobStore jobs, TimeProvider timeProvi
             {
                 scope.Items = progress.ItemsIndexed;
                 scope.Completed = progress.Completed;
+                Sample(now);
             }
 
             if (progress.ItemsTotal is { } total) scope.Total = total;
@@ -91,21 +95,31 @@ internal sealed class ActivityTracker(ISyncJobStore jobs, TimeProvider timeProvi
             long? total = scopes.Values.All(scope => scope.Total is not null) ? scopes.Values.Sum(scope => scope.Total!.Value) : null;
             var state = retryIn is not null ? ActivityState.Waiting : scopes.Values.Any(scope => scope.Working) ? ActivityState.Working : scopes.Values.All(scope => scope.Completed) ? ActivityState.Healthy : ActivityState.InitialIndexing;
 
-            return new ActivityView(id.Value, Name, state, done, total, Percent(done, total), EtaSeconds(done, total), started, updated ?? started, retryIn is { } wait ? (int)Math.Ceiling(wait.TotalSeconds) : null, scopes.Values.Any(scope => scope.Failed));
+            var rate = state is ActivityState.InitialIndexing or ActivityState.Working ? ItemsPerSecond() : null;
+
+            return new ActivityView(id.Value, Name, state, done, total, Percent(done, total), EtaSeconds(done, total, rate), started, updated ?? started, retryIn is { } wait ? (int)Math.Ceiling(wait.TotalSeconds) : null, scopes.Values.Any(scope => scope.Failed), rate);
+        }
+
+        private void Sample(DateTimeOffset now)
+        {
+            samples.Enqueue((now, scopes.Values.Sum(scope => scope.Items - scope.Baseline)));
+            while (samples.Count > 2 && now - samples.Peek().At > RateWindow) samples.Dequeue();
+        }
+
+        private double? ItemsPerSecond()
+        {
+            if (samples.Count < 2) return null;
+
+            var first = samples.Peek();
+            var last = samples.Last();
+            var seconds = (last.At - first.At).TotalSeconds;
+
+            return seconds > 0 ? (last.Counted - first.Counted) / seconds : null;
         }
 
         private static double? Percent(long done, long? total) => total is > 0 ? Math.Min(100d, Math.Round(100d * done / total.Value, 1)) : null;
 
-        private int? EtaSeconds(long done, long? total)
-        {
-            if (total is null) return null;
-
-            var counted = scopes.Values.Sum(scope => scope.Items - scope.Baseline);
-            var elapsed = ((updated ?? started) - scopes.Values.Min(scope => scope.FirstSeen)).TotalSeconds;
-            if (counted <= 0 || elapsed <= 0) return null;
-
-            return (int)Math.Ceiling(Math.Max(0, total.Value - done) / (counted / elapsed));
-        }
+        private static int? EtaSeconds(long done, long? total, double? rate) => total is { } all && rate is > 0 ? (int)Math.Ceiling(Math.Max(0, all - done) / rate.Value) : null;
     }
 
     private sealed class ScopeState(long baseline, DateTimeOffset firstSeen)

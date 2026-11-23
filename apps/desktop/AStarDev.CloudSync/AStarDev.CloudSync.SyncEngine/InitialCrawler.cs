@@ -50,7 +50,7 @@ internal sealed class InitialCrawler(ICloudProvider provider, IItemIndexStore in
         var started = timeProvider.GetTimestamp();
         var succeeded = await index.GetCheckpointAsync(scope, cancellationToken) switch
         {
-            Ok<CrawlCheckpoint> ok => ok.Value.Completed || await CrawlPagesAsync(scope, ok.Value, throttle, NewEstimator(ok.Value), cancellationToken),
+            Ok<CrawlCheckpoint> ok => ok.Value.Completed || await CrawlPagesAsync(scope, ok.Value, throttle, cancellationToken),
             Fail<StoreError> fail => Failed(scope, fail.Error.ToString()!)
         };
         SyncEngineTelemetry.RecordDuration(timeProvider.GetElapsedTime(started));
@@ -59,13 +59,13 @@ internal sealed class InitialCrawler(ICloudProvider provider, IItemIndexStore in
         return succeeded;
     }
 
-    private async Task<bool> CrawlPagesAsync(SyncScope scope, CrawlCheckpoint start, CrawlProgressThrottle throttle, ProgressEstimator estimator, CancellationToken cancellationToken)
+    private async Task<bool> CrawlPagesAsync(SyncScope scope, CrawlCheckpoint start, CrawlProgressThrottle throttle, CancellationToken cancellationToken)
     {
         var current = start;
 
         while (!current.Completed)
         {
-            if (await CrawlPageAsync(scope, current, throttle, estimator, cancellationToken) is not Ok<CrawlCheckpoint> next) return false;
+            if (await CrawlPageAsync(scope, current, throttle, cancellationToken) is not Ok<CrawlCheckpoint> next) return false;
 
             current = next.Value;
         }
@@ -73,12 +73,12 @@ internal sealed class InitialCrawler(ICloudProvider provider, IItemIndexStore in
         return true;
     }
 
-    private async Task<Result<CrawlCheckpoint, string>> CrawlPageAsync(SyncScope scope, CrawlCheckpoint current, CrawlProgressThrottle throttle, ProgressEstimator estimator, CancellationToken cancellationToken)
+    private async Task<Result<CrawlCheckpoint, string>> CrawlPageAsync(SyncScope scope, CrawlCheckpoint current, CrawlProgressThrottle throttle, CancellationToken cancellationToken)
     {
         using var span = SyncEngineTelemetry.StartPage();
         Result<CrawlCheckpoint, string> stored = await FetchPageAsync(scope, current, cancellationToken) switch
         {
-            Ok<ProviderSnapshotPage> ok => await StorePageAsync(scope, current, ok.Value, throttle, estimator, cancellationToken),
+            Ok<ProviderSnapshotPage> ok => await StorePageAsync(scope, current, ok.Value, throttle, cancellationToken),
             Fail<ProviderError> fail => new Fail<string>(fail.Error.Value.ToString()!)
         };
 
@@ -87,7 +87,7 @@ internal sealed class InitialCrawler(ICloudProvider provider, IItemIndexStore in
         return stored;
     }
 
-    private async Task<Result<CrawlCheckpoint, string>> StorePageAsync(SyncScope scope, CrawlCheckpoint current, ProviderSnapshotPage page, CrawlProgressThrottle throttle, ProgressEstimator estimator, CancellationToken cancellationToken)
+    private async Task<Result<CrawlCheckpoint, string>> StorePageAsync(SyncScope scope, CrawlCheckpoint current, ProviderSnapshotPage page, CrawlProgressThrottle throttle, CancellationToken cancellationToken)
     {
         var last = page.ResumeToken is null;
         var next = new CrawlCheckpoint(page.ResumeToken, current.ItemsIndexed + page.Items.Count, last, last ? page.DeltaToken : null);
@@ -95,29 +95,12 @@ internal sealed class InitialCrawler(ICloudProvider provider, IItemIndexStore in
         if (await index.SavePageAsync(scope, page.Items, next, timeProvider.GetUtcNow(), cancellationToken) is Fail<StoreError> fail) return new Fail<string>(fail.Error.ToString()!);
 
         SyncEngineTelemetry.RecordIndexed(page.Items.Count);
-        estimator.Record(next.ItemsIndexed);
-        if (last || throttle.TryAdmit()) await progress.ReportAsync(Measured(scope, next, page.TotalItems, estimator), cancellationToken);
+        if (last || throttle.TryAdmit()) await progress.ReportAsync(Measured(scope, next, page.TotalItems), cancellationToken);
 
         return new Ok<CrawlCheckpoint>(next);
     }
 
-    private ProgressEstimator NewEstimator(CrawlCheckpoint start)
-    {
-        var estimator = new ProgressEstimator(ApplicationConstants.ThroughputWindow, timeProvider);
-        estimator.Record(start.ItemsIndexed);
-
-        return estimator;
-    }
-
-    private static CrawlProgress Measured(SyncScope scope, CrawlCheckpoint checkpoint, long? total, ProgressEstimator estimator)
-        => new(
-            scope.SyncJobId,
-            scope.RemoteRootId,
-            checkpoint.ItemsIndexed,
-            checkpoint.Completed,
-            total,
-            ItemsPerSecond: estimator.ItemsPerSecond().Match(rate => (double?)rate, () => null),
-            EstimatedRemaining: estimator.Remaining(checkpoint.ItemsIndexed, Option.FromNullable(total)).Match(remaining => (TimeSpan?)remaining, () => null));
+    private static CrawlProgress Measured(SyncScope scope, CrawlCheckpoint checkpoint, long? total) => new(scope.SyncJobId, scope.RemoteRootId, checkpoint.ItemsIndexed, checkpoint.Completed, total);
 
     private async Task<Result<ProviderSnapshotPage, ProviderError>> FetchPageAsync(SyncScope scope, CrawlCheckpoint current, CancellationToken cancellationToken)
     {
