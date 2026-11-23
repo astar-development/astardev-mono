@@ -6,7 +6,7 @@
              x:DataType="vm:StatusBarViewModel">
     <Border Padding="16,6" Background="{DynamicResource Navigation.Rail.Brush}" BorderBrush="{DynamicResource Border.Brush}" BorderThickness="0,1,0,0">
         <StackPanel Orientation="Horizontal" Spacing="24">
-            <TextBlock Text="{Binding Connection.StatusText}" Foreground="{DynamicResource Text.Secondary.Brush}" />
+            <TextBlock Text="{Binding ConnectionText}" Foreground="{DynamicResource Text.Secondary.Brush}" />
             <views:StatusIndicatorView DataContext="{Binding ProviderHealth}" />
             <TextBlock Text="{Binding QueueActivityText}" Foreground="{DynamicResource Text.Secondary.Brush}" />
             <TextBlock Text="{Binding ErrorStateText}" Foreground="{DynamicResource Text.Secondary.Brush}" />

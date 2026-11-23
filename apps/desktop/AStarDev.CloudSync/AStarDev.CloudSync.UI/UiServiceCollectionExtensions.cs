@@ -65,7 +65,7 @@ internal static class UiServiceCollectionExtensions
         services.AddSingleton<Func<INavigationService>>(provider => provider.GetRequiredService<INavigationService>);
         foreach (var screen in typeof(App).Assembly.GetTypes().Where(type => type is { IsClass: true, IsAbstract: false } && typeof(IScreen).IsAssignableFrom(type))) services.AddSingleton(typeof(IScreen), screen);
         services.AddSingleton<INavigationService, NavigationService>();
-        services.AddSingleton(provider => new StatusBarViewModel(provider.GetRequiredService<ConnectionViewModel>(), provider.GetRequiredService<ILocalisationService>()));
+        services.AddSingleton(provider => new StatusBarViewModel(provider.GetRequiredService<ConnectionViewModel>(), provider.GetRequiredService<ILocalisationService>(), provider.GetRequiredService<ICultureService>()));
         services.AddSingleton(provider => new OnboardingViewModel(provider.GetRequiredService<ILocalisationService>(), provider.GetRequiredService<Func<INavigationService>>(), provider.GetRequiredService<ConnectionViewModel>(), provider.GetRequiredService<AccountsViewModel>(), provider.GetRequiredService<ConnectViewModel>(), provider.GetRequiredService<FolderTreeViewModel>(), provider.GetRequiredService<ScopeSelectionViewModel>()));
         services.AddSingleton(provider => new MainViewModel(provider.GetRequiredService<INavigationService>(), provider.GetServices<IScreen>(), provider.GetRequiredService<StatusBarViewModel>(), provider.GetRequiredService<OnboardingViewModel>()));
         services.AddSingleton<TrayLifecycle>();

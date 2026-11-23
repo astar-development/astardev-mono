@@ -1,6 +1,12 @@
 {
-  "StatusBar.ProviderHealth": "Provider health: not yet available",
-  "StatusBar.QueueActivity": "Queue: not yet available",
-  "StatusBar.ErrorState": "Errors: not yet available",
-  "StatusBar.LastActivity": "Last activity: not yet available"
+  "StatusBar.ProviderHealth": "Provider health: {state}",
+  "StatusBar.ProviderHealth.Unknown": "Provider health: unknown",
+  "StatusBar.QueueActivity": "Queue: {count} waiting",
+  "StatusBar.QueueActivity.Unknown": "Queue: unknown",
+  "StatusBar.ErrorState": "Errors: {count} need a decision",
+  "StatusBar.ErrorState.None": "Errors: none",
+  "StatusBar.ErrorState.Unknown": "Errors: unknown",
+  "StatusBar.LastActivity": "Last activity: {time}",
+  "StatusBar.LastActivity.None": "Last activity: none yet",
+  "StatusBar.LastActivity.Unknown": "Last activity: unknown"
 }
