@@ -1,4 +1,5 @@
 using AStarDev.CloudSync.Domain;
+using AStarDev.CloudSync.Errors;
 using AStarDev.CloudSync.Observability;
 using AStarDev.CloudSync.Ports;
 using AStarDev.FunctionalParadigm;
@@ -51,7 +52,7 @@ internal sealed class InitialCrawler(ICloudProvider provider, IItemIndexStore in
         var succeeded = await index.GetCheckpointAsync(scope, cancellationToken) switch
         {
             Ok<CrawlCheckpoint> ok => ok.Value.Completed || await CrawlPagesAsync(scope, ok.Value, throttle, cancellationToken),
-            Fail<StoreError> fail => Failed(scope, fail.Error.ToString()!)
+            Fail<StoreError> fail => Failed(scope, fail.Error.ToString()!, ErrorInfo.CodeOf(fail.Error.Value))
         };
         SyncEngineTelemetry.RecordDuration(timeProvider.GetElapsedTime(started));
         if (!succeeded) await progress.ReportAsync(new CrawlProgress(scope.SyncJobId, scope.RemoteRootId, 0, false, Failed: true), cancellationToken);
@@ -73,26 +74,26 @@ internal sealed class InitialCrawler(ICloudProvider provider, IItemIndexStore in
         return true;
     }
 
-    private async Task<Result<CrawlCheckpoint, string>> CrawlPageAsync(SyncScope scope, CrawlCheckpoint current, CrawlProgressThrottle throttle, CancellationToken cancellationToken)
+    private async Task<Result<CrawlCheckpoint, CrawlFailure>> CrawlPageAsync(SyncScope scope, CrawlCheckpoint current, CrawlProgressThrottle throttle, CancellationToken cancellationToken)
     {
         using var span = SyncEngineTelemetry.StartPage();
-        Result<CrawlCheckpoint, string> stored = await FetchPageAsync(scope, current, cancellationToken) switch
+        Result<CrawlCheckpoint, CrawlFailure> stored = await FetchPageAsync(scope, current, cancellationToken) switch
         {
             Ok<ProviderSnapshotPage> ok => await StorePageAsync(scope, current, ok.Value, throttle, cancellationToken),
-            Fail<ProviderError> fail => new Fail<string>(fail.Error.Value.ToString()!)
+            Fail<ProviderError> fail => new Fail<CrawlFailure>(new CrawlFailure(fail.Error.Value.ToString()!, ErrorInfo.CodeOf(fail.Error.Value)))
         };
 
-        if (stored is Fail<string> failed) Failed(scope, failed.Error);
+        if (stored is Fail<CrawlFailure> failed) Failed(scope, failed.Error.Reason, failed.Error.Code);
 
         return stored;
     }
 
-    private async Task<Result<CrawlCheckpoint, string>> StorePageAsync(SyncScope scope, CrawlCheckpoint current, ProviderSnapshotPage page, CrawlProgressThrottle throttle, CancellationToken cancellationToken)
+    private async Task<Result<CrawlCheckpoint, CrawlFailure>> StorePageAsync(SyncScope scope, CrawlCheckpoint current, ProviderSnapshotPage page, CrawlProgressThrottle throttle, CancellationToken cancellationToken)
     {
         var last = page.ResumeToken is null;
         var next = new CrawlCheckpoint(page.ResumeToken, current.ItemsIndexed + page.Items.Count, last, last ? page.DeltaToken : null);
 
-        if (await index.SavePageAsync(scope, page.Items, next, timeProvider.GetUtcNow(), cancellationToken) is Fail<StoreError> fail) return new Fail<string>(fail.Error.ToString()!);
+        if (await index.SavePageAsync(scope, page.Items, next, timeProvider.GetUtcNow(), cancellationToken) is Fail<StoreError> fail) return new Fail<CrawlFailure>(new CrawlFailure(fail.Error.ToString()!, ErrorInfo.CodeOf(fail.Error.Value)));
 
         SyncEngineTelemetry.RecordIndexed(page.Items.Count);
         if (last || throttle.TryAdmit()) await progress.ReportAsync(Measured(scope, next, page.TotalItems), cancellationToken);
@@ -111,7 +112,7 @@ internal sealed class InitialCrawler(ICloudProvider provider, IItemIndexStore in
             var page = await provider.GetSnapshotAsync(root, current.ResumeToken, cancellationToken);
             if (page is not Fail<ProviderError> fail || attempt == ApplicationConstants.MaxPageAttempts || RetryDelay(fail.Error, attempt) is not { } delay) return page;
 
-            EngineLog.ListingRetrying(logger, root.Value, delay, attempt, fail.Error.Value);
+            EngineLog.ListingRetrying(logger, root.Value, delay, attempt, fail.Error.Value, ErrorInfo.CodeOf(fail.Error.Value));
             await progress.ReportAsync(new CrawlProgress(scope.SyncJobId, root, current.ItemsIndexed, false, RetryIn: delay), cancellationToken);
             await Task.Delay(delay, timeProvider, cancellationToken);
         }
@@ -126,9 +127,9 @@ internal sealed class InitialCrawler(ICloudProvider provider, IItemIndexStore in
         InvalidDeltaToken => null
     };
 
-    private bool Failed(SyncScope scope, string reason)
+    private bool Failed(SyncScope scope, string reason, ErrorCode errorCode)
     {
-        EngineLog.CrawlStopped(logger, scope.RemoteRootId.Value, scope.SyncJobId.Value, reason);
+        EngineLog.CrawlStopped(logger, scope.RemoteRootId.Value, scope.SyncJobId.Value, reason, errorCode);
 
         return false;
     }

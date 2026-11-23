@@ -1,5 +1,6 @@
 using System.Diagnostics;
 using AStarDev.CloudSync.Domain;
+using AStarDev.CloudSync.Errors;
 using AStarDev.CloudSync.IPC;
 using AStarDev.CloudSync.Ports;
 using AStarDev.FunctionalParadigm;
@@ -21,14 +22,14 @@ internal sealed class ConnectAccountHandler(ICloudProvider provider, IAccountSto
         => await provider.ConnectAsync(cancellationToken) switch
         {
             Ok<ProviderAccount> account => await KeepAsync(account.Value, cancellationToken),
-            Fail<ProviderError> fail => Reject(ProviderErrorMessages.Describe(fail.Error))
+            Fail<ProviderError> fail => Reject(ProviderErrorMessages.Describe(fail.Error), ErrorInfo.CodeOf(fail.Error.Value))
         };
 
     private async Task<Result<CommandResult, IpcError>> KeepAsync(ProviderAccount account, CancellationToken cancellationToken)
         => await StoreAsync(account, cancellationToken) switch
         {
             Ok<AccountId> stored => await AnnounceAsync(account, stored.Value, cancellationToken),
-            Fail<StoreError> fail => Reject(StoreErrorMessages.Describe(fail.Error, "saved"))
+            Fail<StoreError> fail => Reject(StoreErrorMessages.Describe(fail.Error, "saved"), ErrorInfo.CodeOf(fail.Error.Value))
         };
 
     private async Task<Result<AccountId, StoreError>> StoreAsync(ProviderAccount account, CancellationToken cancellationToken)
@@ -71,10 +72,10 @@ internal sealed class ConnectAccountHandler(ICloudProvider provider, IAccountSto
         };
     }
 
-    private Ok<CommandResult> Reject(string message)
+    private Ok<CommandResult> Reject(string message, ErrorCode errorCode)
     {
         var traceId = Activity.Current?.TraceId.ToString();
-        DaemonLog.ConnectAccountFailed(logger, message);
+        DaemonLog.ConnectAccountFailed(logger, message, errorCode);
 
         return new Ok<CommandResult>(new CommandResult(CommandOutcome.Rejected, message, traceId));
     }

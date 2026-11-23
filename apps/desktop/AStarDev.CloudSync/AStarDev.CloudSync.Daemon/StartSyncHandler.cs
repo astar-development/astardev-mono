@@ -1,4 +1,5 @@
 using AStarDev.CloudSync.Domain;
+using AStarDev.CloudSync.Errors;
 using AStarDev.CloudSync.IPC;
 using AStarDev.CloudSync.Ports;
 using AStarDev.CloudSync.SyncEngine;
@@ -19,12 +20,12 @@ internal sealed class StartSyncHandler(SyncRunner runner, ILogger<StartSyncHandl
         => await runner.StartAsync(new SyncJobId(command.SyncJobId), cancellationToken) switch
         {
             Ok<Unit> => new Ok<CommandResult>(new CommandResult(CommandOutcome.Accepted)),
-            Fail<StoreError> fail => Reject(StoreErrorMessages.Describe(fail.Error, "read", "sync job"))
+            Fail<StoreError> fail => Reject(StoreErrorMessages.Describe(fail.Error, "read", "sync job"), ErrorInfo.CodeOf(fail.Error.Value))
         };
 
-    private Ok<CommandResult> Reject(string message)
+    private Ok<CommandResult> Reject(string message, ErrorCode errorCode)
     {
-        DaemonLog.StartSyncFailed(logger, message);
+        DaemonLog.StartSyncFailed(logger, message, errorCode);
 
         return new Ok<CommandResult>(new CommandResult(CommandOutcome.Rejected, message));
     }

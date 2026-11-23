@@ -3,6 +3,7 @@ using Avalonia.Controls;
 using Avalonia.Controls.ApplicationLifetimes;
 using Avalonia.Markup.Xaml;
 using Avalonia.Threading;
+using AStarDev.CloudSync.Errors;
 using AStarDev.CloudSync.UI.Localisation;
 using AStarDev.CloudSync.UI.Notifications;
 using AStarDev.CloudSync.UI.Theming;
@@ -74,7 +75,7 @@ public partial class App : Application
         var connection = host.Services.GetRequiredService<ConnectionViewModel>();
         _ = host.Services.GetRequiredService<RefreshCoordinator>();
         if (host.Services.GetRequiredService<IThemeService>().Apply(DefaultTheme).Value is Fail<ThemeError> themeFailure)
-            UiLog.ThemeFailed(host.Services.GetRequiredService<ILogger<App>>(), DefaultTheme, themeFailure.Error.Value.GetType().Name);
+            UiLog.ThemeFailed(host.Services.GetRequiredService<ILogger<App>>(), DefaultTheme, themeFailure.Error.Value.GetType().Name, ErrorInfo.CodeOf(themeFailure.Error.Value));
         _ = host.Services.GetRequiredService<SettingsStartup>();
         _ = RunAsync(host, connection, cancellationToken);
 

@@ -1,4 +1,5 @@
 using AStarDev.CloudSync.Domain;
+using AStarDev.CloudSync.Errors;
 using AStarDev.CloudSync.Ports;
 using AStarDev.FunctionalParadigm;
 using Microsoft.Extensions.Logging;
@@ -72,7 +73,7 @@ internal sealed class LocalObserver(ILocalFileSystem fileSystem, ILocalObservati
             var (overflowed, paths) = pending.Take();
             if (await ScanChangesAsync(job, overflowed, paths, cancellationToken) is Fail<LocalObservationError> failed)
             {
-                EngineLog.LocalObservationFailed(logger, job.Id.Value, failed.Error.Value);
+                EngineLog.LocalObservationFailed(logger, job.Id.Value, failed.Error.Value, ErrorInfo.CodeOf(failed.Error.Value));
                 pending.RequestRescan();
             }
         }
@@ -116,7 +117,7 @@ internal sealed class LocalObserver(ILocalFileSystem fileSystem, ILocalObservati
                     present.Add(new LocalSnapshot(file.Path, file.Size, file.ModifiedUtc, file.Identity, ok.Value));
                     break;
                 case Fail<LocalObservationError> fail:
-                    SyncLog.TemporaryFileLock(logger, file.Path.Value, job.Id.Value, fail.Error.Value?.ToString() ?? string.Empty);
+                    SyncLog.TemporaryFileLock(logger, file.Path.Value, job.Id.Value, fail.Error.Value?.ToString() ?? string.Empty, ErrorInfo.CodeOf(fail.Error.Value));
                     break;
             }
         }

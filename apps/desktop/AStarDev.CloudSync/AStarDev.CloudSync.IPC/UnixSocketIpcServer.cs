@@ -271,7 +271,7 @@ internal sealed class UnixSocketIpcServer(string socketPath, Action<IpcError>? o
             _ => new Fail<IpcError>(new MalformedFrame($"Unknown request '{request.GetType().Name}'."))
         };
         IpcTelemetry.CompleteRequest(activity, ApplicationConstants.ServerSide, kind, type, started, outcome);
-        if (outcome is Fail<IpcError> failed) IpcLog.RequestFailed(log, ApplicationConstants.ServerSide, kind, type, failed.Error.Describe());
+        if (outcome is Fail<IpcError> failed) IpcLog.RequestFailed(log, ApplicationConstants.ServerSide, kind, type, failed.Error.Describe(), failed.Error.Info().Code);
 
         return outcome;
     }

@@ -1,4 +1,5 @@
 using AStarDev.CloudSync.Domain;
+using AStarDev.CloudSync.Errors;
 using AStarDev.CloudSync.Ports;
 using AStarDev.FunctionalParadigm;
 using Microsoft.Extensions.Logging;
@@ -72,7 +73,7 @@ public sealed class LocalObservationRunner : IAsyncDisposable
     {
         try
         {
-            if (await observer.RunAsync(job, cancellationToken) is Fail<LocalObservationError> fail) EngineLog.LocalObservationEnded(logger, job.Id.Value, fail.Error.Value);
+            if (await observer.RunAsync(job, cancellationToken) is Fail<LocalObservationError> fail) EngineLog.LocalObservationEnded(logger, job.Id.Value, fail.Error.Value, ErrorInfo.CodeOf(fail.Error.Value));
         }
         finally
         {

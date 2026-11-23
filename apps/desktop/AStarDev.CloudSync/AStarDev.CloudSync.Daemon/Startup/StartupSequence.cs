@@ -22,7 +22,7 @@ internal sealed class StartupSequence(IEnumerable<IStartupStage> stages, ILogger
             var result = await stage.ExecuteAsync(cancellationToken);
             if (result is Fail<StartupError> fail)
             {
-                StartupLog.StageFailed(logger, fail.Error.Exception, index + 1, stages.Count, stage.Name, fail.Error.Cause);
+                StartupLog.StageFailed(logger, fail.Error.Exception, index + 1, stages.Count, stage.Name, fail.Error.Cause, fail.Error.Code);
                 return result;
             }
 

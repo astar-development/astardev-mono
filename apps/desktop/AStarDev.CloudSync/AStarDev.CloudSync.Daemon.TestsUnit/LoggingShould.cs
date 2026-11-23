@@ -56,6 +56,20 @@ public sealed class LoggingShould : IDisposable
     }
 
     [Fact]
+    public async Task include_the_error_code_when_logging_an_error()
+    {
+        var logs = new EventCapturingLoggerProvider();
+        var provider = new StubCloudProvider { ConnectResult = new Fail<ProviderError>(new AuthenticationFailed("expired")) };
+        await using var host = DaemonTestHost.Create(configureServices: services => services.RemoveAll<ICloudProvider>().AddSingleton<ICloudProvider>(provider).AddSingleton<ILoggerProvider>(logs));
+        await host.InitialiseDatabaseAsync(Token);
+
+        await host.Services.GetRequiredService<ConnectAccountHandler>().HandleAsync(new ConnectAccount(), Token);
+
+        var entry = logs.Entries.Single(candidate => candidate.Category.EndsWith(nameof(ConnectAccountHandler), StringComparison.Ordinal));
+        entry.Message.ShouldContain("CS-PORTS-0003");
+    }
+
+    [Fact]
     public async Task keep_personal_data_out_of_logs()
     {
         var logs = new EventCapturingLoggerProvider();

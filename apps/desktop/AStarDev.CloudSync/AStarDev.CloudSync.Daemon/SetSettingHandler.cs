@@ -1,3 +1,4 @@
+using AStarDev.CloudSync.Errors;
 using AStarDev.CloudSync.IPC;
 using AStarDev.CloudSync.Ports;
 using AStarDev.FunctionalParadigm;
@@ -17,7 +18,7 @@ internal sealed class SetSettingHandler(ISettingsStore store, AuditJournal audit
         => await store.SetAsync(command.Name, command.Value, cancellationToken) switch
         {
             Ok<Unit> => await RecordAsync(command, cancellationToken),
-            Fail<StoreError> fail => Reject(StoreErrorMessages.Describe(fail.Error, "saved", "setting"))
+            Fail<StoreError> fail => Reject(StoreErrorMessages.Describe(fail.Error, "saved", "setting"), ErrorInfo.CodeOf(fail.Error.Value))
         };
 
     private async Task<Result<CommandResult, IpcError>> RecordAsync(SetSetting command, CancellationToken cancellationToken)
@@ -27,9 +28,9 @@ internal sealed class SetSettingHandler(ISettingsStore store, AuditJournal audit
         return new Ok<CommandResult>(new CommandResult(CommandOutcome.Accepted));
     }
 
-    private Ok<CommandResult> Reject(string message)
+    private Ok<CommandResult> Reject(string message, ErrorCode errorCode)
     {
-        DaemonLog.SetSettingFailed(logger, message);
+        DaemonLog.SetSettingFailed(logger, message, errorCode);
 
         return new Ok<CommandResult>(new CommandResult(CommandOutcome.Rejected, message));
     }

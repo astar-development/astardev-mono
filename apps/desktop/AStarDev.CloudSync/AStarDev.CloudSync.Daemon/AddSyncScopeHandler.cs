@@ -1,4 +1,5 @@
 using AStarDev.CloudSync.Domain;
+using AStarDev.CloudSync.Errors;
 using AStarDev.CloudSync.IPC;
 using AStarDev.CloudSync.Ports;
 using AStarDev.FunctionalParadigm;
@@ -18,7 +19,7 @@ internal sealed class AddSyncScopeHandler(ISyncScopeStore store, AuditJournal au
         => await store.AddAsync(new SyncScope(new SyncJobId(command.SyncJobId), new RemoteItemId(command.RemoteRootId)), cancellationToken) switch
         {
             Ok<Unit> => await RecordAsync(command, cancellationToken),
-            Fail<StoreError> fail => Reject(StoreErrorMessages.Describe(fail.Error, "saved", "folder selection"))
+            Fail<StoreError> fail => Reject(StoreErrorMessages.Describe(fail.Error, "saved", "folder selection"), ErrorInfo.CodeOf(fail.Error.Value))
         };
 
     private async Task<Result<CommandResult, IpcError>> RecordAsync(AddSyncScope command, CancellationToken cancellationToken)
@@ -28,9 +29,9 @@ internal sealed class AddSyncScopeHandler(ISyncScopeStore store, AuditJournal au
         return new Ok<CommandResult>(new CommandResult(CommandOutcome.Accepted));
     }
 
-    private Ok<CommandResult> Reject(string message)
+    private Ok<CommandResult> Reject(string message, ErrorCode errorCode)
     {
-        DaemonLog.AddSyncScopeFailed(logger, message);
+        DaemonLog.AddSyncScopeFailed(logger, message, errorCode);
 
         return new Ok<CommandResult>(new CommandResult(CommandOutcome.Rejected, message));
     }

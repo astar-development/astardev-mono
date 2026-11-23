@@ -1,4 +1,5 @@
 using AStarDev.CloudSync.Domain;
+using AStarDev.CloudSync.Errors;
 using AStarDev.CloudSync.Observability;
 using AStarDev.CloudSync.Ports;
 using AStarDev.FunctionalParadigm;
@@ -85,7 +86,7 @@ public sealed class OperationScheduler(IOperationStore store, IOperationExecutor
             var outcome = await RunOnceAsync(cancellationToken);
             if (outcome.Value is Ok<bool> { Value: true }) continue;
 
-            if (outcome.Value is Fail<StoreError> fail) EngineLog.QueueUnavailable(logger, fail.Error.Value);
+            if (outcome.Value is Fail<StoreError> fail) EngineLog.QueueUnavailable(logger, fail.Error.Value, ErrorInfo.CodeOf(fail.Error.Value));
 
             await Task.Delay(options.Value.PollInterval, timeProvider, cancellationToken);
         }
@@ -150,19 +151,20 @@ public sealed class OperationScheduler(IOperationStore store, IOperationExecutor
     private void LogFailure(Operation operation, ProviderError error, DateTimeOffset? retryAtUtc)
     {
         var reason = error.Value?.ToString() ?? string.Empty;
+        var code = ErrorInfo.CodeOf(error.Value);
         switch (error.Value, retryAtUtc)
         {
             case (RateLimited, { } at):
-                OperationLog.RateLimitEncountered(logger, operation.Attempts, at);
+                OperationLog.RateLimitEncountered(logger, operation.Attempts, at, code);
                 break;
             case (_, { } at):
-                OperationLog.RetryScheduled(logger, operation.Attempts, at, reason);
+                OperationLog.RetryScheduled(logger, operation.Attempts, at, reason, code);
                 break;
             case (AuthenticationFailed, null):
-                OperationLog.AuthenticationExpired(logger, operation.Attempts, reason);
+                OperationLog.AuthenticationExpired(logger, operation.Attempts, reason, code);
                 break;
             default:
-                OperationLog.Failed(logger, operation.Attempts, reason);
+                OperationLog.Failed(logger, operation.Attempts, reason, code);
                 break;
         }
     }

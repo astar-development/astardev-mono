@@ -1,4 +1,5 @@
 using AStarDev.CloudSync.Domain;
+using AStarDev.CloudSync.Errors;
 using AStarDev.CloudSync.Persistence;
 using AStarDev.CloudSync.Ports;
 using AStarDev.CloudSync.SyncEngine;
@@ -23,7 +24,7 @@ internal sealed class BackgroundServicesStage(ISyncJobStore jobs, SyncRunner run
         if (databaseState.Mode == DatabaseMode.Recovery) return new Ok<Unit>(default);
 
         scheduler.Start();
-        if (await conflictResolver.RefreshOpenConflictCountAsync(cancellationToken) is Fail<StoreError> countFail) StartupLog.ConflictCountUnreadable(logger, StoreErrorMessages.Describe(countFail.Error, "count", "conflict"));
+        if (await conflictResolver.RefreshOpenConflictCountAsync(cancellationToken) is Fail<StoreError> countFail) StartupLog.ConflictCountUnreadable(logger, StoreErrorMessages.Describe(countFail.Error, "count", "conflict"), ErrorInfo.CodeOf(countFail.Error.Value));
 
         return await jobs.ListAsync(cancellationToken) switch
         {
@@ -36,8 +37,8 @@ internal sealed class BackgroundServicesStage(ISyncJobStore jobs, SyncRunner run
     {
         foreach (var job in listed.Where(job => job.Enabled))
         {
-            if (await runner.StartAsync(job.Id, cancellationToken) is Fail<StoreError> fail) StartupLog.JobResumeFailed(logger, job.Id.Value, StoreErrorMessages.Describe(fail.Error, "read", "sync job"));
-            if (await observation.StartAsync(job.Id, cancellationToken) is Fail<StoreError> observationFail) StartupLog.JobObservationFailed(logger, job.Id.Value, StoreErrorMessages.Describe(observationFail.Error, "read", "sync job"));
+            if (await runner.StartAsync(job.Id, cancellationToken) is Fail<StoreError> fail) StartupLog.JobResumeFailed(logger, job.Id.Value, StoreErrorMessages.Describe(fail.Error, "read", "sync job"), ErrorInfo.CodeOf(fail.Error.Value));
+            if (await observation.StartAsync(job.Id, cancellationToken) is Fail<StoreError> observationFail) StartupLog.JobObservationFailed(logger, job.Id.Value, StoreErrorMessages.Describe(observationFail.Error, "read", "sync job"), ErrorInfo.CodeOf(observationFail.Error.Value));
         }
 
         return new Ok<Unit>(default);

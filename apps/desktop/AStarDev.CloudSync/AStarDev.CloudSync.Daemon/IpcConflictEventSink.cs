@@ -1,4 +1,5 @@
 using AStarDev.CloudSync.Domain;
+using AStarDev.CloudSync.Errors;
 using AStarDev.CloudSync.IPC;
 using AStarDev.CloudSync.Ports;
 using AStarDev.CloudSync.SyncEngine;
@@ -31,6 +32,6 @@ internal sealed class IpcConflictEventSink(IIpcServer server, ConflictViewFactor
     private async Task PublishAsync<TEvent>(TEvent @event, CancellationToken cancellationToken)
         where TEvent : IEvent
     {
-        if (await server.PublishAsync(@event, cancellationToken) is Fail<IpcError> fail) DaemonLog.PublishFailed(logger, typeof(TEvent).Name, fail.Error.Value);
+        if (await server.PublishAsync(@event, cancellationToken) is Fail<IpcError> fail) DaemonLog.PublishFailed(logger, typeof(TEvent).Name, fail.Error.Value, ErrorInfo.CodeOf(fail.Error.Value));
     }
 }

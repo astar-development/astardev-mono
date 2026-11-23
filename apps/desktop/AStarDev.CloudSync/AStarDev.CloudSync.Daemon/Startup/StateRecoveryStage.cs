@@ -1,4 +1,5 @@
 using AStarDev.CloudSync.Domain;
+using AStarDev.CloudSync.Errors;
 using AStarDev.CloudSync.Persistence;
 using AStarDev.CloudSync.Ports;
 using AStarDev.FunctionalParadigm;
@@ -55,14 +56,14 @@ internal sealed class StateRecoveryStage(IAccountStore store, ICloudProvider pro
 
     private async Task<Result<Unit, StoreError>> RequireReauthenticationAsync(Account account, AuthenticationFailed refused, CancellationToken cancellationToken)
     {
-        StartupLog.AccountMustSignInAgain(logger, account.Id.Value, refused.Message);
+        StartupLog.AccountMustSignInAgain(logger, account.Id.Value, refused.Message, refused.Code);
 
         return await MarkAsync(account, AccountStatus.ReauthenticationRequired, cancellationToken);
     }
 
     private Ok<Unit> Unreachable(Account account, ProviderError error)
     {
-        StartupLog.AccountReconnectDeferred(logger, account.Id.Value, ProviderErrorMessages.Describe(error));
+        StartupLog.AccountReconnectDeferred(logger, account.Id.Value, ProviderErrorMessages.Describe(error), ErrorInfo.CodeOf(error.Value));
 
         return new Ok<Unit>(default);
     }
