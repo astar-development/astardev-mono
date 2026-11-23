@@ -21,6 +21,8 @@ internal sealed class FakeIpcClient(List<string> calls, bool available) : IIpcCl
 
     public Result<ActivitiesView, IpcError> ActivitiesReply { get; init; } = new Ok<ActivitiesView>(new ActivitiesView([]));
 
+    public Result<SyncStatusView, IpcError> SyncStatusReply { get; init; } = new Ok<SyncStatusView>(new SyncStatusView(ProviderHealthState.Healthy, 0, 0, null));
+
     public Result<DeadLettersView, IpcError> DeadLettersReply { get; set; } = new Ok<DeadLettersView>(new DeadLettersView([]));
 
     public Func<GetConflicts, Result<ConflictsView, IpcError>> ConflictsReply { get; set; } = _ => new Ok<ConflictsView>(new ConflictsView([]));
@@ -71,6 +73,7 @@ internal sealed class FakeIpcClient(List<string> calls, bool available) : IIpcCl
             GetSyncJobs => (Result<TResult, IpcError>)(object)JobsReply,
             GetActivities => (Result<TResult, IpcError>)(object)ActivitiesReply,
             GetDeadLetters => (Result<TResult, IpcError>)(object)DeadLettersReply,
+            GetSyncStatus => (Result<TResult, IpcError>)(object)SyncStatusReply,
             GetConflicts conflicts => (Result<TResult, IpcError>)(object)ConflictsReply(conflicts),
             GetSyncScopes scopes => (Result<TResult, IpcError>)(object)ScopesReply(scopes),
             GetRemoteFolders folders => (Result<TResult, IpcError>)(object)Record(folders),

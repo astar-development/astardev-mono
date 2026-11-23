@@ -56,7 +56,7 @@ public sealed class ScreenRegistrationShould
     }
 
     [Fact]
-    public void show_placeholder_status_bar_text_from_localisation()
+    public void show_status_bar_text_from_localisation()
     {
         using var host = CreateHost();
 

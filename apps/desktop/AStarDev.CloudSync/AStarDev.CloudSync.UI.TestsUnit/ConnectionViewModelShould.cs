@@ -133,7 +133,7 @@ public sealed class ConnectionViewModelShould
         await source.CancelAsync();
         await Should.ThrowAsync<OperationCanceledException>(() => run);
 
-        calls.ShouldBe(["connect", "query", "query", "query", "query", "subscribe"]);
+        calls.ShouldBe(["connect", "query", "query", "query", "query", "query", "subscribe"]);
         viewModel.DaemonStatus.ShouldBe(FakeIpcClient.Status);
     }
 

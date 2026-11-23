@@ -36,6 +36,7 @@ public sealed class IpcHostedServiceShould
             services.GetRequiredService<ResolveConflictHandler>(),
             services.GetRequiredService<SettingsQuery>(),
             services.GetRequiredService<SetSettingHandler>(),
+            services.GetRequiredService<SyncStatusQuery>(),
             TimeProvider.System,
             NullLogger<IpcHostedService>.Instance);
     }
