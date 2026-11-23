@@ -80,4 +80,9 @@ public interface ICloudProvider
     /// <param name="cancellationToken">Cancelling abandons the call and surfaces as <see cref="OperationCanceledException"/>, never as a <see cref="ProviderError"/>.</param>
     /// <returns>Success, also when the item is already gone, so calling twice is safe; or the reason the delete failed.</returns>
     Task<Result<Unit, ProviderError>> DeleteAsync(RemoteItemId itemId, CancellationToken cancellationToken);
+
+    /// <summary>Reports how much storage the connected drive uses, has left and is allowed.</summary>
+    /// <param name="cancellationToken">Cancelling abandons the call and surfaces as <see cref="OperationCanceledException"/>, never as a <see cref="ProviderError"/>.</param>
+    /// <returns>The drive facts, or the reason they could not be read. <see cref="ProviderDriveInfo.ItemCountEstimate"/> is none when the provider has no such figure. The same call can be repeated.</returns>
+    Task<Result<ProviderDriveInfo, ProviderError>> GetDriveInfoAsync(CancellationToken cancellationToken);
 }

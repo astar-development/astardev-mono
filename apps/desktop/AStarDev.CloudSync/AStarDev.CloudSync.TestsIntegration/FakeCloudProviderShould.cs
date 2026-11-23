@@ -106,4 +106,37 @@ public sealed class FakeCloudProviderShould
 
         await Should.ThrowAsync<OperationCanceledException>(() => provider.ConnectAsync(cancellation.Token));
     }
+
+    [Fact]
+    public async Task report_the_configured_drive_info()
+    {
+        var provider = new FakeCloudProvider(pageSize: 10) { DriveInfo = new ProviderDriveInfo(30, 70, 100, Option.Some(1234L)) };
+
+        var result = await provider.GetDriveInfoAsync(TestContext.Current.CancellationToken);
+
+        var info = result.Value.ShouldBeOfType<Ok<ProviderDriveInfo>>().Value;
+        (info.UsedBytes, info.RemainingBytes, info.TotalBytes).ShouldBe((30L, 70L, 100L));
+        info.ItemCountEstimate.ShouldBe(Option.Some(1234L));
+    }
+
+    [Fact]
+    public async Task fail_the_drive_info_with_a_scripted_failure()
+    {
+        var provider = new FakeCloudProvider(pageSize: 10);
+        provider.ScriptFailures(new Transient("down"));
+
+        var result = await provider.GetDriveInfoAsync(TestContext.Current.CancellationToken);
+
+        result.Value.ShouldBeOfType<Fail<ProviderError>>().Error.Value.ShouldBeOfType<Transient>();
+    }
+
+    [Fact]
+    public async Task throw_when_the_drive_info_is_cancelled()
+    {
+        var provider = new FakeCloudProvider(pageSize: 10);
+        using var cancellation = new CancellationTokenSource();
+        await cancellation.CancelAsync();
+
+        await Should.ThrowAsync<OperationCanceledException>(() => provider.GetDriveInfoAsync(cancellation.Token));
+    }
 }
