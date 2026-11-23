@@ -1,37 +1,48 @@
 using System.Windows.Input;
 using AStarDev.CloudSync.UI.Localisation;
 using AStarDev.CloudSync.UI.Navigation;
+using AStarDev.FunctionalParadigm;
 using CommunityToolkit.Mvvm.Input;
 
 namespace AStarDev.CloudSync.UI.ViewModels.Screens;
 
 /// <summary>
-/// The trust dashboard of doc 17: health, progress, providers, queue, attention, activity and events, in that order. Values come from an <see cref="IDashboardSource"/>;
-/// with none given it shows <see cref="PlaceholderDashboardSource"/> and labels everything as sample data. The conflict count is the exception: given a connection it is the live number of conflicts waiting for the user.
+/// The trust dashboard of doc 17: health, progress, providers, queue, attention, activity and events, in that order. Values come from an <see cref="IDashboardSource"/>: read when the daemon link comes up, then replaced by each <c>DashboardChanged</c> event.
+/// While the link is down, or before the first read, it shows <see cref="DashboardSnapshot.Disconnected"/> and <see cref="DisconnectedNotice"/>, never the last values. The conflict count is the live number of conflicts the connection holds.
 /// </summary>
-internal sealed class DashboardViewModel : ViewModelBase, IScreen
+internal sealed class DashboardViewModel : ViewModelBase, IScreen, IDisposable
 {
     private readonly ILocalisationService localisation;
     private readonly ICultureService culture;
     private readonly Func<INavigationService> navigation;
-    private readonly ConnectionViewModel? connection;
-    private readonly DashboardSnapshot snapshot;
+    private readonly IDashboardSource source;
+    private readonly ConnectionViewModel connection;
+    private readonly CancellationTokenSource lifetime = new();
+    private Option<DashboardSnapshot> shown = Option.None<DashboardSnapshot>();
 
-    /// <summary>Creates the dashboard and, when a connection is given, follows its conflicts.</summary>
+    /// <summary>Creates the dashboard and starts following the daemon link, its conflicts and its pushed changes.</summary>
     /// <param name="localisation">Supplies every text.</param>
     /// <param name="culture">Formats numbers and times.</param>
     /// <param name="navigation">Resolves the navigation service on use; a direct dependency would be a DI cycle.</param>
-    /// <param name="source">The values to show; <see langword="null"/> means the placeholder sample values.</param>
-    /// <param name="connection">Where the live conflict count comes from; <see langword="null"/> means the count of <paramref name="source"/>.</param>
-    public DashboardViewModel(ILocalisationService localisation, ICultureService culture, Func<INavigationService> navigation, IDashboardSource? source = null, ConnectionViewModel? connection = null)
+    /// <param name="source">Where the snapshot is read from each time the link comes up.</param>
+    /// <param name="connection">The daemon link: its state decides whether values are shown, its pushed events change them, and its conflicts give the conflict count.</param>
+    public DashboardViewModel(ILocalisationService localisation, ICultureService culture, Func<INavigationService> navigation, IDashboardSource source, ConnectionViewModel connection)
     {
         this.localisation = localisation;
         this.culture = culture;
         this.navigation = navigation;
+        this.source = source;
         this.connection = connection;
-        snapshot = (source ?? new PlaceholderDashboardSource()).GetSnapshot();
-        if (connection is not null) connection.Conflicts.CollectionChanged += (_, _) => OnPropertyChanged(nameof(ConflictsText));
+        connection.Conflicts.CollectionChanged += (_, _) => OnPropertyChanged(nameof(ConflictsText));
+        connection.PropertyChanged += (_, args) =>
+        {
+            if (args.PropertyName == nameof(ConnectionViewModel.State)) OnLinkChanged();
+        };
+        connection.EventReceived += OnEvent;
+        OnLinkChanged();
     }
+
+    private DashboardSnapshot snapshot => shown.Value is Some<DashboardSnapshot> some ? some.Value : DashboardSnapshot.Disconnected;
 
     /// <inheritdoc/>
     public ScreenId Id => ScreenId.Dashboard;
@@ -42,8 +53,11 @@ internal sealed class DashboardViewModel : ViewModelBase, IScreen
     /// <inheritdoc/>
     public string Glyph => localisation.Get("Dashboard.Glyph");
 
-    /// <summary>Says the values shown are sample data, not real sync state.</summary>
-    public string SampleDataNotice => localisation.Get("Dashboard.SampleData");
+    /// <summary>Says the daemon is not connected, so the values are not current.</summary>
+    public string DisconnectedNotice => localisation.Get("Dashboard.Disconnected");
+
+    /// <summary>Whether the daemon values are missing: the link is down, or its first snapshot has not arrived. The view shows <see cref="DisconnectedNotice"/> then.</summary>
+    public bool IsDisconnected => shown.Value is not Some<DashboardSnapshot>;
 
     /// <summary>Headline, summary, colour and icon of the Trust Status card.</summary>
     public SyncHealthPresentation Health => SyncHealthPresentation.For(snapshot.Health, localisation);
@@ -103,7 +117,7 @@ internal sealed class DashboardViewModel : ViewModelBase, IScreen
     public string AttentionHeading => localisation.Get("Dashboard.Attention.Heading");
 
     /// <summary>Conflict count, shown even when zero: the conflicts waiting for the user, deferred ones included, kept current as the daemon reports them.</summary>
-    public string ConflictsText => Count("Dashboard.Attention.Conflicts", connection?.Conflicts.Count ?? snapshot.Conflicts);
+    public string ConflictsText => Count("Dashboard.Attention.Conflicts", connection.Conflicts.Count);
 
     /// <summary>Error count, shown even when zero.</summary>
     public string ErrorsText => Count("Dashboard.Attention.Errors", snapshot.Errors);
@@ -147,7 +161,34 @@ internal sealed class DashboardViewModel : ViewModelBase, IScreen
     /// <summary>Opens the Activity screen, where recent events are listed in full.</summary>
     public ICommand OpenActivityCommand => new RelayCommand(() => navigation().Navigate(ScreenId.Activity));
 
-    private string Time(string key, DateTimeOffset value) => localisation.Format(key, ("time", culture.FormatTime(value)));
+    /// <inheritdoc/>
+    public void Dispose() => lifetime.Dispose();
+
+    internal async Task RefreshAsync(CancellationToken cancellationToken)
+    {
+        if (await source.GetSnapshotAsync(cancellationToken) is Ok<DashboardSnapshot> read && shown.Value is not Some<DashboardSnapshot>) Show(read.Value);
+    }
+
+    private void OnLinkChanged()
+    {
+        if (connection.State == ConnectionState.Connected) _ = RefreshAsync(lifetime.Token);
+        else Show(Option.None<DashboardSnapshot>());
+    }
+
+    private void OnEvent(IPC.IEvent received)
+    {
+        if (received is IPC.DashboardChanged changed && connection.State == ConnectionState.Connected) Show(DashboardSnapshot.From(changed.Dashboard));
+    }
+
+    private void Show(DashboardSnapshot next) => Show(Option.Some(next));
+
+    private void Show(Option<DashboardSnapshot> next)
+    {
+        shown = next;
+        OnPropertyChanged(string.Empty);
+    }
+
+    private string Time(string key, Option<DateTimeOffset> value) => localisation.Format(key, ("time", value.Value is Some<DateTimeOffset> at ? culture.FormatTime(at.Value.ToLocalTime()) : localisation.Get("Dashboard.Time.None")));
 
     private string Count(string key, long value) => localisation.Format(key, ("count", value));
 

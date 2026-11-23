@@ -1,7 +1,8 @@
 {
   "Dashboard.Title": "Dashboard",
   "Dashboard.Glyph": "🏠",
-  "Dashboard.SampleData": "Sample data: these values are placeholders, not your real sync state.",
+  "Dashboard.Disconnected": "The daemon is not connected. Nothing below is current.",
+  "Dashboard.Time.None": "none yet",
   "Dashboard.Health.Healthy.Headline": "YOUR DATA IS SAFE",
   "Dashboard.Health.Healthy.Summary": "All selected sync scopes are synchronised. No action required.",
   "Dashboard.Health.Active.Headline": "YOUR DATA IS SAFE AND SYNC IS WORKING",
@@ -45,6 +46,7 @@
   "Dashboard.Operation.Download": "Download",
   "Dashboard.Operation.Upload": "Upload",
   "Dashboard.Operation.Rename": "Rename",
+  "Dashboard.Operation.Delete": "Delete",
   "Dashboard.Events.Heading": "Recent events",
   "Dashboard.Event.QueueDrained": "Queue drained",
   "Dashboard.Event.RemoteRenameDetected": "Remote rename detected",

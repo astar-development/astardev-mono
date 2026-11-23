@@ -120,4 +120,13 @@ public sealed class UiServiceCollectionExtensionsShould
                                                                                       using var host = CreateHost("not a uri");
                                                                                       await host.StartAsync(Token);
                                                                                   });
+
+    [Fact]
+    public void register_the_dashboard_source()
+    {
+        using var host = CreateHost();
+
+        host.Services.GetRequiredService<IDashboardSource>().ShouldBeOfType<IpcDashboardSource>();
+        host.Services.GetServices<IScreen>().OfType<DashboardViewModel>().ShouldHaveSingleItem();
+    }
 }
