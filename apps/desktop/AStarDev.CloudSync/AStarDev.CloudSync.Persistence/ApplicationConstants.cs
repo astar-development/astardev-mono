@@ -15,6 +15,9 @@ internal static class ApplicationConstants
     /// <summary>Name of the SQLite database file.</summary>
     public static string DatabaseFileName => "cloudsync.db";
 
+    /// <summary>Name of the telemetry SQLite database file.</summary>
+    public static string TelemetryDatabaseFileName => "telemetry.db";
+
     /// <summary>Name the database health check is reported under.</summary>
     public static string DatabaseHealthCheckName => "database";
 
