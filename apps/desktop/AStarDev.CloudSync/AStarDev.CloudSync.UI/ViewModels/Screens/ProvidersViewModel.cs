@@ -17,14 +17,16 @@ internal sealed partial class ProvidersViewModel : ViewModelBase, IScreen
     private readonly Func<INavigationService> navigation;
     private readonly IProviderCatalogue catalogue;
     private readonly IProviderInsightsSource insights;
+    private readonly IUriLauncher launcher;
 
     /// <summary>Builds the screen with the sample catalogue and sample figures. Used by the application composition, which registers screens by assembly scan.</summary>
     /// <param name="localisation">Supplies every text.</param>
     /// <param name="connect">Performs the sign-in of the add journey.</param>
     /// <param name="accounts">The connected accounts the cards mirror.</param>
     /// <param name="navigation">Reaches the navigation service, which needs the screens that include this one.</param>
-    public ProvidersViewModel(ILocalisationService localisation, ConnectViewModel connect, AccountsViewModel accounts, Func<INavigationService> navigation)
-        : this(localisation, connect, accounts, navigation, new SampleProviderCatalogue(localisation), new SampleProviderInsightsSource(localisation))
+    /// <param name="launcher">Opens the help link of an error in the browser.</param>
+    public ProvidersViewModel(ILocalisationService localisation, ConnectViewModel connect, AccountsViewModel accounts, Func<INavigationService> navigation, IUriLauncher launcher)
+        : this(localisation, connect, accounts, navigation, new SampleProviderCatalogue(localisation), new SampleProviderInsightsSource(localisation), launcher)
     {
     }
 
@@ -35,13 +37,15 @@ internal sealed partial class ProvidersViewModel : ViewModelBase, IScreen
     /// <param name="navigation">Reaches the navigation service.</param>
     /// <param name="catalogue">The provider metadata registry.</param>
     /// <param name="insights">The per-account figures.</param>
-    public ProvidersViewModel(ILocalisationService localisation, ConnectViewModel connect, AccountsViewModel accounts, Func<INavigationService> navigation, IProviderCatalogue catalogue, IProviderInsightsSource insights)
+    /// <param name="launcher">Opens the help link of an error in the browser.</param>
+    public ProvidersViewModel(ILocalisationService localisation, ConnectViewModel connect, AccountsViewModel accounts, Func<INavigationService> navigation, IProviderCatalogue catalogue, IProviderInsightsSource insights, IUriLauncher launcher)
     {
         this.localisation = localisation;
         this.accounts = accounts;
         this.navigation = navigation;
         this.catalogue = catalogue;
         this.insights = insights;
+        this.launcher = launcher;
         Connect = connect;
         Add = new AddProviderViewModel(connect, catalogue, localisation);
         HealthSummary = BuildSummary();
@@ -117,7 +121,8 @@ internal sealed partial class ProvidersViewModel : ViewModelBase, IScreen
     {
         var message = Connect.ErrorMessage ?? accounts.ErrorMessage;
         var traceId = Option.FromNullable(Connect.ErrorMessage is null ? accounts.ErrorTraceId : Connect.ErrorTraceId);
-        Error = message is null ? null : new ProviderErrorViewModel(message, traceId, localisation, () => _ = navigation().Navigate(ScreenId.Diagnostics));
+        var code = Connect.ErrorMessage is null ? accounts.ErrorCode : Connect.ErrorCode;
+        Error = message is null ? null : new ProviderErrorViewModel(message, traceId, code, launcher, localisation, () => _ = navigation().Navigate(ScreenId.Diagnostics));
     }
 
     private void Rebuild()

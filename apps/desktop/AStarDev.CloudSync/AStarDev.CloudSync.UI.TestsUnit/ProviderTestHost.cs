@@ -14,17 +14,20 @@ internal sealed class ProviderTestHost : IDisposable
 {
     private readonly IHost host;
 
-    private ProviderTestHost(IHost host, FakeIpcClient client, IProviderCatalogue? catalogue)
+    private ProviderTestHost(IHost host, FakeIpcClient client, IProviderCatalogue? catalogue, FakeUriLauncher launcher)
     {
         this.host = host;
         Client = client;
+        Launcher = launcher;
         var localisation = host.Services.GetRequiredService<ILocalisationService>();
         Connect = new ConnectViewModel(() => client);
         Accounts = new AccountsViewModel(() => client);
-        Providers = new ProvidersViewModel(localisation, Connect, Accounts, host.Services.GetRequiredService<Func<INavigationService>>(), catalogue ?? new SampleProviderCatalogue(localisation), new SampleProviderInsightsSource(localisation));
+        Providers = new ProvidersViewModel(localisation, Connect, Accounts, host.Services.GetRequiredService<Func<INavigationService>>(), catalogue ?? new SampleProviderCatalogue(localisation), new SampleProviderInsightsSource(localisation), launcher);
     }
 
     public FakeIpcClient Client { get; }
+
+    public FakeUriLauncher Launcher { get; }
 
     public ConnectViewModel Connect { get; }
 
@@ -38,8 +41,10 @@ internal sealed class ProviderTestHost : IDisposable
     {
         var builder = Host.CreateApplicationBuilder();
         builder.Services.AddCloudSyncUi();
+        var launcher = new FakeUriLauncher();
+        builder.Services.AddSingleton<IUriLauncher>(launcher);
 
-        return new ProviderTestHost(builder.Build(), client, catalogue);
+        return new ProviderTestHost(builder.Build(), client, catalogue, launcher);
     }
 
     public static AccountView Account(string name, string providerType = "OneDrive", AccountState state = AccountState.Connected) => new(Guid.NewGuid(), name, providerType, state);

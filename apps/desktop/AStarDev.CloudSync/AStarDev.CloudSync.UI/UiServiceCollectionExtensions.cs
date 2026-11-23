@@ -61,6 +61,7 @@ internal static class UiServiceCollectionExtensions
         services.AddSingleton<IApplicationExit>(provider => provider.GetRequiredService<AvaloniaShell>());
         services.AddSingleton<IFolderPicker, AvaloniaFolderPicker>();
         services.AddSingleton<IFilePicker, AvaloniaFilePicker>();
+        services.AddSingleton<IUriLauncher, AvaloniaUriLauncher>();
         services.AddSingleton<ExportCommand>();
         services.AddSingleton(provider => new ScopeSelectionViewModel(provider.GetRequiredService<Func<IIpcClient>>(), provider.GetRequiredService<IFolderPicker>()));
         services.AddSingleton(provider => new FolderTreeViewModel(provider.GetRequiredService<Func<IIpcClient>>(), provider.GetRequiredService<ScopeSelectionViewModel>()));

@@ -1,4 +1,5 @@
 using System.Collections.ObjectModel;
+using AStarDev.CloudSync.Errors;
 using AStarDev.CloudSync.IPC;
 using AStarDev.FunctionalParadigm;
 using CommunityToolkit.Mvvm.ComponentModel;
@@ -24,6 +25,10 @@ public sealed partial class AccountsViewModel(Func<IIpcClient> createClient) : V
     /// <summary>The daemon trace that handled the last failed request. <see langword="null"/> when it sent none and after a request that worked.</summary>
     [ObservableProperty]
     public partial string? ErrorTraceId { get; set; }
+
+    /// <summary>The code of the last failure, which names its help page. <c>default</c> (empty) when the failure has none and after a request that worked.</summary>
+    [ObservableProperty]
+    public partial ErrorCode ErrorCode { get; set; }
 
     /// <summary>
     /// Asks the daemon for the accounts. Failures land in <see cref="ErrorMessage"/>; cancellation surfaces as <see cref="OperationCanceledException"/>.
@@ -101,9 +106,11 @@ public sealed partial class AccountsViewModel(Func<IIpcClient> createClient) : V
                 foreach (var account in ok.Value.Accounts) Accounts.Add(new AccountCardViewModel(account, this));
                 ErrorMessage = null;
                 ErrorTraceId = null;
+                ErrorCode = default;
                 break;
             case Fail<ConnectFailure> fail:
                 ErrorTraceId = fail.Error.TraceId.Match(id => (string?)id, () => null);
+                ErrorCode = fail.Error.Code;
                 ErrorMessage = fail.Error.Message;
                 break;
         }

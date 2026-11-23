@@ -32,6 +32,8 @@
   "Providers.Error.Retry": "Check that the CloudSync daemon is running, then try again.",
   "Providers.Error.Correlation": "Correlation id: {id}",
   "Providers.Error.CorrelationNone": "Correlation id: none, the daemon sent no trace",
+  "Providers.Error.Code": "Error code: {code}",
+  "Providers.Error.OpenLink": "Open help page",
   "Providers.Error.Diagnostics": "Open diagnostics",
   "Providers.Remove.Title": "Remove {account}?",
   "Providers.Remove.KeepsFiles": "Removing the account disconnects it and forgets its sign-in. No local or remote file is deleted.",
