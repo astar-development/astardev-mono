@@ -18,6 +18,8 @@ internal sealed class StubCloudProvider : ICloudProvider
 
     public Result<ProviderDeltaPage, ProviderError> DeltaResult { get; init; } = new Ok<ProviderDeltaPage>(new ProviderDeltaPage([]));
 
+    public Result<ProviderDriveInfo, ProviderError> DriveInfoResult { get; init; } = new Ok<ProviderDriveInfo>(new ProviderDriveInfo(0, 0, 0, Option.None<long>()));
+
     public int DeltaCalls { get; private set; }
 
     public List<RemoteItemId> Roots { get; } = [];
@@ -100,7 +102,7 @@ internal sealed class StubCloudProvider : ICloudProvider
     {
         cancellationToken.ThrowIfCancellationRequested();
 
-        return Task.FromResult<Result<ProviderDriveInfo, ProviderError>>(new Ok<ProviderDriveInfo>(new ProviderDriveInfo(0, 0, 0, Option.None<long>())));
+        return Task.FromResult(DriveInfoResult);
     }
 
     public Task<Result<Unit, ProviderError>> DeleteAsync(RemoteItemId itemId, CancellationToken cancellationToken)

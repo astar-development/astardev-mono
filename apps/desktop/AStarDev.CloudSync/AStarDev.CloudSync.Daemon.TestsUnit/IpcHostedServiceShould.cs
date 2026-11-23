@@ -20,6 +20,7 @@ public sealed class IpcHostedServiceShould
             services.GetRequiredService<DisconnectAccountHandler>(),
             services.GetRequiredService<AccountsQuery>(),
             services.GetRequiredService<RootSummaryQuery>(),
+            services.GetRequiredService<DriveInfoQuery>(),
             services.GetRequiredService<RemoteFoldersQuery>(),
             services.GetRequiredService<CreateSyncJobHandler>(),
             services.GetRequiredService<AddSyncScopeHandler>(),

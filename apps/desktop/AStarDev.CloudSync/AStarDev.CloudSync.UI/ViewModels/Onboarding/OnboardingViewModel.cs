@@ -1,6 +1,8 @@
 using System.ComponentModel;
+using AStarDev.CloudSync.IPC;
 using AStarDev.CloudSync.UI.Localisation;
 using AStarDev.CloudSync.UI.Navigation;
+using AStarDev.FunctionalParadigm;
 using CommunityToolkit.Mvvm.Input;
 
 namespace AStarDev.CloudSync.UI.ViewModels.Onboarding;
@@ -15,6 +17,9 @@ internal sealed partial class OnboardingViewModel : ViewModelBase
     private const int StepCount = 5;
 
     private readonly ILocalisationService localisation;
+    private readonly ICultureService culture;
+    private readonly Func<IIpcClient> client;
+    private readonly ConnectionViewModel connection;
     private readonly Func<INavigationService> navigation;
     private readonly AccountsViewModel accounts;
     private readonly ConnectViewModel connect;
@@ -23,18 +28,24 @@ internal sealed partial class OnboardingViewModel : ViewModelBase
     private OnboardingStep step = OnboardingStep.Welcome;
     private bool isActive;
     private bool evaluated;
+    private Option<DriveInfoView> driveInfo = Option.None<DriveInfoView>();
 
     /// <summary>Starts listening: the first time the daemon link comes up, <see cref="EvaluateFirstRunCommand"/> decides whether to show the flow.</summary>
     /// <param name="localisation">Supplies every text.</param>
+    /// <param name="culture">Formats every number.</param>
+    /// <param name="client">Asks the daemon for the provider's storage figures.</param>
     /// <param name="navigation">Requested lazily, because the navigation service is built from the screens. Used to land on the Dashboard.</param>
-    /// <param name="connection">The daemon link; a first connection triggers the first-run check.</param>
+    /// <param name="connection">The daemon link; a first connection triggers the first-run check, and its activities feed the synchronisation step.</param>
     /// <param name="accounts">Tells whether an account already exists, and names the connected provider on the review.</param>
     /// <param name="connect">Signs in to the provider.</param>
     /// <param name="folders">The remote folders, used to give the chosen scopes their names.</param>
     /// <param name="selection">The ticked folders and local folder; also creates the sync job on confirmation.</param>
-    public OnboardingViewModel(ILocalisationService localisation, Func<INavigationService> navigation, ConnectionViewModel connection, AccountsViewModel accounts, ConnectViewModel connect, FolderTreeViewModel folders, ScopeSelectionViewModel selection)
+    public OnboardingViewModel(ILocalisationService localisation, ICultureService culture, Func<IIpcClient> client, Func<INavigationService> navigation, ConnectionViewModel connection, AccountsViewModel accounts, ConnectViewModel connect, FolderTreeViewModel folders, ScopeSelectionViewModel selection)
     {
         this.localisation = localisation;
+        this.culture = culture;
+        this.client = client;
+        this.connection = connection;
         this.navigation = navigation;
         this.accounts = accounts;
         this.connect = connect;
@@ -45,6 +56,7 @@ internal sealed partial class OnboardingViewModel : ViewModelBase
             if (args.PropertyName == nameof(ConnectionViewModel.State) && connection.State == ConnectionState.Connected) EvaluateFirstRunCommand.Execute(null);
         };
         connect.PropertyChanged += (_, _) => RaiseContinueChanged();
+        connection.Activities.CollectionChanged += (_, _) => RaiseProgressChanged();
         selection.PropertyChanged += (_, args) => OnSelectionChanged(args);
         selection.SelectedFolderIds.CollectionChanged += (_, _) => OnSelectionChanged(null);
     }
@@ -74,6 +86,7 @@ internal sealed partial class OnboardingViewModel : ViewModelBase
             OnPropertyChanged(nameof(ReviewLocalPath));
             OnPropertyChanged(nameof(ReviewScopes));
             RaiseContinueChanged();
+            if (step == OnboardingStep.Review) LoadDriveInfoCommand.Execute(null);
         }
     }
 
@@ -130,23 +143,47 @@ internal sealed partial class OnboardingViewModel : ViewModelBase
     /// <summary>The names of the ticked folders. A folder whose name is not loaded in the tree shows its provider id.</summary>
     public IReadOnlyList<string> ReviewScopes => [.. selection.SelectedFolderIds.Select(NameOf)];
 
-    /// <summary>Estimated item count, labelled as a placeholder until the daemon can supply it.</summary>
-    public string EstimatedItemsText => localisation.Get("Onboarding.Review.EstimatedItemsPlaceholder");
+    /// <summary>The provider's estimate of the item count, or the localised word for unknown when the provider has none or has not answered.</summary>
+    public string EstimatedItemsText => driveInfo.Bind(info => info.ItemCountEstimate is { } count ? Option.Some(culture.FormatNumber(count)) : Option.None<string>()).GetValueOrDefault(Unknown());
 
-    /// <summary>Available storage, labelled as a placeholder until the daemon can supply it.</summary>
-    public string AvailableStorageText => localisation.Get("Onboarding.Review.AvailableStoragePlaceholder");
+    /// <summary>The storage left and allowed by the provider, or the localised word for unknown until the provider has answered.</summary>
+    public string AvailableStorageText => driveInfo.Match(
+        info => localisation.Format("Onboarding.Review.AvailableStorageValue", ("remaining", Gigabytes(info.RemainingBytes)), ("total", Gigabytes(info.TotalBytes))),
+        Unknown);
 
-    /// <summary>Current phase of the initial synchronisation; a labelled placeholder.</summary>
-    public string PhaseText => localisation.Get("Onboarding.Sync.PhasePlaceholder");
+    /// <summary>The state of the initial synchronisation as the daemon reports it, or unknown before the first report.</summary>
+    public string PhaseText => Activity.Match(report => localisation.Get($"Activity.Daemon.State.{report.State}"), Unknown);
 
-    /// <summary>Item counts of the initial synchronisation; a labelled placeholder.</summary>
-    public string ItemCountsText => localisation.Get("Onboarding.Sync.ItemsPlaceholder");
+    /// <summary>Items done, with the total when the daemon knows it, or unknown before the first report.</summary>
+    public string ItemCountsText => Activity.Match(
+        report => report.ItemsTotal is { } total
+            ? localisation.Format("Onboarding.Sync.ItemsOfTotal", ("done", culture.FormatNumber(report.ItemsDone)), ("total", culture.FormatNumber(total)))
+            : culture.FormatNumber(report.ItemsDone),
+        Unknown);
 
-    /// <summary>Throughput of the initial synchronisation; a labelled placeholder.</summary>
-    public string ThroughputText => localisation.Get("Onboarding.Sync.ThroughputPlaceholder");
+    /// <summary>Items per second over the daemon's recent window, or unknown when the daemon has no rate.</summary>
+    public string ThroughputText => Activity.Bind(report => Option.FromNullable(report.ItemsPerSecond)).Match(
+        rate => localisation.Format("Onboarding.Sync.ThroughputValue", ("rate", rate.ToString("N1", culture.Culture))),
+        Unknown);
 
-    /// <summary>Estimated remaining time of the initial synchronisation; a labelled placeholder.</summary>
-    public string RemainingText => localisation.Get("Onboarding.Sync.RemainingPlaceholder");
+    /// <summary>The daemon's estimate of the time left for the whole job in minutes, or unknown when the daemon has none.</summary>
+    public string RemainingText => Activity.Bind(report => Option.FromNullable(report.EtaSeconds)).Match(
+        seconds => seconds < 60 ? localisation.Get("Onboarding.Sync.RemainingSoon") : localisation.Format("Onboarding.Sync.RemainingMinutes", ("minutes", (long)Math.Round(seconds / 60d))),
+        Unknown);
+
+    /// <summary>
+    /// Asks the daemon for the provider's storage figures and item estimate, shown on the Review step. Runs by itself on arriving at Review. A failed question leaves the values unknown.
+    /// Cancellation surfaces as <see cref="OperationCanceledException"/>. Also exposed to the view as <c>LoadDriveInfoCommand</c>.
+    /// </summary>
+    /// <param name="cancellationToken">Cancelling abandons the question.</param>
+    [RelayCommand]
+    public async Task LoadDriveInfoAsync(CancellationToken cancellationToken)
+    {
+        var result = await client().QueryAsync(new GetDriveInfo(), cancellationToken);
+        driveInfo = result is Ok<DriveInfoView> ok ? Option.Some(ok.Value) : Option.None<DriveInfoView>();
+        OnPropertyChanged(nameof(EstimatedItemsText));
+        OnPropertyChanged(nameof(AvailableStorageText));
+    }
 
     /// <summary>
     /// Asks the daemon for its accounts once and shows the flow when there are none. A failed question (daemon unreachable) shows nothing and is asked again at the next
@@ -208,6 +245,20 @@ internal sealed partial class OnboardingViewModel : ViewModelBase
     {
         IsActive = false;
         _ = navigation().Navigate(ScreenId.Dashboard);
+    }
+
+    private Option<ActivityView> Activity => connection.Activities.Count > 0 ? Option.Some(connection.Activities[0]) : Option.None<ActivityView>();
+
+    private string Unknown() => localisation.Get("Onboarding.Unknown");
+
+    private string Gigabytes(long bytes) => (bytes / 1_073_741_824d).ToString("N1", culture.Culture);
+
+    private void RaiseProgressChanged()
+    {
+        OnPropertyChanged(nameof(PhaseText));
+        OnPropertyChanged(nameof(ItemCountsText));
+        OnPropertyChanged(nameof(ThroughputText));
+        OnPropertyChanged(nameof(RemainingText));
     }
 
     private string NameOf(string folderId) => Find(folders.Roots, folderId) ?? folderId;

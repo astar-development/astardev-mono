@@ -53,6 +53,7 @@ internal static class DaemonServiceCollectionExtensions
         services.AddSingleton<ExportQuery>();
         services.AddSingleton<ConnectAccountHandler>();
         services.AddSingleton<RootSummaryQuery>();
+        services.AddSingleton<DriveInfoQuery>();
         services.AddSingleton<RemoteFoldersQuery>();
         services.AddSingleton<DisconnectAccountHandler>();
         services.AddSingleton<AccountsQuery>();
