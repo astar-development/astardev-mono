@@ -31,6 +31,8 @@ internal sealed class FakeIpcClient(List<string> calls, bool available) : IIpcCl
 
     public Func<GetLogs, Result<LogsView, IpcError>> LogsReply { get; set; } = _ => new Ok<LogsView>(new LogsView([]));
 
+    public Func<GetTraces, Result<TracesView, IpcError>> TracesReply { get; set; } = _ => new Ok<TracesView>(new TracesView([]));
+
     public Func<GetAudit, Result<AuditView, IpcError>> AuditReply { get; set; } = _ => new Ok<AuditView>(new AuditView([]));
 
     public Func<IQuery<ExportView>, Result<ExportView, IpcError>> ExportReply { get; set; } = _ => new Ok<ExportView>(new ExportView(""));
@@ -89,6 +91,7 @@ internal sealed class FakeIpcClient(List<string> calls, bool available) : IIpcCl
             ExportHistory or ExportAudit => (Result<TResult, IpcError>)(object)ExportReply((IQuery<ExportView>)query),
             GetAudit audit => (Result<TResult, IpcError>)(object)AuditReply(audit),
             GetLogs logs => (Result<TResult, IpcError>)(object)LogsReply(logs),
+            GetTraces traces => (Result<TResult, IpcError>)(object)TracesReply(traces),
             GetSettings => (Result<TResult, IpcError>)(object)SettingsReply,
             GetSyncScopes scopes => (Result<TResult, IpcError>)(object)ScopesReply(scopes),
             GetRemoteFolders folders => (Result<TResult, IpcError>)(object)Record(folders),

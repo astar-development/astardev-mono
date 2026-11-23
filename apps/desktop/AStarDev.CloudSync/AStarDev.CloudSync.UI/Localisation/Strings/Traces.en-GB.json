@@ -1,4 +1,15 @@
 {
   "Traces.Title": "Traces",
-  "Traces.Glyph": "🧵"
+  "Traces.Glyph": "🧵",
+  "Traces.Window.Label": "Period",
+  "Traces.Window.All": "All time",
+  "Traces.Window.Hour": "Last hour",
+  "Traces.Window.Day": "Last 24 hours",
+  "Traces.TraceId.Label": "Trace id",
+  "Traces.Refresh": "Refresh",
+  "Traces.Empty": "No spans match.",
+  "Traces.Root": "none",
+  "Traces.Row": "{date} {time}  {name}  {duration} ms",
+  "Traces.Row.Failed": "{date} {time}  {name}  {duration} ms  failed",
+  "Traces.Row.Ids": "trace {trace}  span {span}  parent {parent}"
 }
