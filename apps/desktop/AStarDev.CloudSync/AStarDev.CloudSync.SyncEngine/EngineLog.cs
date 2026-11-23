@@ -31,4 +31,7 @@ internal static partial class EngineLog
 
     [LoggerMessage(EventId = 1208, Level = LogLevel.Warning, Message = "Local observation of job {Job} failed and will scan the whole root at the next change: {Failure} ({ErrorCode})")]
     internal static partial void LocalObservationFailed(ILogger logger, Guid job, object? failure, ErrorCode errorCode);
+
+    [LoggerMessage(EventId = 1209, Level = LogLevel.Warning, Message = "Planning job {Job} after its crawl failed and will be retried next round: {Error} ({ErrorCode})")]
+    internal static partial void PlanningAfterCrawlFailed(ILogger logger, Guid job, object? error, ErrorCode errorCode);
 }
