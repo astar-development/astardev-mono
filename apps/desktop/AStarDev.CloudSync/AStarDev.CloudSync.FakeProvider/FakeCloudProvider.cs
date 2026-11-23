@@ -13,6 +13,9 @@ internal sealed class FakeCloudProvider(int pageSize) : ICloudProvider
 
     public static readonly RemoteItemId DefaultRoot = new("root");
 
+    /// <inheritdoc/>
+    public IReadOnlyList<ProviderFeature> Features { get; } = [ProviderFeature.SelectiveSync, ProviderFeature.DeltaSync];
+
     private readonly Dictionary<RemoteItemId, ItemSource> sources = [];
     private readonly Dictionary<RemoteItemId, ProviderError> failingRoots = [];
     private readonly Queue<ProviderError> scriptedFailures = new();

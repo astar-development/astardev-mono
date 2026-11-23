@@ -10,7 +10,7 @@ using CommunityToolkit.Mvvm.Input;
 namespace AStarDev.CloudSync.UI.ViewModels.Screens;
 
 /// <summary>The Providers screen: a card per connected account, a health summary, the add-provider journey, removal, and a renewal warning.</summary>
-internal sealed partial class ProvidersViewModel : ViewModelBase, IScreen
+internal sealed partial class ProvidersViewModel : ViewModelBase, IScreen, IDisposable
 {
     private readonly ILocalisationService localisation;
     private readonly AccountsViewModel accounts;
@@ -18,19 +18,9 @@ internal sealed partial class ProvidersViewModel : ViewModelBase, IScreen
     private readonly IProviderCatalogue catalogue;
     private readonly IProviderInsightsSource insights;
     private readonly IUriLauncher launcher;
+    private readonly CancellationTokenSource lifetime = new();
 
-    /// <summary>Builds the screen with the sample catalogue and sample figures. Used by the application composition, which registers screens by assembly scan.</summary>
-    /// <param name="localisation">Supplies every text.</param>
-    /// <param name="connect">Performs the sign-in of the add journey.</param>
-    /// <param name="accounts">The connected accounts the cards mirror.</param>
-    /// <param name="navigation">Reaches the navigation service, which needs the screens that include this one.</param>
-    /// <param name="launcher">Opens the help link of an error in the browser.</param>
-    public ProvidersViewModel(ILocalisationService localisation, ConnectViewModel connect, AccountsViewModel accounts, Func<INavigationService> navigation, IUriLauncher launcher)
-        : this(localisation, connect, accounts, navigation, new SampleProviderCatalogue(localisation), new SampleProviderInsightsSource(localisation), launcher)
-    {
-    }
-
-    /// <summary>Builds the screen with the given provider metadata and figures.</summary>
+    /// <summary>Builds the screen with the given provider metadata and figures. Used by the application composition, which registers screens by assembly scan.</summary>
     /// <param name="localisation">Supplies every text.</param>
     /// <param name="connect">Performs the sign-in of the add journey.</param>
     /// <param name="accounts">The connected accounts the cards mirror.</param>
@@ -49,7 +39,11 @@ internal sealed partial class ProvidersViewModel : ViewModelBase, IScreen
         Connect = connect;
         Add = new AddProviderViewModel(connect, catalogue, localisation);
         HealthSummary = BuildSummary();
-        accounts.Accounts.CollectionChanged += (_, _) => Rebuild();
+        accounts.Accounts.CollectionChanged += (_, _) =>
+        {
+            Rebuild();
+            _ = LoadAsync(lifetime.Token);
+        };
         connect.PropertyChanged += (_, args) =>
         {
             if (args.PropertyName == nameof(ConnectViewModel.ErrorMessage)) ShowError();
@@ -68,6 +62,12 @@ internal sealed partial class ProvidersViewModel : ViewModelBase, IScreen
 
     /// <inheritdoc/>
     public string Glyph => localisation.Get("Providers.Glyph");
+
+    /// <inheritdoc/>
+    public void OnNavigatedTo(string? targetId) => _ = LoadAsync(lifetime.Token);
+
+    /// <inheritdoc/>
+    public void Dispose() => lifetime.Dispose();
 
     /// <summary>Busy state of the sign-in, which the view shows as a progress bar.</summary>
     public ConnectViewModel Connect { get; }
@@ -125,8 +125,14 @@ internal sealed partial class ProvidersViewModel : ViewModelBase, IScreen
         Error = message is null ? null : new ProviderErrorViewModel(message, traceId, code, launcher, localisation, () => _ = navigation().Navigate(ScreenId.Diagnostics));
     }
 
+    private async Task LoadAsync(CancellationToken cancellationToken)
+    {
+        if (await insights.RefreshAsync(cancellationToken) is Ok<Unit>) Rebuild();
+    }
+
     private void Rebuild()
     {
+        Add.Refresh();
         Cards.Clear();
         foreach (var account in accounts.Accounts.Select(card => card.Account)) Cards.Add(CreateCard(account));
         HealthSummary = BuildSummary();
