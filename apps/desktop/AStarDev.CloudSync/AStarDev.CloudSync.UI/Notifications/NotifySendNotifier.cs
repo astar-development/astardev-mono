@@ -1,4 +1,5 @@
 using System.Diagnostics;
+using AStarDev.CloudSync.Errors;
 using AStarDev.CloudSync.UI.Localisation;
 using AStarDev.FunctionalParadigm;
 
@@ -41,7 +42,7 @@ internal sealed class NotifySendNotifier(ILocalisationService localisation) : ID
 
     private static async Task<int> RunAsync(ProcessStartInfo start, CancellationToken cancellationToken)
     {
-        using var process = Process.Start(start) ?? throw new InvalidOperationException($"{Program} did not start.");
+        using var process = Process.Start(start) ?? throw new InvalidOperationException($"{Program} did not start.").WithHelpLink(UiErrorCodes.NotifierDidNotStart);
         await process.WaitForExitAsync(cancellationToken);
 
         return process.ExitCode;

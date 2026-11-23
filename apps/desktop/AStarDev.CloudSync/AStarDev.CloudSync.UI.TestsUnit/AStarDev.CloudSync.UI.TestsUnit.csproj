@@ -30,6 +30,7 @@
 
   <ItemGroup>
     <ProjectReference Include="..\AStarDev.CloudSync.UI\AStarDev.CloudSync.UI.csproj" />
+    <ProjectReference Include="..\AStarDev.CloudSync.Errors\AStarDev.CloudSync.Errors.csproj" />
   </ItemGroup>
 
 </Project>

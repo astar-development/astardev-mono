@@ -1,3 +1,4 @@
+using AStarDev.CloudSync.Errors;
 using AStarDev.CloudSync.IPC;
 using AStarDev.CloudSync.Observability;
 using AStarDev.CloudSync.UI.Localisation;
@@ -84,6 +85,6 @@ internal static class UiServiceCollectionExtensions
     private static LocalisationService CreateLocalisation(ICultureService culture) => LocalisationCatalogue.Load(typeof(App).Assembly, LocalisationService.DefaultLanguage) switch
     {
         Ok<IReadOnlyDictionary<string, string>> ok => new LocalisationService(culture, new Dictionary<string, IReadOnlyDictionary<string, string>> { [LocalisationService.DefaultLanguage] = ok.Value }, LocalisationService.DefaultLanguage),
-        Fail<LocalisationError> fail => throw new InvalidOperationException($"The embedded localisation resources are invalid: {fail.Error.Value}")
+        Fail<LocalisationError> fail => throw new InvalidOperationException($"The embedded localisation resources are invalid: {fail.Error.Value}").WithHelpLink(UiErrorCodes.LocalisationResourcesInvalid)
     };
 }
