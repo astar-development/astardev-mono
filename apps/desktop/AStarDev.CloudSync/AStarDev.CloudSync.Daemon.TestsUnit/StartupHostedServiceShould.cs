@@ -1,4 +1,5 @@
 using AStarDev.CloudSync.Daemon.Startup;
+using AStarDev.CloudSync.Errors;
 using Microsoft.Extensions.Logging.Abstractions;
 
 namespace AStarDev.CloudSync.Daemon.TestsUnit;
@@ -15,6 +16,17 @@ public sealed class StartupHostedServiceShould
         var exception = await Should.ThrowAsync<StartupFailedException>(() => service.StartAsync(TestContext.Current.CancellationToken));
 
         exception.Error.StageName.ShouldBe("one");
+    }
+
+    [Fact]
+    public async Task set_the_help_link_on_the_startup_failure()
+    {
+        var sequence = new StartupSequence([new FakeStage("one", [], fails: true)], NullLogger<StartupSequence>.Instance);
+        var service = new StartupHostedService(sequence);
+
+        var exception = await Should.ThrowAsync<StartupFailedException>(() => service.StartAsync(TestContext.Current.CancellationToken));
+
+        exception.HelpLink.ShouldBe(ErrorLinks.For(exception.Error.Code));
     }
 
     [Fact]
