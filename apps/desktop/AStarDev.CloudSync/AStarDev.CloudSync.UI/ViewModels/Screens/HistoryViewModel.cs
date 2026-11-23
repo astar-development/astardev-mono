@@ -6,16 +6,15 @@ using AStarDev.FunctionalParadigm;
 
 namespace AStarDev.CloudSync.UI.ViewModels.Screens;
 
-/// <summary>The History screen: what happened. Lists the completed and failed operations the daemon reports, newest first, plus a placeholder Audit tab.</summary>
+/// <summary>The History screen: what happened. Lists the completed and failed operations the daemon reports, newest first.</summary>
 internal sealed class HistoryViewModel : OperationListViewModel, IScreen
 {
     private readonly ILocalisationService localisation;
     private readonly Func<IIpcClient> createClient;
     private CancellationTokenSource? refresh;
     private string? errorMessage;
-    private int tabIndex;
 
-    /// <summary>Creates the screen on the History tab with its filters and no operations; they load each time the screen is navigated to.</summary>
+    /// <summary>Creates the screen with its filters and no operations; they load each time the screen is navigated to.</summary>
     /// <param name="localisation">Supplies every text.</param>
     /// <param name="culture">Formats every date, time and number.</param>
     /// <param name="createClient">Creates a fresh client per refresh; one client is one connection.</param>
@@ -34,22 +33,6 @@ internal sealed class HistoryViewModel : OperationListViewModel, IScreen
 
     /// <inheritdoc/>
     public string Glyph => localisation.Get("History.Glyph");
-
-    /// <summary>Index of the selected tab: 0 is History, 1 is the Audit placeholder.</summary>
-    public int TabIndex
-    {
-        get => tabIndex;
-        set => SetProperty(ref tabIndex, value);
-    }
-
-    /// <summary>Text of the History tab.</summary>
-    public string HistoryTabText => localisation.Get("History.Tab.History");
-
-    /// <summary>Text of the Audit tab.</summary>
-    public string AuditTabText => localisation.Get("History.Tab.Audit");
-
-    /// <summary>Text saying the Audit tab is a placeholder: doc 19 has no Audit destination, so its place is pending confirmation.</summary>
-    public string AuditPendingText => localisation.Get("History.Audit.Pending");
 
     /// <summary>Why the last refresh failed, worded for the user. <see langword="null"/> after a refresh that worked.</summary>
     public string? ErrorMessage

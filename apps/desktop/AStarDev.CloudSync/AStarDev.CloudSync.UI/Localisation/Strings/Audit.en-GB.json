@@ -1,0 +1,7 @@
+{
+  "Audit.Title": "Audit",
+  "Audit.Glyph": "🧾",
+  "Audit.Refresh": "Refresh",
+  "Audit.Empty": "Nothing has been recorded yet.",
+  "Audit.Row": "{date} {time}  {type}"
+}

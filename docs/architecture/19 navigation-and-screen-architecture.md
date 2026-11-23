@@ -22,7 +22,7 @@ The Dashboard is the default landing screen.
 
 ## Primary Navigation
 
-Dashboard, Queue, Conflicts, Activity, History, Providers and Settings are first-class destinations. This is the authoritative destination list; document 24 does not add a Sync Relationships screen.
+Dashboard, Queue, Conflicts, Activity, History, Audit, Providers and Settings are first-class destinations. This is the authoritative destination list; document 24 does not add a Sync Relationships screen.
 
 ## Advanced Operational Surfaces
 
@@ -37,6 +37,7 @@ Metrics, Logs, Traces and Diagnostics are available through Settings > Advanced.
 | Conflicts | Conflict resolution |
 | Activity | Live execution |
 | History | Completed activity |
+| Audit | Proof that significant actions happened |
 | Providers | Provider management |
 | Settings | Configuration |
 
@@ -91,6 +92,7 @@ Users locate operational information quickly while retaining confidence that Clo
 ⚠ Conflicts
 📈 Activity
 📜 History
+🧾 Audit
 ☁ Providers
 ⚙ Settings
 
