@@ -1,4 +1,5 @@
 using AStarDev.CloudSync.Domain;
+using AStarDev.CloudSync.Errors;
 using AStarDev.CloudSync.Ports;
 using AStarDev.CloudSync.SyncEngine;
 using AStarDev.FunctionalParadigm;
@@ -52,6 +53,14 @@ public sealed class PhysicalLocalFileStoreShould : IDisposable
 
         result.Value.ShouldBeOfType<Fail<ProviderError>>().Error.Value.ShouldBeOfType<Permanent>();
         store.Exists(root, new RelativePath("../escape.txt")).ShouldBeFalse();
+    }
+
+    [Fact]
+    public void set_the_help_link_on_a_path_that_escapes_the_root()
+    {
+        var thrown = Should.Throw<UnauthorizedAccessException>(() => PhysicalLocalFileStore.Inside(root, new RelativePath("../escape.txt")));
+
+        thrown.HelpLink.ShouldBe(ErrorLinks.Root + "CS-SYNC-0012");
     }
 
     [Fact]
