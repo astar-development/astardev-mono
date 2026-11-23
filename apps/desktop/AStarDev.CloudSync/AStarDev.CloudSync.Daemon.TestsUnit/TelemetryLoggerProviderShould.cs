@@ -52,7 +52,7 @@ public sealed class TelemetryLoggerProviderShould : IDisposable
         await using (var first = CreateHost())
         {
             await StartWriterAsync(first);
-            first.Services.GetRequiredService<ILoggerFactory>().CreateLogger(Category).LogWarning("Queued {Count} operations", 3);
+            TelemetryTestLog.Queued(first.Services.GetRequiredService<ILoggerFactory>().CreateLogger(Category), 3);
             await WaitForLogsAsync(first, view => view.Entries.Any(entry => entry.Source == Category));
         }
 
@@ -73,7 +73,7 @@ public sealed class TelemetryLoggerProviderShould : IDisposable
         await StartWriterAsync(host);
 
         var elapsed = System.Diagnostics.Stopwatch.StartNew();
-        for (var index = 0; index < 100; index++) logger.LogError("Failure {Index}", index);
+        for (var index = 0; index < 100; index++) TelemetryTestLog.Failed(logger, index);
         elapsed.Stop();
         var deadline = DateTimeOffset.UtcNow.AddSeconds(10);
         while (writer.DroppedCount == 0 && DateTimeOffset.UtcNow < deadline) await Task.Delay(20, Token);
@@ -89,7 +89,7 @@ public sealed class TelemetryLoggerProviderShould : IDisposable
         await StartWriterAsync(host);
         var logger = host.Services.GetRequiredService<ILoggerFactory>().CreateLogger(Category);
 
-        logger.LogInformation("Synced {Path} for {Owner} at C:\\Users\\ada\\plan.txt", "/home/ada/Documents/plan.txt", "ada@example.com");
+        TelemetryTestLog.Synced(logger, "/home/ada/Documents/plan.txt", "ada@example.com");
         var stored = (await WaitForLogsAsync(host, view => view.Entries.Any(entry => entry.Source == Category))).Single(entry => entry.Source == Category);
 
         stored.Message.ShouldNotContain("ada");
