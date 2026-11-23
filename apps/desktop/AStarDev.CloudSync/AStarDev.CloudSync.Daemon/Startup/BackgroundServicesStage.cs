@@ -23,7 +23,7 @@ internal sealed class BackgroundServicesStage(ISyncJobStore jobs, SyncRunner run
         if (databaseState.Mode == DatabaseMode.Recovery) return new Ok<Unit>(default);
 
         scheduler.Start();
-        if (await conflictResolver.RefreshOpenConflictCountAsync(cancellationToken) is Fail<StoreError> countFail) logger.LogWarning("The open conflict count could not be read: {Message}", StoreErrorMessages.Describe(countFail.Error, "count", "conflict"));
+        if (await conflictResolver.RefreshOpenConflictCountAsync(cancellationToken) is Fail<StoreError> countFail) StartupLog.ConflictCountUnreadable(logger, StoreErrorMessages.Describe(countFail.Error, "count", "conflict"));
 
         return await jobs.ListAsync(cancellationToken) switch
         {
@@ -36,8 +36,8 @@ internal sealed class BackgroundServicesStage(ISyncJobStore jobs, SyncRunner run
     {
         foreach (var job in listed.Where(job => job.Enabled))
         {
-            if (await runner.StartAsync(job.Id, cancellationToken) is Fail<StoreError> fail) logger.LogWarning("Job {Job} could not be resumed: {Message}", job.Id.Value, StoreErrorMessages.Describe(fail.Error, "read", "sync job"));
-            if (await observation.StartAsync(job.Id, cancellationToken) is Fail<StoreError> observationFail) logger.LogWarning("Job {Job} local observation could not be started: {Message}", job.Id.Value, StoreErrorMessages.Describe(observationFail.Error, "read", "sync job"));
+            if (await runner.StartAsync(job.Id, cancellationToken) is Fail<StoreError> fail) StartupLog.JobResumeFailed(logger, job.Id.Value, StoreErrorMessages.Describe(fail.Error, "read", "sync job"));
+            if (await observation.StartAsync(job.Id, cancellationToken) is Fail<StoreError> observationFail) StartupLog.JobObservationFailed(logger, job.Id.Value, StoreErrorMessages.Describe(observationFail.Error, "read", "sync job"));
         }
 
         return new Ok<Unit>(default);
