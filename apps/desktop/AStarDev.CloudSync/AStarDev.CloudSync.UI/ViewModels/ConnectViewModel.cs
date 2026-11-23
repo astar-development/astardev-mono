@@ -22,6 +22,10 @@ public sealed partial class ConnectViewModel(Func<IIpcClient> createClient) : Vi
     [ObservableProperty]
     public partial string? ErrorMessage { get; set; }
 
+    /// <summary>The daemon trace that handled the last failed request. <see langword="null"/> when it sent none and after a request that worked.</summary>
+    [ObservableProperty]
+    public partial string? ErrorTraceId { get; set; }
+
     /// <summary>Ready-made label for <see cref="ItemCount"/>, empty while there is no count.</summary>
     public string ItemCountText => ItemCount switch
     {
@@ -39,6 +43,7 @@ public sealed partial class ConnectViewModel(Func<IIpcClient> createClient) : Vi
     {
         IsBusy = true;
         ErrorMessage = null;
+        ErrorTraceId = null;
         ItemCount = null;
 
         try
@@ -49,6 +54,7 @@ public sealed partial class ConnectViewModel(Func<IIpcClient> createClient) : Vi
                     ItemCount = ok.Value.ItemCount;
                     break;
                 case Fail<ConnectFailure> fail:
+                    ErrorTraceId = fail.Error.TraceId.Match(id => (string?)id, () => null);
                     ErrorMessage = fail.Error.Message;
                     break;
             }
@@ -74,7 +80,7 @@ public sealed partial class ConnectViewModel(Func<IIpcClient> createClient) : Vi
         => await client.SendAsync(new ConnectAccount(), cancellationToken) switch
         {
             Ok<CommandResult> { Value.Outcome: CommandOutcome.Accepted } => await CountAsync(client, cancellationToken),
-            Ok<CommandResult> rejected => new Fail<ConnectFailure>(new ConnectFailure(rejected.Value.Message ?? ApplicationConstants.ConnectRejectedText)),
+            Ok<CommandResult> rejected => new Fail<ConnectFailure>(ConnectFailure.Rejected(rejected.Value, ApplicationConstants.ConnectRejectedText)),
             Fail<IpcError> fail => new Fail<ConnectFailure>(ConnectFailure.From(fail.Error))
         };
 

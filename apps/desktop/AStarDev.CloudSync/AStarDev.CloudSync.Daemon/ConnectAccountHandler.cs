@@ -1,3 +1,4 @@
+using System.Diagnostics;
 using AStarDev.CloudSync.Domain;
 using AStarDev.CloudSync.IPC;
 using AStarDev.CloudSync.Ports;
@@ -13,7 +14,7 @@ internal sealed class ConnectAccountHandler(ICloudProvider provider, IAccountSto
     /// Signs in and, on success, stores the account (or marks the already stored one <see cref="AccountStatus.Connected"/>, which is how a user signs in again) and publishes <see cref="AccountConnected"/> before answering.
     /// </summary>
     /// <returns>
-    /// <see cref="CommandOutcome.Accepted"/> once connected and stored, or <see cref="CommandOutcome.Rejected"/> with the provider's or the store's failure worded for the user. An <see cref="IpcError"/>
+    /// <see cref="CommandOutcome.Accepted"/> once connected and stored, or <see cref="CommandOutcome.Rejected"/> with the provider's or the store's failure worded for the user and the id of the daemon trace that handled it. An <see cref="IpcError"/>
     /// only when the event could not be published. Cancellation propagates as <see cref="OperationCanceledException"/>.
     /// </returns>
     public async Task<Result<CommandResult, IpcError>> HandleAsync(ConnectAccount command, CancellationToken cancellationToken)
@@ -71,8 +72,9 @@ internal sealed class ConnectAccountHandler(ICloudProvider provider, IAccountSto
 
     private Ok<CommandResult> Reject(string message)
     {
+        var traceId = Activity.Current?.TraceId.ToString();
         logger.LogWarning("Connecting an account failed: {Message}", message);
 
-        return new Ok<CommandResult>(new CommandResult(CommandOutcome.Rejected, message));
+        return new Ok<CommandResult>(new CommandResult(CommandOutcome.Rejected, message, traceId));
     }
 }

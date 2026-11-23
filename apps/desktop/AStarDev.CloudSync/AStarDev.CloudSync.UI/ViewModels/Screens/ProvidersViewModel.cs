@@ -3,6 +3,7 @@ using AStarDev.CloudSync.IPC;
 using AStarDev.CloudSync.UI.Localisation;
 using AStarDev.CloudSync.UI.Navigation;
 using AStarDev.CloudSync.UI.ViewModels.Providers;
+using AStarDev.FunctionalParadigm;
 using CommunityToolkit.Mvvm.ComponentModel;
 using CommunityToolkit.Mvvm.Input;
 
@@ -115,7 +116,8 @@ internal sealed partial class ProvidersViewModel : ViewModelBase, IScreen
     private void ShowError()
     {
         var message = Connect.ErrorMessage ?? accounts.ErrorMessage;
-        Error = message is null ? null : new ProviderErrorViewModel(message, localisation, () => _ = navigation().Navigate(ScreenId.Diagnostics));
+        var traceId = Option.FromNullable(Connect.ErrorMessage is null ? accounts.ErrorTraceId : Connect.ErrorTraceId);
+        Error = message is null ? null : new ProviderErrorViewModel(message, traceId, localisation, () => _ = navigation().Navigate(ScreenId.Diagnostics));
     }
 
     private void Rebuild()
