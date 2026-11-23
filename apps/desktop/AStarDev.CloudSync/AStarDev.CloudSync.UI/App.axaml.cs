@@ -75,6 +75,7 @@ public partial class App : Application
         _ = host.Services.GetRequiredService<RefreshCoordinator>();
         if (host.Services.GetRequiredService<IThemeService>().Apply(DefaultTheme).Value is Fail<ThemeError> themeFailure)
             UiLog.ThemeFailed(host.Services.GetRequiredService<ILogger<App>>(), DefaultTheme, themeFailure.Error.Value.GetType().Name);
+        _ = host.Services.GetRequiredService<SettingsStartup>();
         _ = RunAsync(host, connection, cancellationToken);
 
         var window = new MainWindow { DataContext = host.Services.GetRequiredService<MainViewModel>() };

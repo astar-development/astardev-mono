@@ -19,6 +19,9 @@ internal sealed class ThemeService : IThemeService
     public string? Current { get; private set; }
 
     /// <inheritdoc/>
+    public IReadOnlyList<string> Available => [.. Themes.Keys];
+
+    /// <inheritdoc/>
     public Result<Unit, ThemeError> Apply(string themeName)
     {
         if (Application.Current is not { } application) return new Fail<ThemeError>(new NoApplication());

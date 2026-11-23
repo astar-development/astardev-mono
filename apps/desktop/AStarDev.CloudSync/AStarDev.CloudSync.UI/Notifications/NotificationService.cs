@@ -16,12 +16,15 @@ internal sealed class NotificationService(INotificationPresenter presenter, Tray
     private readonly Dictionary<string, (Notification Notification, DateTimeOffset At)> active = [];
 
     /// <inheritdoc/>
+    public NotificationPreferences Preferences { get; set; } = NotificationPreferences.Default;
+
+    /// <inheritdoc/>
     public IReadOnlyList<Notification> Active => active.Values.OrderBy(entry => entry.At).Select(entry => entry.Notification).ToList();
 
     /// <inheritdoc/>
     public void Raise(NotificationEvent notificationEvent)
     {
-        if (notificationEvent.Kind == NotificationEventKind.SyncSucceeded) return;
+        if (IsMuted(notificationEvent.Kind)) return;
 
         var key = $"{notificationEvent.Kind}:{notificationEvent.SubjectId}";
         var now = clock.GetUtcNow();
@@ -39,6 +42,14 @@ internal sealed class NotificationService(INotificationPresenter presenter, Tray
 
     /// <inheritdoc/>
     public Result<Unit, NavigationError> Open(Notification notification) => tray.Open(notification.Target.Screen, notification.Target.TargetId);
+
+    private bool IsMuted(NotificationEventKind kind) => kind switch
+    {
+        NotificationEventKind.SyncSucceeded => !Preferences.Completion,
+        NotificationEventKind.ConflictDetected => !Preferences.Conflicts,
+        NotificationEventKind.ItemFailed or NotificationEventKind.AuthenticationExpired => !Preferences.Errors,
+        _ => false
+    };
 
     private Notification Build(NotificationEvent notificationEvent, string key, int count)
     {

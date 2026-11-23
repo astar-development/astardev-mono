@@ -111,6 +111,33 @@ public sealed class NotificationServiceShould
     }
 
     [Fact]
+    public void honour_the_notification_preferences()
+    {
+        var (service, presenter, _, _, _) = Create();
+
+        service.Preferences = new NotificationPreferences(Conflicts: false, Errors: false, Completion: true);
+        service.Raise(new NotificationEvent(NotificationEventKind.ConflictDetected, "c-1"));
+        service.Raise(new NotificationEvent(NotificationEventKind.ItemFailed, "f-1"));
+        service.Raise(new NotificationEvent(NotificationEventKind.AuthenticationExpired, "a-1"));
+        service.Raise(new NotificationEvent(NotificationEventKind.SyncSucceeded, "s-1"));
+
+        presenter.Presented.Select(notification => notification.Category).ShouldBe([NotificationCategory.Informational]);
+        service.Active.Count.ShouldBe(1);
+    }
+
+    [Fact]
+    public void notify_conflicts_and_errors_but_not_completion_by_default()
+    {
+        var (service, presenter, _, _, _) = Create();
+
+        service.Raise(new NotificationEvent(NotificationEventKind.ConflictDetected, "c-1"));
+        service.Raise(new NotificationEvent(NotificationEventKind.ItemFailed, "f-1"));
+        service.Raise(new NotificationEvent(NotificationEventKind.SyncSucceeded, "s-1"));
+
+        presenter.Presented.Count.ShouldBe(2);
+    }
+
+    [Fact]
     public void carry_a_deep_link_for_a_conflict()
     {
         var (service, presenter, _, shell, navigation) = Create();

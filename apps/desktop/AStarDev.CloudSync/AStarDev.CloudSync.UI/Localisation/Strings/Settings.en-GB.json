@@ -22,8 +22,16 @@
   "Settings.SyncRoot.Consequences": "The sync folder is where your synchronised files are stored on this computer. Changing it affects every synchronised file.",
   "Settings.SyncRoot.WhatHappensNext": "A guided change with validation and safety checks will be added here. Until then the sync folder cannot be changed once the sync job exists.",
   "Settings.Appearance.Heading": "Appearance",
-  "Settings.Appearance.Placeholder": "Placeholder: theme and display options will appear here. CloudSync uses the Dark theme for now.",
+  "Settings.Appearance.Theme": "Theme",
   "Settings.Notifications.Heading": "Notifications",
-  "Settings.Notifications.Placeholder": "Placeholder: choose which events notify you here. Notification preferences are not available yet.",
+  "Settings.Notifications.Conflicts": "Notify me when a conflict is found",
+  "Settings.Notifications.Errors": "Notify me when an item fails or a sign-in expires",
+  "Settings.Notifications.Completion": "Notify me when a sync finishes",
+  "Settings.Retention.Heading": "Retention",
+  "Settings.Retention.Audit": "Keep audit entries for (days)",
+  "Settings.Retention.Telemetry": "Keep telemetry for (days)",
+  "Settings.Save": "Save",
+  "Settings.SaveRejected": "The daemon did not accept the change.",
+  "Settings.ThemeFailed": "The {theme} theme could not be applied.",
   "Settings.Advanced.Description": "Technical views for diagnosing problems."
 }
