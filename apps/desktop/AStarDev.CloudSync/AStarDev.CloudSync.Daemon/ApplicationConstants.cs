@@ -49,5 +49,7 @@ internal static class ApplicationConstants
 
     public static string TelemetryBatchWriterCategory => "AStarDev.CloudSync.Persistence.TelemetryBatchWriter";
 
+    public static string ActivitySourcePrefix => "AStarDev.CloudSync.";
+
     public static string InterruptedOperationReason => "Interrupted by a daemon restart.";
 }
