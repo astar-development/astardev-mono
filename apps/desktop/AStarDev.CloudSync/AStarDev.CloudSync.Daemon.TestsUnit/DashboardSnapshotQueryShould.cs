@@ -19,9 +19,9 @@ public sealed class DashboardSnapshotQueryShould
         return result.Value.ShouldBeOfType<Ok<DashboardView>>().Value;
     }
 
-    private static async Task<(DaemonTestHost Host, SyncJob Job)> HostWithJobAsync(RecordingIpcServer? server = null)
+    private static async Task<(DaemonTestHost Host, SyncJob Job)> HostWithJobAsync(RecordingIpcServer? server = null, TimeProvider? clock = null)
     {
-        var host = DaemonTestHost.Create(configureServices: services => services.RemoveAll<ICloudProvider>().AddSingleton<ICloudProvider>(new StubCloudProvider()).RemoveAll<IIpcServer>().AddSingleton<IIpcServer>(server ?? new RecordingIpcServer()));
+        var host = DaemonTestHost.Create(configureServices: services => services.RemoveAll<ICloudProvider>().AddSingleton<ICloudProvider>(new StubCloudProvider()).RemoveAll<IIpcServer>().AddSingleton<IIpcServer>(server ?? new RecordingIpcServer()).RemoveAll<TimeProvider>().AddSingleton(clock ?? TimeProvider.System));
         var account = await host.AddAccountAsync("id", AccountStatus.Connected, Token);
 
         return (host, await host.AddJobAsync(account, "/tmp/cloudsync-dashboard", Token));
@@ -61,18 +61,23 @@ public sealed class DashboardSnapshotQueryShould
     }
 
     [Fact]
-    public async Task report_the_crawl_progress_with_its_own_estimate()
+    public async Task report_the_crawl_progress_with_the_activity_estimate()
     {
-        var (host, job) = await HostWithJobAsync();
+        var clock = new ManualTimeProvider(DateTimeOffset.UnixEpoch);
+        var (host, job) = await HostWithJobAsync(clock: clock);
         await using var _ = host;
-        await host.Services.GetRequiredService<ICrawlProgressSink>().ReportAsync(new CrawlProgress(job.Id, new RemoteItemId("docs"), 40, false, 100, ItemsPerSecond: 8, EstimatedRemaining: TimeSpan.FromSeconds(7)), Token);
+        var sink = host.Services.GetRequiredService<ICrawlProgressSink>();
+        await sink.ReportAsync(new CrawlProgress(job.Id, new RemoteItemId("docs"), 0, false, 100), Token);
+        clock.Advance(TimeSpan.FromSeconds(5));
+        await sink.ReportAsync(new CrawlProgress(job.Id, new RemoteItemId("docs"), 40, false, 100), Token);
 
         var dashboard = await SnapshotAsync(host);
 
         dashboard.ItemsAnalysed.ShouldBe(40);
         dashboard.ItemsTotal.ShouldBe(100);
         dashboard.ItemsPerSecond.ShouldBe(8);
-        dashboard.EstimatedRemaining.ShouldBe(TimeSpan.FromSeconds(7));
+        dashboard.EstimatedRemaining.ShouldBe(TimeSpan.FromSeconds(8));
+        host.Services.GetRequiredService<ActivityTracker>().Current().Activities.Single().EtaSeconds.ShouldBe(8);
         dashboard.Stage.ShouldBe(DashboardStage.EnumerateRemoteState);
     }
 

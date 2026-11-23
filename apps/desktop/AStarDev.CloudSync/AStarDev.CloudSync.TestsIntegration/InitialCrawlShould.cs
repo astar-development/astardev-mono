@@ -143,7 +143,7 @@ public sealed class InitialCrawlShould
     }
 
     [Fact]
-    public async Task report_progress_with_a_total_and_an_estimate()
+    public async Task report_progress_with_a_total()
     {
         var provider = new FakeCloudProvider(pageSize: 50);
         provider.GenerateTree(120, Docs);
@@ -155,8 +155,6 @@ public sealed class InitialCrawlShould
 
         var last = sink.Reports.Last();
         last.ItemsTotal.ShouldBe(120);
-        last.ItemsPerSecond.ShouldNotBeNull().ShouldBeGreaterThan(0);
-        last.EstimatedRemaining.ShouldBe(TimeSpan.Zero);
     }
 
     [Fact]

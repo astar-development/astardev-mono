@@ -38,7 +38,7 @@ public sealed class ActivityTrackerShould
 
         var activity = await tracker.ApplyAsync(new CrawlProgress(JobId, Docs, 2000, false, 10000), Token);
 
-        activity.ShouldBe(new ActivityView(JobId.Value, "OneDrive", ActivityState.InitialIndexing, 2000, 10000, 20, 80, Start, Start.AddSeconds(10), null, false));
+        activity.ShouldBe(new ActivityView(JobId.Value, "OneDrive", ActivityState.InitialIndexing, 2000, 10000, 20, 80, Start, Start.AddSeconds(10), null, false, 100));
     }
 
     [Fact]
@@ -81,6 +81,60 @@ public sealed class ActivityTrackerShould
         activity.ItemsTotal.ShouldBeNull();
         activity.Percent.ShouldBeNull();
         activity.EtaSeconds.ShouldBeNull();
+    }
+
+    [Fact]
+    public async Task move_the_eta_within_a_minute_of_a_stall_then_a_burst()
+    {
+        var clock = new ManualTimeProvider(Start);
+        var tracker = new ActivityTracker(new FakeJobs(), clock);
+        await tracker.ApplyAsync(new CrawlProgress(JobId, Docs, 0, false, 10000), Token);
+        clock.Advance(TimeSpan.FromSeconds(60));
+        await tracker.ApplyAsync(new CrawlProgress(JobId, Docs, 600, false, 10000), Token);
+        clock.Advance(TimeSpan.FromSeconds(60));
+        var stalled = await tracker.ApplyAsync(new CrawlProgress(JobId, Docs, 600, false, 10000), Token);
+        clock.Advance(TimeSpan.FromSeconds(30));
+        var burst = await tracker.ApplyAsync(new CrawlProgress(JobId, Docs, 4600, false, 10000), Token);
+
+        stalled.EtaSeconds.ShouldBeNull();
+        burst.ItemsPerSecond.ShouldBe(4000d / 30);
+        burst.EtaSeconds.ShouldBe(41);
+    }
+
+    [Fact]
+    public async Task combine_every_scope_into_one_job_eta()
+    {
+        var clock = new ManualTimeProvider(Start);
+        var tracker = new ActivityTracker(new FakeJobs(), clock);
+        await tracker.ApplyAsync(new CrawlProgress(JobId, Docs, 0, false, 1000), Token);
+        await tracker.ApplyAsync(new CrawlProgress(JobId, new RemoteItemId("pics"), 500, false, 1000), Token);
+        clock.Advance(TimeSpan.FromSeconds(10));
+        await tracker.ApplyAsync(new CrawlProgress(JobId, Docs, 100, false, 1000), Token);
+
+        var activity = await tracker.ApplyAsync(new CrawlProgress(JobId, new RemoteItemId("pics"), 600, false, 1000), Token);
+
+        activity.ItemsPerSecond.ShouldBe(20);
+        activity.EtaSeconds.ShouldBe(65);
+    }
+
+    [Fact]
+    public async Task show_no_eta_while_waiting_and_resume_it_after_the_wait()
+    {
+        var clock = new ManualTimeProvider(Start);
+        var tracker = new ActivityTracker(new FakeJobs(), clock);
+        await tracker.ApplyAsync(new CrawlProgress(JobId, Docs, 0, false, 10000), Token);
+        clock.Advance(TimeSpan.FromSeconds(10));
+        var before = await tracker.ApplyAsync(new CrawlProgress(JobId, Docs, 1000, false, 10000), Token);
+        clock.Advance(TimeSpan.FromSeconds(20));
+
+        var waiting = await tracker.ApplyAsync(new CrawlProgress(JobId, Docs, 1000, false, RetryIn: TimeSpan.FromSeconds(20)), Token);
+        clock.Advance(TimeSpan.FromSeconds(20));
+        var resumed = await tracker.ApplyAsync(new CrawlProgress(JobId, Docs, 2000, false, 10000), Token);
+
+        before.EtaSeconds.ShouldBe(90);
+        waiting.EtaSeconds.ShouldBeNull();
+        waiting.ItemsPerSecond.ShouldBeNull();
+        resumed.EtaSeconds.ShouldBe(200);
     }
 
     [Fact]

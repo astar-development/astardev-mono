@@ -10,7 +10,5 @@ namespace AStarDev.CloudSync.SyncEngine;
 /// <param name="ItemsTotal">Items the scope holds in all, when the provider said; <see langword="null"/> when unknown, including in reports sent while waiting to retry.</param>
 /// <param name="RetryIn">How long the crawl waits before trying the provider again; <see langword="null"/> when it is not waiting. Such a report is sent at once, not throttled.</param>
 /// <param name="Failed"><see langword="true"/> when the scope stopped on an error and needs another start. <paramref name="ItemsIndexed"/> is then not meaningful.</param>
-/// <param name="ItemsPerSecond">Items stored per second over the recent window, not since the start; <see langword="null"/> until two measurements exist.</param>
-/// <param name="EstimatedRemaining">Time left at <paramref name="ItemsPerSecond"/>; <see langword="null"/> when <paramref name="ItemsTotal"/> or the throughput is unknown, so no guess is made.</param>
 /// <param name="Delta"><see langword="true"/> for a report about applying changes to an already crawled scope: <paramref name="Completed"/> then says the work ended, and the job counts as working until it does.</param>
-public sealed record CrawlProgress(SyncJobId SyncJobId, RemoteItemId RemoteRootId, long ItemsIndexed, bool Completed, long? ItemsTotal = null, TimeSpan? RetryIn = null, bool Failed = false, bool Delta = false, double? ItemsPerSecond = null, TimeSpan? EstimatedRemaining = null);
+public sealed record CrawlProgress(SyncJobId SyncJobId, RemoteItemId RemoteRootId, long ItemsIndexed, bool Completed, long? ItemsTotal = null, TimeSpan? RetryIn = null, bool Failed = false, bool Delta = false);
