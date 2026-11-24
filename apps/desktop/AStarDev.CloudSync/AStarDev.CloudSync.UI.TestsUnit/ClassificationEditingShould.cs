@@ -15,7 +15,7 @@ public sealed class ClassificationEditingShould
 
     private static FakeIpcClient Client() => new([], available: true)
     {
-        ClassificationTermsReply = new Ok<ClassificationTermsView>(new ClassificationTermsView([new ClassificationCategoryView(Colour, "Colour")], [new ClassificationTermView(Red, "red", Colour, "Seed", false, 2)]))
+        ClassificationTermsReply = _ => new Ok<ClassificationTermsView>(new ClassificationTermsView([new ClassificationCategoryView(Colour, "Colour")], [new ClassificationTermView(Red, "red", Colour, "Seed", false, 2)], 1))
     };
 
     private static (Microsoft.Extensions.Hosting.IHost Host, ClassificationsViewModel Screen) Create(FakeIpcClient client)
@@ -125,12 +125,12 @@ public sealed class ClassificationEditingShould
     public async Task scan_for_suggestions_the_first_time_the_tab_is_shown_and_only_then()
     {
         var client = Client();
-        client.SuggestionsReply = new Ok<ClassificationSuggestionsView>(new ClassificationSuggestionsView([new ClassificationSuggestionView("zorblax", 4, false), new ClassificationSuggestionView("jennifer", 2, true)]));
+        client.SuggestionsReply = new Ok<ClassificationSuggestionsView>(new ClassificationSuggestionsView([new ClassificationSuggestionView("zorblax", 4, false), new ClassificationSuggestionView("jennifer", 2, true)], 2));
         var (host, screen) = Create(client);
         using var lifetime = host;
 
         await screen.Suggestions.EnsureLoadedAsync(Token);
-        client.SuggestionsReply = new Ok<ClassificationSuggestionsView>(new ClassificationSuggestionsView([]));
+        client.SuggestionsReply = new Ok<ClassificationSuggestionsView>(new ClassificationSuggestionsView([], 0));
         await screen.Suggestions.EnsureLoadedAsync(Token);
 
         screen.Suggestions.Rows.Select(row => (row.Word, row.Detail)).ShouldBe([("zorblax", "in 4 files"), ("jennifer", "in 2 files  ·  looks like a first name")]);
@@ -141,7 +141,7 @@ public sealed class ClassificationEditingShould
     public async Task promote_and_ignore_a_word_into_the_chosen_category_and_drop_it_from_the_list()
     {
         var client = Client();
-        client.SuggestionsReply = new Ok<ClassificationSuggestionsView>(new ClassificationSuggestionsView([new ClassificationSuggestionView("zorblax", 4, false), new ClassificationSuggestionView("plimbus", 2, false)]));
+        client.SuggestionsReply = new Ok<ClassificationSuggestionsView>(new ClassificationSuggestionsView([new ClassificationSuggestionView("zorblax", 4, false), new ClassificationSuggestionView("plimbus", 2, false)], 2));
         var (host, screen) = Create(client);
         using var lifetime = host;
         await screen.RefreshAsync(Token);
@@ -160,7 +160,7 @@ public sealed class ClassificationEditingShould
     public async Task ask_for_a_category_before_promoting()
     {
         var client = Client();
-        client.SuggestionsReply = new Ok<ClassificationSuggestionsView>(new ClassificationSuggestionsView([new ClassificationSuggestionView("zorblax", 4, false)]));
+        client.SuggestionsReply = new Ok<ClassificationSuggestionsView>(new ClassificationSuggestionsView([new ClassificationSuggestionView("zorblax", 4, false)], 1));
         var (host, screen) = Create(client);
         using var lifetime = host;
         await screen.Suggestions.LoadAsync(Token);
@@ -221,5 +221,19 @@ public sealed class ClassificationEditingShould
         await screen.Reclassify.LoadStatusAsync(Token);
 
         screen.Reclassify.StatusText.ShouldBe("No run has finished yet");
+    }
+
+    [Fact]
+    public async Task say_when_the_daemon_listed_only_the_most_common_words()
+    {
+        var client = Client();
+        client.SuggestionsReply = new Ok<ClassificationSuggestionsView>(new ClassificationSuggestionsView([new ClassificationSuggestionView("zorblax", 4, false)], 9000));
+        var (host, screen) = Create(client);
+        using var lifetime = host;
+
+        await screen.Suggestions.LoadAsync(Token);
+
+        screen.Suggestions.IsCut.ShouldBeTrue();
+        screen.Suggestions.SummaryText.ShouldBe("Showing the 1 most common of 9,000 words");
     }
 }

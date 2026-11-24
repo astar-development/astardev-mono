@@ -25,6 +25,7 @@
             </StackPanel>
             <TextBlock DockPanel.Dock="Top" Text="{Binding ErrorMessage}" IsVisible="{Binding ErrorMessage, Converter={x:Static ObjectConverters.IsNotNull}}" TextWrapping="Wrap" Foreground="{DynamicResource Trust.Degraded.Brush}" />
             <TextBlock DockPanel.Dock="Top" Text="{Binding EmptyText}" IsVisible="{Binding IsEmpty}" Foreground="{DynamicResource Text.Secondary.Brush}" />
+            <TextBlock DockPanel.Dock="Top" Text="{Binding SummaryText}" IsVisible="{Binding IsCut}" Margin="0,0,0,8" Foreground="{DynamicResource Text.Secondary.Brush}" />
             <ScrollViewer>
                 <ItemsControl ItemsSource="{Binding Rows}">
                     <ItemsControl.ItemTemplate>
@@ -82,6 +83,8 @@
             <Grid ColumnDefinitions="*,16,*">
                 <DockPanel Grid.Column="0">
                     <TextBlock DockPanel.Dock="Top" Text="{Binding EmptyText}" IsVisible="{Binding IsEmpty}" Foreground="{DynamicResource Text.Secondary.Brush}" />
+                    <TextBlock DockPanel.Dock="Top" Text="{Binding TermsSummary}" Foreground="{DynamicResource Text.Secondary.Brush}" />
+                    <Button DockPanel.Dock="Bottom" Content="{Binding MoreTermsText}" Command="{Binding LoadMoreTermsCommand}" IsVisible="{Binding CanLoadMoreTerms}" Margin="0,8,0,0" />
                     <ListBox ItemsSource="{Binding Terms}" SelectedItem="{Binding SelectedTerm}">
                         <ListBox.ItemTemplate>
                             <DataTemplate x:DataType="vm:TermRowViewModel">

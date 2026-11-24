@@ -33,9 +33,9 @@ internal sealed class FakeIpcClient(List<string> calls, bool available) : IIpcCl
 
     public Func<GetLogs, Result<LogsView, IpcError>> LogsReply { get; set; } = _ => new Ok<LogsView>(new LogsView([]));
 
-    public Result<ClassificationTermsView, IpcError> ClassificationTermsReply { get; set; } = new Ok<ClassificationTermsView>(new ClassificationTermsView([], []));
+    public Func<GetClassificationTerms, Result<ClassificationTermsView, IpcError>> ClassificationTermsReply { get; set; } = _ => new Ok<ClassificationTermsView>(new ClassificationTermsView([], [], 0));
 
-    public Result<ClassificationSuggestionsView, IpcError> SuggestionsReply { get; set; } = new Ok<ClassificationSuggestionsView>(new ClassificationSuggestionsView([]));
+    public Result<ClassificationSuggestionsView, IpcError> SuggestionsReply { get; set; } = new Ok<ClassificationSuggestionsView>(new ClassificationSuggestionsView([], 0));
 
     public Result<ReclassifyStatusView, IpcError> ReclassifyStatusReply { get; set; } = new Ok<ReclassifyStatusView>(new ReclassifyStatusView(false, 0, null));
 
@@ -110,7 +110,7 @@ internal sealed class FakeIpcClient(List<string> calls, bool available) : IIpcCl
             ExportHistory or ExportAudit => (Result<TResult, IpcError>)(object)ExportReply((IQuery<ExportView>)query),
             GetAudit audit => (Result<TResult, IpcError>)(object)AuditReply(audit),
             GetLogs logs => (Result<TResult, IpcError>)(object)LogsReply(logs),
-            GetClassificationTerms => (Result<TResult, IpcError>)(object)ClassificationTermsReply,
+            GetClassificationTerms terms => (Result<TResult, IpcError>)(object)ClassificationTermsReply(terms),
             GetClassificationSuggestions => (Result<TResult, IpcError>)(object)SuggestionsReply,
             GetReclassifyStatus => (Result<TResult, IpcError>)(object)ReclassifyStatusReply,
             GetTermFiles files => (Result<TResult, IpcError>)(object)TermFilesReply(files),

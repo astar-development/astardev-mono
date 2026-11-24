@@ -40,5 +40,8 @@
   "Classifications.Editor.DeleteTerm": "Remove term",
   "Classifications.Editor.Ignored": "Ignored",
   "Classifications.Editor.NewCategoryHint": "New category name",
-  "Classifications.Editor.NewTermHint": "New term"
+  "Classifications.Editor.NewTermHint": "New term",
+  "Classifications.Terms.Summary": "Showing {shown} of {total} terms",
+  "Classifications.Terms.More": "Show more terms",
+  "Classifications.Suggestions.Summary": "Showing the {shown} most common of {total} words"
 }

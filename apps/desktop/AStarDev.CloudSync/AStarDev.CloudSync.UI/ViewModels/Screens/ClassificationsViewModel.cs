@@ -8,7 +8,7 @@ using CommunityToolkit.Mvvm.Input;
 namespace AStarDev.CloudSync.UI.ViewModels.Screens;
 
 /// <summary>
-/// The Classifications screen: every term with its category, where it came from and how many files it has, filtered by text and ordered by term, category or file count.
+/// The Classifications screen: the terms with their category, where they came from and how many files they have, filtered by text and ordered by term, category or file count. The daemon filters, orders and pages them, because the whole vocabulary is far larger than one message may be; the screen shows a page at a time.
 /// Selecting a term lists its files a page at a time, each with the account that holds it. The daemon does the counting and the paging; the screen only shows what it is sent.
 /// Terms load each time the screen is opened and whenever <see cref="RefreshCommand"/> runs.
 /// Beside the terms it hosts the Suggestions tab, the forms that add, edit and remove categories and terms, and the reclassify control; a change any of them makes reads the terms again.
@@ -16,11 +16,13 @@ namespace AStarDev.CloudSync.UI.ViewModels.Screens;
 internal sealed class ClassificationsViewModel : ViewModelBase, IScreen
 {
     private const int FilePageSize = 100;
+    private const int TermPageSize = 200;
 
     private readonly ILocalisationService localisation;
     private readonly Func<IIpcClient> createClient;
-    private IReadOnlyList<ClassificationTermView> terms = [];
     private IReadOnlyDictionary<Guid, string> categoryNames = new Dictionary<Guid, string>();
+    private int termsTotal;
+    private int termsVersion;
     private TermSortColumn sortColumn = TermSortColumn.Text;
     private bool sortDescending;
     private string filter = string.Empty;
@@ -49,7 +51,8 @@ internal sealed class ClassificationsViewModel : ViewModelBase, IScreen
         LoadReclassifyStatusCommand = new AsyncRelayCommand(cancellationToken => Reclassify.LoadStatusAsync(cancellationToken));
         ShowTermsCommand = new RelayCommand(() => Tab = ClassificationTab.Terms);
         ShowSuggestionsCommand = new RelayCommand(() => Tab = ClassificationTab.Suggestions);
-        RefreshCommand = new AsyncRelayCommand(RefreshAsync);
+        RefreshCommand = new AsyncRelayCommand(RefreshAsync, AsyncRelayCommandOptions.AllowConcurrentExecutions);
+        LoadMoreTermsCommand = new AsyncRelayCommand(cancellationToken => LoadTermsAsync(false, cancellationToken));
         LoadMoreFilesCommand = new AsyncRelayCommand(cancellationToken => LoadFilesAsync(false, cancellationToken));
         ReloadFilesCommand = new AsyncRelayCommand(cancellationToken => LoadFilesAsync(true, cancellationToken));
         SortByTextCommand = new RelayCommand(() => SortBy(TermSortColumn.Text));
@@ -128,7 +131,7 @@ internal sealed class ClassificationsViewModel : ViewModelBase, IScreen
         get => filter;
         set
         {
-            if (SetProperty(ref filter, value?.Trim() ?? string.Empty)) ShowTerms();
+            if (SetProperty(ref filter, value?.Trim() ?? string.Empty)) RefreshCommand.Execute(null);
         }
     }
 
@@ -182,8 +185,20 @@ internal sealed class ClassificationsViewModel : ViewModelBase, IScreen
         private set => SetProperty(ref filesErrorMessage, value);
     }
 
-    /// <summary>Reads the terms again.</summary>
+    /// <summary>Reads the first page of the terms again with the current filter and order.</summary>
     public IAsyncRelayCommand RefreshCommand { get; }
+
+    /// <summary>Loads the next page of the terms that match the filter.</summary>
+    public IAsyncRelayCommand LoadMoreTermsCommand { get; }
+
+    /// <summary>How many terms are shown and how many match the filter in all.</summary>
+    public string TermsSummary => localisation.Format("Classifications.Terms.Summary", ("shown", Terms.Count), ("total", termsTotal));
+
+    /// <summary>True when more terms match than are shown, so the screen offers "show more".</summary>
+    public bool CanLoadMoreTerms => Terms.Count < termsTotal;
+
+    /// <summary>Label of the show more terms button.</summary>
+    public string MoreTermsText => localisation.Get("Classifications.Terms.More");
 
     /// <summary>Loads the next page of files of the selected term.</summary>
     public IAsyncRelayCommand LoadMoreFilesCommand { get; }
@@ -234,26 +249,32 @@ internal sealed class ClassificationsViewModel : ViewModelBase, IScreen
         LoadReclassifyStatusCommand.Execute(null);
     }
 
-    /// <summary>Reads every term from the daemon. A failure keeps the terms shown and lands in <see cref="ErrorMessage"/>.</summary>
+    /// <summary>Reads the first page of the terms that match the filter, in the chosen order, from the daemon. A failure keeps the terms shown and lands in <see cref="ErrorMessage"/>.</summary>
     /// <param name="cancellationToken">Cancelling abandons the wait and surfaces as <see cref="OperationCanceledException"/>.</param>
-    public async Task RefreshAsync(CancellationToken cancellationToken)
+    public Task RefreshAsync(CancellationToken cancellationToken) => LoadTermsAsync(true, cancellationToken);
+
+    /// <summary>Reads a page of the terms: the first when <paramref name="restart"/> is set, otherwise the one after those shown. A reply that a newer request has replaced is dropped.</summary>
+    /// <param name="restart"><see langword="true"/> to replace the terms shown with the first page.</param>
+    /// <param name="cancellationToken">Cancelling abandons the wait and surfaces as <see cref="OperationCanceledException"/>.</param>
+    public async Task LoadTermsAsync(bool restart, CancellationToken cancellationToken)
     {
+        var version = restart ? ++termsVersion : termsVersion;
+        var skip = restart ? 0 : Terms.Count;
         await using var client = createClient();
 
         switch (await ConnectAsync(client, cancellationToken) switch
         {
-            Ok<Unit> => await ListTermsAsync(client, cancellationToken),
+            Ok<Unit> => await ListTermsAsync(client, skip, cancellationToken),
             Fail<ConnectFailure> fail => fail
         })
         {
-            case Ok<ClassificationTermsView> ok:
-                terms = ok.Value.Terms;
+            case Ok<ClassificationTermsView> ok when version == termsVersion:
                 categoryNames = ok.Value.Categories.ToDictionary(category => category.Id, category => category.Name);
                 Editor.SetCategories(ok.Value.Categories);
+                ShowTerms(ok.Value, restart);
                 ErrorMessage = null;
-                ShowTerms();
                 break;
-            case Fail<ConnectFailure> fail:
+            case Fail<ConnectFailure> fail when version == termsVersion:
                 ErrorMessage = fail.Error.Message;
                 break;
         }
@@ -295,12 +316,19 @@ internal sealed class ClassificationsViewModel : ViewModelBase, IScreen
             Fail<IpcError> fail => new Fail<ConnectFailure>(ConnectFailure.From(fail.Error))
         };
 
-    private static async Task<Result<ClassificationTermsView, ConnectFailure>> ListTermsAsync(IIpcClient client, CancellationToken cancellationToken)
-        => await client.QueryAsync(new GetClassificationTerms(), cancellationToken) switch
+    private async Task<Result<ClassificationTermsView, ConnectFailure>> ListTermsAsync(IIpcClient client, int skip, CancellationToken cancellationToken)
+        => await client.QueryAsync(new GetClassificationTerms(filter, Order(sortColumn), sortDescending, skip, TermPageSize), cancellationToken) switch
         {
             Ok<ClassificationTermsView> ok => ok,
             Fail<IpcError> fail => new Fail<ConnectFailure>(ConnectFailure.From(fail.Error))
         };
+
+    private static ClassificationTermSort Order(TermSortColumn column) => column switch
+    {
+        TermSortColumn.Category => ClassificationTermSort.Category,
+        TermSortColumn.Files => ClassificationTermSort.Files,
+        _ => ClassificationTermSort.Text
+    };
 
     private async Task<Result<TermFilesView, ConnectFailure>> ListFilesAsync(IIpcClient client, Guid termId, CancellationToken cancellationToken)
         => await client.QueryAsync(new GetTermFiles(termId, Files.Count, FilePageSize), cancellationToken) switch
@@ -317,28 +345,22 @@ internal sealed class ClassificationsViewModel : ViewModelBase, IScreen
         sortColumn = column;
         OnPropertyChanged(nameof(SortColumn));
         OnPropertyChanged(nameof(SortDescending));
-        ShowTerms();
+        RefreshCommand.Execute(null);
     }
 
-    private void ShowTerms()
+    private void ShowTerms(ClassificationTermsView view, bool restart)
     {
-        var shown = terms.Where(Matches).ToList();
-        var ordered = sortColumn switch
-        {
-            TermSortColumn.Category => shown.OrderBy(CategoryOf, StringComparer.CurrentCultureIgnoreCase).ThenBy(term => term.Text, StringComparer.CurrentCultureIgnoreCase),
-            TermSortColumn.Files => shown.OrderBy(term => term.FileCount).ThenBy(term => term.Text, StringComparer.CurrentCultureIgnoreCase),
-            _ => shown.OrderBy(term => term.Text, StringComparer.CurrentCultureIgnoreCase)
-        };
         var selectedId = selectedTerm?.Id;
-        Terms.Clear();
-        foreach (var term in sortDescending ? ordered.Reverse() : ordered) Terms.Add(Row(term));
+        if (restart) Terms.Clear();
 
+        foreach (var term in view.Terms) Terms.Add(Row(term));
+
+        termsTotal = view.Total;
         OnPropertyChanged(nameof(IsEmpty));
-        if (selectedId is { } id) SelectedTerm = Terms.FirstOrDefault(row => row.Id == id);
+        OnPropertyChanged(nameof(TermsSummary));
+        OnPropertyChanged(nameof(CanLoadMoreTerms));
+        if (restart && selectedId is { } id) SelectedTerm = Terms.FirstOrDefault(row => row.Id == id);
     }
-
-    private bool Matches(ClassificationTermView term)
-        => filter.Length == 0 || term.Text.Contains(filter, StringComparison.CurrentCultureIgnoreCase) || CategoryOf(term).Contains(filter, StringComparison.CurrentCultureIgnoreCase);
 
     private string CategoryOf(ClassificationTermView term) => categoryNames.GetValueOrDefault(term.CategoryId, string.Empty);
 
