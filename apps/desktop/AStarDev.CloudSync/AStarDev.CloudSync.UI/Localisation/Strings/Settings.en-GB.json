@@ -27,5 +27,14 @@
   "Settings.Save": "Save",
   "Settings.SaveRejected": "The daemon did not accept the change.",
   "Settings.ThemeFailed": "The {theme} theme could not be applied.",
-  "Settings.Advanced.Description": "Technical views for diagnosing problems."
+  "Settings.Advanced.Description": "Technical views for diagnosing problems.",
+  "Settings.Daemon.Heading": "Daemon",
+  "Settings.Daemon.Description": "Stopping ends syncing until the daemon is started again. Restart works when the daemon runs as the systemd user service.",
+  "Settings.Daemon.Stop": "Stop daemon",
+  "Settings.Daemon.Restart": "Restart daemon",
+  "Settings.Daemon.ConfirmStop": "Stop the daemon? Syncing stops until you start it again.",
+  "Settings.Daemon.ConfirmRestart": "Restart the daemon? Syncing pauses for a few seconds.",
+  "Settings.Daemon.Confirm": "Confirm",
+  "Settings.Daemon.Cancel": "Cancel",
+  "Settings.Daemon.Rejected": "The daemon did not accept the request."
 }

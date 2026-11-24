@@ -43,6 +43,9 @@ internal static partial class DaemonLog
     [LoggerMessage(EventId = 6013, Level = LogLevel.Warning, Message = "Removing a sync scope failed: {Message} ({ErrorCode})")]
     internal static partial void RemoveSyncScopeFailed(ILogger logger, string message, ErrorCode errorCode);
 
+    [LoggerMessage(EventId = 6014, Level = LogLevel.Information, Message = "A client asked the daemon to stop (restart requested: {Restart})")]
+    internal static partial void StopRequested(ILogger logger, bool restart);
+
     [LoggerMessage(EventId = 6030, Level = LogLevel.Warning, Message = "The drive information of the providers screen could not be read: {Message} ({ErrorCode})")]
     internal static partial void DriveInfoUnavailable(ILogger logger, string message, ErrorCode errorCode);
 }

@@ -31,6 +31,7 @@ internal sealed partial class SettingsViewModel(ILocalisationService localisatio
     };
 
     private SettingsCategoryViewModel? selectedCategory;
+    private bool restartRequested;
 
     /// <summary>The theme chosen, one of <see cref="Themes"/>. Dark until the daemon's value is loaded; applied by <see cref="SaveAsync"/>.</summary>
     [ObservableProperty]
@@ -59,6 +60,13 @@ internal sealed partial class SettingsViewModel(ILocalisationService localisatio
     /// <summary>Why the last load or save failed, worded for the user. <see langword="null"/> after one that worked.</summary>
     [ObservableProperty]
     public partial string? ErrorMessage { get; set; }
+
+    /// <summary>Whether the stop or restart request waits for the user's confirmation. The view then shows <see cref="DaemonConfirmationText"/> with Confirm and Cancel.</summary>
+    [ObservableProperty]
+    public partial bool IsDaemonConfirmationShown { get; set; }
+
+    /// <summary>The question the user confirms or cancels: stop the daemon, or restart it.</summary>
+    public string DaemonConfirmationText => localisation.Get(restartRequested ? "Settings.Daemon.ConfirmRestart" : "Settings.Daemon.ConfirmStop");
 
     /// <summary>The themes that can be chosen.</summary>
     public IReadOnlyList<string> Themes => themes.Available;
@@ -231,6 +239,55 @@ internal sealed partial class SettingsViewModel(ILocalisationService localisatio
 
         return themes.Apply(Theme).Value is Fail<ThemeError> ? localisation.Format("Settings.ThemeFailed", ("theme", Theme)) : null;
     }
+
+    /// <summary>Asks the user to confirm stopping the daemon. Nothing is sent until <see cref="ConfirmDaemonRequestAsync"/>.</summary>
+    [RelayCommand]
+    private void RequestStopDaemon() => AskToConfirm(restart: false);
+
+    /// <summary>Asks the user to confirm restarting the daemon. Nothing is sent until <see cref="ConfirmDaemonRequestAsync"/>.</summary>
+    [RelayCommand]
+    private void RequestRestartDaemon() => AskToConfirm(restart: true);
+
+    /// <summary>Withdraws the stop or restart request.</summary>
+    [RelayCommand]
+    private void CancelDaemonRequest() => IsDaemonConfirmationShown = false;
+
+    /// <summary>Sends the confirmed stop or restart to the daemon. A refusal or an unreachable daemon lands in <see cref="ErrorMessage"/>; on success it is cleared and the daemon link goes down on its own.</summary>
+    /// <param name="cancellationToken">Cancelling abandons the wait and surfaces as <see cref="OperationCanceledException"/>.</param>
+    [RelayCommand]
+    public async Task ConfirmDaemonRequestAsync(CancellationToken cancellationToken)
+    {
+        IsDaemonConfirmationShown = false;
+        await using var client = createClient();
+
+        ErrorMessage = await StopDaemonAsync(client, restartRequested, cancellationToken) switch
+        {
+            Ok<Unit> => null,
+            Fail<ConnectFailure> fail => fail.Error.Message
+        };
+    }
+
+    private void AskToConfirm(bool restart)
+    {
+        restartRequested = restart;
+        OnPropertyChanged(nameof(DaemonConfirmationText));
+        IsDaemonConfirmationShown = true;
+    }
+
+    private async Task<Result<Unit, ConnectFailure>> StopDaemonAsync(IIpcClient client, bool restart, CancellationToken cancellationToken)
+        => await client.ConnectAsync(cancellationToken) switch
+        {
+            Ok<Unit> => await SendStopAsync(client, restart, cancellationToken),
+            Fail<IpcError> fail => new Fail<ConnectFailure>(ConnectFailure.From(fail.Error))
+        };
+
+    private async Task<Result<Unit, ConnectFailure>> SendStopAsync(IIpcClient client, bool restart, CancellationToken cancellationToken)
+        => await client.SendAsync(new StopDaemon(restart), cancellationToken) switch
+        {
+            Ok<CommandResult> { Value.Outcome: CommandOutcome.Accepted } => new Ok<Unit>(default),
+            Ok<CommandResult> rejected => new Fail<ConnectFailure>(ConnectFailure.Rejected(rejected.Value, localisation.Get("Settings.Daemon.Rejected"))),
+            Fail<IpcError> fail => new Fail<ConnectFailure>(ConnectFailure.From(fail.Error))
+        };
 
     /// <summary>Opens the advanced screen named by the <see cref="ScreenId"/> parameter.</summary>
     [RelayCommand]
