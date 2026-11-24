@@ -47,7 +47,7 @@ internal sealed class ClassificationsViewModel : ViewModelBase, IScreen
         Editor.Changed += ReadAgain;
         Suggestions.Changed += ReadAgain;
         Reclassify.Finished += ReadAgain;
-        LoadSuggestionsCommand = new AsyncRelayCommand(cancellationToken => Suggestions.EnsureLoadedAsync(cancellationToken));
+        LoadSuggestionsCommand = new AsyncRelayCommand(cancellationToken => Suggestions.LoadAsync(cancellationToken));
         LoadReclassifyStatusCommand = new AsyncRelayCommand(cancellationToken => Reclassify.LoadStatusAsync(cancellationToken));
         ShowTermsCommand = new RelayCommand(() => Tab = ClassificationTab.Terms);
         ShowSuggestionsCommand = new RelayCommand(() => Tab = ClassificationTab.Suggestions);
@@ -78,7 +78,7 @@ internal sealed class ClassificationsViewModel : ViewModelBase, IScreen
     /// <summary>The reclassify control.</summary>
     public ClassificationReclassifyViewModel Reclassify { get; }
 
-    /// <summary>Which list is shown. Terms until changed; choosing Suggestions runs the scan the first time.</summary>
+    /// <summary>Which list is shown. Terms until changed; choosing Suggestions runs the scan.</summary>
     public ClassificationTab Tab
     {
         get => tab;
@@ -98,7 +98,7 @@ internal sealed class ClassificationsViewModel : ViewModelBase, IScreen
     /// <summary>True while the suggestions are shown.</summary>
     public bool IsSuggestionsTab => tab == ClassificationTab.Suggestions;
 
-    /// <summary>Scans the file paths for suggestions the first time it runs.</summary>
+    /// <summary>Scans the file paths for suggestions. Runs when the Suggestions tab is chosen and when the screen is opened on it.</summary>
     public IAsyncRelayCommand LoadSuggestionsCommand { get; }
 
     /// <summary>Asks the daemon whether a reclassify run is active.</summary>
@@ -247,6 +247,7 @@ internal sealed class ClassificationsViewModel : ViewModelBase, IScreen
     {
         RefreshCommand.Execute(null);
         LoadReclassifyStatusCommand.Execute(null);
+        if (IsSuggestionsTab) LoadSuggestionsCommand.Execute(null);
     }
 
     /// <summary>Reads the first page of the terms that match the filter, in the chosen order, from the daemon. A failure keeps the terms shown and lands in <see cref="ErrorMessage"/>.</summary>

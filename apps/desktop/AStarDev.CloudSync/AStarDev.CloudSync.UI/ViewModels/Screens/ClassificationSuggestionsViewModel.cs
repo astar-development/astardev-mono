@@ -8,7 +8,7 @@ namespace AStarDev.CloudSync.UI.ViewModels.Screens;
 
 /// <summary>
 /// The Suggestions tab of the Classifications screen: the words found in file paths that are not yet terms, most common first. The user promotes a word into a category or ignores it; the daemon never assigns one by itself.
-/// The scan reads every file path, so it runs the first time the tab is shown and then only when <see cref="RefreshCommand"/> runs.
+/// The scan reads every file path, so it runs each time the tab is shown or the screen is opened on it, and whenever <see cref="RefreshCommand"/> runs.
 /// <see cref="Changed"/> is raised after the daemon accepted a promotion or an ignore, so the screen can read the terms again.
 /// </summary>
 internal sealed class ClassificationSuggestionsViewModel : ViewModelBase
@@ -87,10 +87,6 @@ internal sealed class ClassificationSuggestionsViewModel : ViewModelBase
 
     /// <summary>Text above the category picker.</summary>
     public string CategoryText => localisation.Get("Classifications.Suggestions.Category");
-
-    /// <summary>Scans the file paths when they were not scanned yet.</summary>
-    /// <param name="cancellationToken">Cancelling abandons the wait and surfaces as <see cref="OperationCanceledException"/>.</param>
-    public Task EnsureLoadedAsync(CancellationToken cancellationToken) => isLoaded ? Task.CompletedTask : LoadAsync(cancellationToken);
 
     /// <summary>Reads the suggestions from the daemon. A failure keeps the words shown and lands in <see cref="ErrorMessage"/>.</summary>
     /// <param name="cancellationToken">Cancelling abandons the wait and surfaces as <see cref="OperationCanceledException"/>.</param>
