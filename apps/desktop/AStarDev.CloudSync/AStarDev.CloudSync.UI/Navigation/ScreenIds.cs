@@ -13,6 +13,7 @@ public static class ScreenIds
         ScreenId.History,
         ScreenId.Audit,
         ScreenId.Providers,
+        ScreenId.Classifications,
         ScreenId.Settings
     ];
 

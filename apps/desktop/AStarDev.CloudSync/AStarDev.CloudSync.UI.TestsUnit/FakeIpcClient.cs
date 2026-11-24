@@ -33,6 +33,10 @@ internal sealed class FakeIpcClient(List<string> calls, bool available) : IIpcCl
 
     public Func<GetLogs, Result<LogsView, IpcError>> LogsReply { get; set; } = _ => new Ok<LogsView>(new LogsView([]));
 
+    public Result<ClassificationTermsView, IpcError> ClassificationTermsReply { get; set; } = new Ok<ClassificationTermsView>(new ClassificationTermsView([], []));
+
+    public Func<GetTermFiles, Result<TermFilesView, IpcError>> TermFilesReply { get; set; } = _ => new Ok<TermFilesView>(new TermFilesView(0, []));
+
     public Func<GetTraces, Result<TracesView, IpcError>> TracesReply { get; set; } = _ => new Ok<TracesView>(new TracesView([]));
 
     public Result<DiagnosticsView, IpcError> DiagnosticsReply { get; set; } = new Ok<DiagnosticsView>(new DiagnosticsView(DaemonState.Running, "1.0.0", DateTimeOffset.UnixEpoch, []));
@@ -102,6 +106,8 @@ internal sealed class FakeIpcClient(List<string> calls, bool available) : IIpcCl
             ExportHistory or ExportAudit => (Result<TResult, IpcError>)(object)ExportReply((IQuery<ExportView>)query),
             GetAudit audit => (Result<TResult, IpcError>)(object)AuditReply(audit),
             GetLogs logs => (Result<TResult, IpcError>)(object)LogsReply(logs),
+            GetClassificationTerms => (Result<TResult, IpcError>)(object)ClassificationTermsReply,
+            GetTermFiles files => (Result<TResult, IpcError>)(object)TermFilesReply(files),
             GetTraces traces => (Result<TResult, IpcError>)(object)TracesReply(traces),
             GetDiagnostics => (Result<TResult, IpcError>)(object)DiagnosticsReply,
             GetDriveInfo => (Result<TResult, IpcError>)(object)DriveInfoReply,
