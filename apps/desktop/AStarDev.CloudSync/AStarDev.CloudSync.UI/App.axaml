@@ -63,5 +63,15 @@
         <Style Selector="ListBox.rail ListBoxItem:pointerover /template/ ContentPresenter">
             <Setter Property="Background" Value="{DynamicResource Navigation.Selected.Brush}" />
         </Style>
+        <Style Selector="ListBoxItem, ComboBox, ComboBoxItem, Button, ToggleButton, CheckBox, TextBox, NumericUpDown, TabItem">
+            <Setter Property="Foreground" Value="{DynamicResource Text.Primary.Brush}" />
+        </Style>
+        <Style Selector="ListBoxItem:selected /template/ ContentPresenter, ListBoxItem:pointerover /template/ ContentPresenter, ComboBoxItem:selected /template/ ContentPresenter, ComboBoxItem:pointerover /template/ ContentPresenter">
+            <Setter Property="Background" Value="{DynamicResource Navigation.Selected.Brush}" />
+            <Setter Property="Foreground" Value="{DynamicResource Text.Primary.Brush}" />
+        </Style>
+        <Style Selector="Button:pointerover /template/ ContentPresenter#PART_ContentPresenter, Button:pressed /template/ ContentPresenter#PART_ContentPresenter">
+            <Setter Property="Foreground" Value="{DynamicResource Text.Primary.Brush}" />
+        </Style>
     </Application.Styles>
 </Application>
