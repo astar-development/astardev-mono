@@ -94,6 +94,7 @@ internal static class DaemonServiceCollectionExtensions
         services.AddSingleton<ReclassifyTracker>();
         services.AddSingleton<StartReclassifyHandler>();
         services.AddSingleton<ReclassifyStatusQuery>();
+        services.AddSingleton<ClassificationCommands>();
         services.AddHealthChecks().AddCheck<ProviderHealthCheck>(ApplicationConstants.ProviderHealthCheckName);
         services.AddHealthChecks().AddCheck<QueueHealthCheck>(ApplicationConstants.QueueHealthCheckName);
         services.AddHostedService<IpcHostedService>();

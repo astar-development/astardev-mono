@@ -54,6 +54,7 @@ public sealed class IpcHostedServiceShould
             services.GetRequiredService<SuggestionsQuery>(),
             services.GetRequiredService<StartReclassifyHandler>(),
             services.GetRequiredService<ReclassifyStatusQuery>(),
+            services.GetRequiredService<ClassificationCommands>(),
             TimeProvider.System,
             NullLogger<IpcHostedService>.Instance);
     }
