@@ -9,6 +9,8 @@
   <Folder Name="/apps/desktop/" />
   <Folder Name="/apps/desktop/AStarDev.CloudSync/">
     <Project Path="apps/desktop/AStarDev.CloudSync/AStarDev.CloudSync.TestsArchitecture/AStarDev.CloudSync.TestsArchitecture.csproj" />
+    <Project Path="apps/desktop/AStarDev.CloudSync/AStarDev.CloudSync.Classification/AStarDev.CloudSync.Classification.csproj" />
+    <Project Path="apps/desktop/AStarDev.CloudSync/AStarDev.CloudSync.Classification.TestsUnit/AStarDev.CloudSync.Classification.TestsUnit.csproj" />
     <Project Path="apps/desktop/AStarDev.CloudSync/AStarDev.CloudSync.Daemon/AStarDev.CloudSync.Daemon.csproj" />
     <Project Path="apps/desktop/AStarDev.CloudSync/AStarDev.CloudSync.Daemon.TestsUnit/AStarDev.CloudSync.Daemon.TestsUnit.csproj" />
     <Project Path="apps/desktop/AStarDev.CloudSync/AStarDev.CloudSync.Domain/AStarDev.CloudSync.Domain.csproj" />

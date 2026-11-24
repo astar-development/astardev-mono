@@ -27,6 +27,7 @@
   </ItemGroup>
 
   <ItemGroup>
+    <ProjectReference Include="..\AStarDev.CloudSync.Classification\AStarDev.CloudSync.Classification.csproj" />
     <ProjectReference Include="..\AStarDev.CloudSync.Domain\AStarDev.CloudSync.Domain.csproj" />
     <ProjectReference Include="..\AStarDev.CloudSync.Daemon\AStarDev.CloudSync.Daemon.csproj" />
     <ProjectReference Include="..\AStarDev.CloudSync.Errors\AStarDev.CloudSync.Errors.csproj" />

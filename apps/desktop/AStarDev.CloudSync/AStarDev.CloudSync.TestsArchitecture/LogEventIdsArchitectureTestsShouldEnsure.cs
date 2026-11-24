@@ -14,7 +14,8 @@ public sealed class LogEventIdsArchitectureTestsShouldEnsure
         ["AStarDev.CloudSync.Observability"] = 5000,
         ["AStarDev.CloudSync.Daemon"] = 6000,
         ["AStarDev.CloudSync.UI"] = 7000,
-        ["AStarDev.SingleInstance"] = 8000
+        ["AStarDev.SingleInstance"] = 8000,
+        ["AStarDev.CloudSync.Classification"] = 9000
     };
 
     private const int BlockSize = 1000;

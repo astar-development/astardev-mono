@@ -371,6 +371,22 @@ Key Decisions:
 
 ---
 
+#### 25. File Classification
+
+Purpose:
+
+```text
+Defines how synced files are classified into categories and terms.
+```
+
+Key Decisions:
+
+- Classification is its own module; only the Daemon references it.
+- Links key on the item, in the one CloudSync database.
+- Bulk writes are batched; a second database file is not used.
+
+---
+
 ## Architectural Invariants
 
 The following statements should always remain true.

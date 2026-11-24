@@ -82,6 +82,8 @@ AStarDev.CloudSync.Ports
 
 AStarDev.CloudSync.SyncEngine
 
+AStarDev.CloudSync.Classification
+
 AStarDev.CloudSync.Persistence
 
 AStarDev.CloudSync.OneDrive
@@ -233,6 +235,41 @@ EF Core
 Graph SDK
 Avalonia
 ```
+
+---
+
+## AStarDev.CloudSync.Classification
+
+Purpose:
+
+```text
+File Classification
+```
+
+Contains:
+
+- Classification engine: tokeniser, phrase matching, signals, combiner
+- Suggestion scanning, seed parsing, vocabulary provider
+- Reclassify logic and the classify-on-sync hook
+
+Dependencies:
+
+```text
+Domain
+Ports
+Errors
+AStarDev.FunctionalParadigm
+```
+
+Must Not Contain:
+
+```text
+EF Core
+Avalonia
+Sync Decisions
+```
+
+Only the Daemon references this module. See document 25.
 
 ---
 
@@ -540,6 +577,16 @@ IPC
 Domain
 ```
 
+```text
+Daemon
+    ↓
+Classification
+    ↓
+Ports
+    ↓
+Domain
+```
+
 ---
 
 ### Forbidden
@@ -584,6 +631,18 @@ Persistence
 Persistence
     ↓
 SyncEngine
+```
+
+```text
+Classification
+    ↓
+Persistence, SyncEngine, OneDrive, IPC, UI, Observability, Daemon
+```
+
+```text
+Domain, Ports, Persistence, SyncEngine, OneDrive, IPC, UI, Observability
+    ↓
+Classification
 ```
 
 ```text
