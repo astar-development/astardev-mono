@@ -35,7 +35,7 @@ public sealed class StartSyncHandlerShould : IDisposable
         var provider = new StubCloudProvider { SnapshotResult = new Ok<ProviderSnapshotPage>(new ProviderSnapshotPage([StubCloudProvider.Item("a")], null, new DeltaToken("delta-1"))) };
         await using var host = DaemonTestHost.CreateWith(provider);
         var job = await NewJobAsync(host);
-        await host.Services.GetRequiredService<ISyncScopeStore>().AddAsync(new SyncScope(job.Id, new RemoteItemId("docs")), Token);
+        await host.Services.GetRequiredService<ISyncScopeStore>().AddAsync(new SyncScope(job.Id, new RemoteItemId("docs"), new RelativePath("a")), Token);
 
         await host.Services.GetRequiredService<StartSyncHandler>().HandleAsync(new StartSync(job.Id.Value), Token);
 

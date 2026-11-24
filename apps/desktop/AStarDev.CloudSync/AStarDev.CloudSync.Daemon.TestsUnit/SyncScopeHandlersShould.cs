@@ -17,20 +17,69 @@ public sealed class SyncScopeHandlersShould : IDisposable
     [Fact]
     public async Task add_a_scope_to_the_job()
     {
-        await using var host = DaemonTestHost.CreateWith(new StubCloudProvider());
+        await using var host = DaemonTestHost.CreateWith(Provider());
         var job = await NewJobAsync(host);
 
         var result = await host.Services.GetRequiredService<AddSyncScopeHandler>().HandleAsync(new AddSyncScope(job.Id.Value, "docs"), Token);
         var listed = await host.Services.GetRequiredService<ISyncScopeStore>().ListAsync(job.Id, Token);
 
         result.Value.ShouldBeOfType<Ok<CommandResult>>().Value.Outcome.ShouldBe(CommandOutcome.Accepted);
-        listed.Value.ShouldBeOfType<Ok<IReadOnlyList<SyncScope>>>().Value.ShouldBe([new SyncScope(job.Id, new RemoteItemId("docs"))]);
+        listed.Value.ShouldBeOfType<Ok<IReadOnlyList<SyncScope>>>().Value.ShouldBe([new SyncScope(job.Id, new RemoteItemId("docs"), new RelativePath("docs"))]);
+    }
+
+    [Fact]
+    public async Task reject_a_scope_for_a_folder_the_drive_does_not_hold()
+    {
+        await using var host = DaemonTestHost.CreateWith(Provider());
+        var job = await NewJobAsync(host);
+
+        var result = await host.Services.GetRequiredService<AddSyncScopeHandler>().HandleAsync(new AddSyncScope(job.Id.Value, "missing"), Token);
+        var listed = await host.Services.GetRequiredService<ISyncScopeStore>().ListAsync(job.Id, Token);
+
+        result.Value.ShouldBeOfType<Ok<CommandResult>>().Value.Outcome.ShouldBe(CommandOutcome.Rejected);
+        listed.Value.ShouldBeOfType<Ok<IReadOnlyList<SyncScope>>>().Value.ShouldBeEmpty();
+    }
+
+    [Fact]
+    public async Task list_local_folders_no_scope_covers_as_not_synced()
+    {
+        await using var host = DaemonTestHost.CreateWith(Provider());
+        var job = await NewJobAsync(host);
+        foreach (var name in new[] { "docs", "stray", "Archive" }) Directory.CreateDirectory(Path.Combine(localRoot, name));
+        await host.Services.GetRequiredService<AddSyncScopeHandler>().HandleAsync(new AddSyncScope(job.Id.Value, "docs"), Token);
+
+        var view = await host.Services.GetRequiredService<SyncScopesQuery>().HandleAsync(new GetSyncScopes(job.Id.Value), Token);
+
+        view.Value.ShouldBeOfType<Ok<SyncScopesView>>().Value.UnsyncedFolders.ShouldBe(["Archive", "stray"]);
+    }
+
+    [Fact]
+    public async Task list_every_local_folder_as_not_synced_while_no_scope_exists()
+    {
+        await using var host = DaemonTestHost.CreateWith(Provider());
+        var job = await NewJobAsync(host);
+        Directory.CreateDirectory(Path.Combine(localRoot, "stray"));
+
+        var view = await host.Services.GetRequiredService<SyncScopesQuery>().HandleAsync(new GetSyncScopes(job.Id.Value), Token);
+
+        view.Value.ShouldBeOfType<Ok<SyncScopesView>>().Value.UnsyncedFolders.ShouldBe(["stray"]);
+    }
+
+    [Fact]
+    public async Task list_no_unsynced_folders_for_an_unknown_job()
+    {
+        await using var host = DaemonTestHost.CreateWith(Provider());
+        await host.InitialiseDatabaseAsync(Token);
+
+        var view = await host.Services.GetRequiredService<SyncScopesQuery>().HandleAsync(new GetSyncScopes(Guid.NewGuid()), Token);
+
+        view.Value.ShouldBeOfType<Ok<SyncScopesView>>().Value.UnsyncedFolders.ShouldBeEmpty();
     }
 
     [Fact]
     public async Task record_a_scope_change_in_the_journal()
     {
-        await using var host = DaemonTestHost.CreateWith(new StubCloudProvider());
+        await using var host = DaemonTestHost.CreateWith(Provider());
         var job = await NewJobAsync(host);
 
         await host.Services.GetRequiredService<AddSyncScopeHandler>().HandleAsync(new AddSyncScope(job.Id.Value, "docs"), Token);
@@ -45,7 +94,7 @@ public sealed class SyncScopeHandlersShould : IDisposable
     [Fact]
     public async Task start_the_crawl_when_the_first_scope_is_added()
     {
-        var provider = new StubCloudProvider { SnapshotResult = new Ok<ProviderSnapshotPage>(new ProviderSnapshotPage([StubCloudProvider.Item("a")], null, new DeltaToken("delta-1"))) };
+        var provider = new StubCloudProvider { ChildrenResult = Folders(), SnapshotResult = new Ok<ProviderSnapshotPage>(new ProviderSnapshotPage([StubCloudProvider.Item("a")], null, new DeltaToken("delta-1"))) };
         await using var host = DaemonTestHost.CreateWith(provider);
         var job = await NewJobAsync(host);
 
@@ -57,7 +106,7 @@ public sealed class SyncScopeHandlersShould : IDisposable
     [Fact]
     public async Task crawl_a_scope_added_later_without_waiting_for_the_polling_interval()
     {
-        var provider = new StubCloudProvider { SnapshotResult = new Ok<ProviderSnapshotPage>(new ProviderSnapshotPage([StubCloudProvider.Item("a")], null, new DeltaToken("delta-1"))) };
+        var provider = new StubCloudProvider { ChildrenResult = Folders(), SnapshotResult = new Ok<ProviderSnapshotPage>(new ProviderSnapshotPage([StubCloudProvider.Item("a")], null, new DeltaToken("delta-1"))) };
         await using var host = DaemonTestHost.CreateWith(provider);
         var job = await NewJobAsync(host);
         var handler = host.Services.GetRequiredService<AddSyncScopeHandler>();
@@ -72,7 +121,7 @@ public sealed class SyncScopeHandlersShould : IDisposable
     [Fact]
     public async Task reject_a_scope_for_an_unknown_job()
     {
-        await using var host = DaemonTestHost.CreateWith(new StubCloudProvider());
+        await using var host = DaemonTestHost.CreateWith(Provider());
         await host.InitialiseDatabaseAsync(Token);
 
         var result = await host.Services.GetRequiredService<AddSyncScopeHandler>().HandleAsync(new AddSyncScope(Guid.NewGuid(), "docs"), Token);
@@ -85,7 +134,7 @@ public sealed class SyncScopeHandlersShould : IDisposable
     [Fact]
     public async Task reject_a_scope_the_job_already_holds()
     {
-        await using var host = DaemonTestHost.CreateWith(new StubCloudProvider());
+        await using var host = DaemonTestHost.CreateWith(Provider());
         var job = await NewJobAsync(host);
         var handler = host.Services.GetRequiredService<AddSyncScopeHandler>();
         await handler.HandleAsync(new AddSyncScope(job.Id.Value, "docs"), Token);
@@ -98,7 +147,7 @@ public sealed class SyncScopeHandlersShould : IDisposable
     [Fact]
     public async Task remove_a_scope_from_the_job()
     {
-        await using var host = DaemonTestHost.CreateWith(new StubCloudProvider());
+        await using var host = DaemonTestHost.CreateWith(Provider());
         var job = await NewJobAsync(host);
         await host.Services.GetRequiredService<AddSyncScopeHandler>().HandleAsync(new AddSyncScope(job.Id.Value, "docs"), Token);
 
@@ -112,7 +161,7 @@ public sealed class SyncScopeHandlersShould : IDisposable
     [Fact]
     public async Task reject_removing_a_scope_the_job_does_not_hold()
     {
-        await using var host = DaemonTestHost.CreateWith(new StubCloudProvider());
+        await using var host = DaemonTestHost.CreateWith(Provider());
         var job = await NewJobAsync(host);
 
         var result = await host.Services.GetRequiredService<RemoveSyncScopeHandler>().HandleAsync(new RemoveSyncScope(job.Id.Value, "docs"), Token);
@@ -125,7 +174,7 @@ public sealed class SyncScopeHandlersShould : IDisposable
     [Fact]
     public async Task list_the_scopes_of_a_job_over_ipc()
     {
-        await using var host = DaemonTestHost.CreateWith(new StubCloudProvider());
+        await using var host = DaemonTestHost.CreateWith(Provider());
         var job = await NewJobAsync(host);
         await using var client = UnixSocketIpc.CreateClient(host.SocketPath);
         await host.StartAsync(Token);
@@ -142,7 +191,7 @@ public sealed class SyncScopeHandlersShould : IDisposable
     [Fact]
     public async Task honour_cancellation()
     {
-        await using var host = DaemonTestHost.CreateWith(new StubCloudProvider());
+        await using var host = DaemonTestHost.CreateWith(Provider());
         using var cancelled = new CancellationTokenSource();
         await cancelled.CancelAsync();
 
@@ -151,6 +200,11 @@ public sealed class SyncScopeHandlersShould : IDisposable
         await Should.ThrowAsync<OperationCanceledException>(() => host.Services.GetRequiredService<SyncScopesQuery>().HandleAsync(new GetSyncScopes(Guid.NewGuid()), cancelled.Token));
         await Should.ThrowAsync<OperationCanceledException>(() => host.Services.GetRequiredService<SyncJobsQuery>().HandleAsync(new GetSyncJobs(), cancelled.Token));
     }
+
+    private static StubCloudProvider Provider() => new() { ChildrenResult = Folders() };
+
+    private static Ok<IReadOnlyList<ProviderItem>> Folders()
+        => new([new ProviderItem(new RemoteItemId("docs"), new RelativePath("docs"), ItemType.Folder, 0, DateTimeOffset.UnixEpoch), new ProviderItem(new RemoteItemId("notes"), new RelativePath("notes"), ItemType.Folder, 0, DateTimeOffset.UnixEpoch)]);
 
     private async Task<SyncJob> NewJobAsync(DaemonTestHost host)
     {

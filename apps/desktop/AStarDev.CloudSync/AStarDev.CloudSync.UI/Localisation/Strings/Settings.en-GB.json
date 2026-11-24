@@ -14,6 +14,7 @@
   "Settings.Providers.Description": "Add, reconnect or remove your cloud accounts on the Providers screen.",
   "Settings.Providers.Open": "Open Providers",
   "Settings.Synchronisation.Heading": "Synchronisation",
+  "Settings.Synchronisation.NotSynced": "Local folders not synced",
   "Settings.Synchronisation.Description": "Choose which remote folders are synchronised and where they are stored on this computer.",
   "Settings.Appearance.Heading": "Appearance",
   "Settings.Appearance.Theme": "Theme",

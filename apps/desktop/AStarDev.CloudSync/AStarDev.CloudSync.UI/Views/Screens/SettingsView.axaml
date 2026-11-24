@@ -41,6 +41,8 @@
                     <TextBlock Text="{loc:Loc Settings.Synchronisation.Description}" TextWrapping="Wrap" />
                     <TextBlock Text="{loc:Loc Common.RemoteFolders}" FontWeight="SemiBold" />
                     <views:FolderTreeView DataContext="{Binding Folders}" />
+                    <TextBlock Text="{loc:Loc Settings.Synchronisation.NotSynced}" FontWeight="SemiBold" IsVisible="{Binding Selection.HasUnsyncedFolders}" />
+                    <ItemsControl ItemsSource="{Binding Selection.UnsyncedFolders}" />
                     <TextBlock Text="{loc:Loc Common.LocalFolder}" FontWeight="SemiBold" />
                     <StackPanel Orientation="Horizontal" Spacing="8">
                         <TextBox Text="{Binding Selection.LocalRoot, Mode=TwoWay}" IsReadOnly="{Binding Selection.HasJob}" Width="360" PlaceholderText="{loc:Loc Common.LocalFolderExample}" />

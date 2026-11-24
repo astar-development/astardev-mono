@@ -11,7 +11,7 @@ public sealed class PublicSurfaceArchitectureTestsShouldEnsure
     [Fact]
     public void the_domain_exposes_only_its_approved_public_types()
         => ShouldExposeExactly(typeof(ItemId).Assembly,
-            "Account", "AccountId", "AccountStatus", "BootstrapMode", "CanonicalItemState", "Conflict", "ConflictId", "ConflictStatus", "ConflictType", "ContentFingerprint", "CTag", "DeltaToken", "ETag", "ItemId", "ItemType", "KnownSnapshot", "LocalIdentity", "LocalSnapshot", "Operation", "OperationId", "OperationPriority", "OperationStatus", "OperationType", "RelativePath", "RemoteItemId", "RemoteSnapshot", "SnapshotId", "SyncJob", "SyncJobId", "SyncScope");
+            "Account", "AccountId", "AccountStatus", "BootstrapMode", "CanonicalItemState", "Conflict", "ConflictId", "ConflictStatus", "ConflictType", "ContentFingerprint", "CTag", "DeltaToken", "ETag", "ItemId", "ItemType", "KnownSnapshot", "LocalIdentity", "LocalSnapshot", "Operation", "OperationId", "OperationPriority", "OperationStatus", "OperationType", "RelativePath", "RemoteItemId", "RemoteSnapshot", "ScopeCoverage", "SnapshotId", "SyncJob", "SyncJobId", "SyncScope");
 
     [Fact]
     public void the_ports_expose_only_their_approved_public_types()

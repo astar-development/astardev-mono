@@ -73,7 +73,7 @@ public interface ICloudProvider
 
     /// <summary>Renames or moves a remote item to a new path.</summary>
     /// <param name="itemId">The item to move.</param>
-    /// <param name="path">The new path relative to the remote root. The folder it sits in must exist.</param>
+    /// <param name="path">The new path from the drive root. The folder it sits in must exist.</param>
     /// <param name="cancellationToken">Cancelling abandons the call and surfaces as <see cref="OperationCanceledException"/>, never as a <see cref="ProviderError"/>.</param>
     /// <returns>Success, also when the item is already at the path, or the reason the move failed.</returns>
     Task<Result<Unit, ProviderError>> RenameAsync(RemoteItemId itemId, RelativePath path, CancellationToken cancellationToken);
