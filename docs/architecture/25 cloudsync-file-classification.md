@@ -102,7 +102,10 @@ is built, so no signal can emit one.
 
 ## Sync Hook
 
-Files written by a crawl or delta page are classified after the index write.
+Files written by a crawl or delta page are classified after the index write,
+by a decorator that wraps the item index the Persistence module registers.
+The links are written by the file's provider identity, because the page report
+carries no item identity. A deleted item loses its links with the item.
 A classification failure is logged and never fails the sync. When the
 vocabulary changes while a batch is classified, the batch is classified again.
 

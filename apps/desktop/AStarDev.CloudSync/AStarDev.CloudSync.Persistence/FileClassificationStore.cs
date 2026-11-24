@@ -1,3 +1,4 @@
+using System.Runtime.CompilerServices;
 using AStarDev.CloudSync.Domain;
 using AStarDev.CloudSync.Ports;
 using AStarDev.FunctionalParadigm;
@@ -9,6 +10,7 @@ namespace AStarDev.CloudSync.Persistence;
 internal sealed class FileClassificationStore(IDbContextFactory<CloudSyncDbContext> contextFactory) : IFileClassificationStore
 {
     private const int BatchSize = 1000;
+    private const int StatementRows = 1000;
 
     /// <inheritdoc/>
     public async Task<Result<Unit, ClassificationError>> ReplaceAutoLinksAsync(IReadOnlyList<ItemTermLinks> updates, CancellationToken cancellationToken)
@@ -16,6 +18,18 @@ internal sealed class FileClassificationStore(IDbContextFactory<CloudSyncDbConte
         foreach (var batch in updates.Chunk(BatchSize))
         {
             var result = await ClassificationStore.RunAsync<Unit>(contextFactory, (context, token) => ReplaceBatchAsync(context, batch, token), null, cancellationToken).ConfigureAwait(false);
+            if (result.Value is Fail<ClassificationError>) return result;
+        }
+
+        return new Ok<Unit>(default);
+    }
+
+    /// <inheritdoc/>
+    public async Task<Result<Unit, ClassificationError>> ReplaceAutoLinksAsync(SyncJobId syncJobId, IReadOnlyList<RemoteItemTermLinks> updates, CancellationToken cancellationToken)
+    {
+        foreach (var batch in updates.Chunk(BatchSize))
+        {
+            var result = await ClassificationStore.RunAsync<Unit>(contextFactory, (context, token) => ReplaceRemoteBatchAsync(context, syncJobId, batch, token), null, cancellationToken).ConfigureAwait(false);
             if (result.Value is Fail<ClassificationError>) return result;
         }
 
@@ -57,25 +71,43 @@ internal sealed class FileClassificationStore(IDbContextFactory<CloudSyncDbConte
             return new Ok<IReadOnlyDictionary<TermId, int>>(counts.ToDictionary(row => row.TermId, row => row.Count));
         }, null, cancellationToken);
 
+    private static async Task<Result<Unit, ClassificationError>> ReplaceRemoteBatchAsync(CloudSyncDbContext context, SyncJobId syncJobId, RemoteItemTermLinks[] batch, CancellationToken cancellationToken)
+    {
+        var remoteIds = batch.Select(update => update.RemoteItemId).Distinct().ToList();
+        var resolved = (await context.Items.AsNoTracking().Where(item => item.SyncJobId == syncJobId && remoteIds.Contains(item.RemoteItemId)).Select(item => new { item.RemoteItemId, item.Id }).ToListAsync(cancellationToken).ConfigureAwait(false))
+            .GroupBy(item => item.RemoteItemId)
+            .ToDictionary(group => group.Key, group => group.First().Id);
+
+        return await ReplaceBatchAsync(context, [.. batch.Where(update => resolved.ContainsKey(update.RemoteItemId)).Select(update => new ItemTermLinks(resolved[update.RemoteItemId], update.TermIds))], cancellationToken).ConfigureAwait(false);
+    }
+
     private static async Task<Result<Unit, ClassificationError>> ReplaceBatchAsync(CloudSyncDbContext context, ItemTermLinks[] batch, CancellationToken cancellationToken)
     {
         var itemIds = batch.Select(update => update.ItemId).Distinct().ToList();
         var stored = (await context.Items.AsNoTracking().Where(item => itemIds.Contains(item.Id)).Select(item => item.Id).ToListAsync(cancellationToken).ConfigureAwait(false)).ToHashSet();
-        var existing = (await context.FileLinks.Where(link => itemIds.Contains(link.ItemId)).ToListAsync(cancellationToken).ConfigureAwait(false)).ToLookup(link => link.ItemId);
-
+        var existing = (await context.FileLinks.AsNoTracking().Where(link => itemIds.Contains(link.ItemId)).ToListAsync(cancellationToken).ConfigureAwait(false)).ToLookup(link => link.ItemId);
+        List<(ItemId ItemId, TermId TermId)> remove = [];
+        List<(ItemId ItemId, TermId TermId)> add = [];
         foreach (var update in batch.Where(update => stored.Contains(update.ItemId)))
-            Replace(context, update, existing[update.ItemId].ToList());
+        {
+            var current = existing[update.ItemId].ToList();
+            var wanted = update.TermIds.ToHashSet();
+            var held = current.Select(link => link.TermId).ToHashSet();
+            remove.AddRange(current.Where(link => link.Origin == FileLinkOrigin.Auto && !wanted.Contains(link.TermId)).Select(link => (link.ItemId, link.TermId)));
+            add.AddRange(wanted.Where(termId => !held.Contains(termId)).Select(termId => (update.ItemId, termId)));
+        }
 
-        await context.SaveChangesAsync(cancellationToken).ConfigureAwait(false);
+        if (remove.Count == 0 && add.Count == 0) return new Ok<Unit>(default);
+
+        await using var transaction = await context.Database.BeginTransactionAsync(cancellationToken).ConfigureAwait(false);
+        foreach (var rows in remove.Chunk(StatementRows))
+            await context.Database.ExecuteSqlAsync(FormattableStringFactory.Create("DELETE FROM FileLinks WHERE Origin = 'Auto' AND (ItemId, TermId) IN (VALUES " + BulkSql.Rows(rows.Length, 2) + ")", rows.SelectMany(row => new object[] { BulkSql.Text(row.ItemId.Value), BulkSql.Text(row.TermId.Value) }).ToArray()), cancellationToken).ConfigureAwait(false);
+
+        foreach (var rows in add.Chunk(StatementRows))
+            await context.Database.ExecuteSqlAsync(FormattableStringFactory.Create("INSERT OR IGNORE INTO FileLinks (ItemId, TermId, Origin) VALUES " + BulkSql.Rows(rows.Length, 3), rows.SelectMany(row => new object[] { BulkSql.Text(row.ItemId.Value), BulkSql.Text(row.TermId.Value), nameof(FileLinkOrigin.Auto) }).ToArray()), cancellationToken).ConfigureAwait(false);
+
+        await transaction.CommitAsync(cancellationToken).ConfigureAwait(false);
 
         return new Ok<Unit>(default);
-    }
-
-    private static void Replace(CloudSyncDbContext context, ItemTermLinks update, List<FileLinkEntity> current)
-    {
-        var wanted = update.TermIds.ToHashSet();
-        context.FileLinks.RemoveRange(current.Where(link => link.Origin == FileLinkOrigin.Auto && !wanted.Contains(link.TermId)));
-        var held = current.Select(link => link.TermId).ToHashSet();
-        context.FileLinks.AddRange(wanted.Where(termId => !held.Contains(termId)).Select(termId => new FileLinkEntity { ItemId = update.ItemId, TermId = termId, Origin = FileLinkOrigin.Auto }));
     }
 }

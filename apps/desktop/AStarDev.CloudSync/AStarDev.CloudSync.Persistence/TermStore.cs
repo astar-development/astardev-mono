@@ -80,14 +80,12 @@ internal sealed class TermStore(IDbContextFactory<CloudSyncDbContext> contextFac
         if (categoryIds.Any(id => !stored.Contains(id))) return new Fail<ClassificationError>(new CategoryNotFound(missingCategory));
 
         var distinct = batch.DistinctBy(term => (term.CategoryId, term.Text)).ToArray();
-        var format = "INSERT OR IGNORE INTO Terms (Id, Text, CategoryId, Source, Status) VALUES " + string.Join(',', distinct.Select((_, index) => RowFormat(index)));
-        object[] values = [.. distinct.SelectMany(term => new object[] { term.Id.Value.ToString().ToUpperInvariant(), term.Text, term.CategoryId.Value.ToString().ToUpperInvariant(), term.Source.ToString(), term.Status.ToString() })];
+        var format = "INSERT OR IGNORE INTO Terms (Id, Text, CategoryId, Source, Status) VALUES " + BulkSql.Rows(distinct.Length, ColumnCount);
+        object[] values = [.. distinct.SelectMany(term => new object[] { BulkSql.Text(term.Id.Value), term.Text, BulkSql.Text(term.CategoryId.Value), term.Source.ToString(), term.Status.ToString() })];
         await context.Database.ExecuteSqlAsync(FormattableStringFactory.Create(format, values), cancellationToken).ConfigureAwait(false);
 
         return new Ok<Unit>(default);
     }
-
-    private static string RowFormat(int index) => "(" + string.Join(',', Enumerable.Range(index * ColumnCount, ColumnCount).Select(position => "{" + position + "}")) + ")";
 
     private static ClassificationError ToError(Exception exception, Term term)
         => SqliteErrors.IsConstraintViolation(exception) ? new TermAlreadyExists(term.Text, term.CategoryId) : new StorageFailed(exception.Message);
