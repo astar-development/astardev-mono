@@ -18,4 +18,10 @@ internal static partial class ClassificationLog
 
     [LoggerMessage(EventId = 9004, Level = LogLevel.Warning, Message = "The classification links were not updated after an index write: {Reason}")]
     internal static partial void LinksNotUpdated(ILogger logger, string reason);
+
+    [LoggerMessage(EventId = 9005, Level = LogLevel.Information, Message = "The classification reclassify run went through {Files} files")]
+    internal static partial void ReclassifyCompleted(ILogger logger, long files);
+
+    [LoggerMessage(EventId = 9006, Level = LogLevel.Warning, Message = "The classification reclassify run stopped early: {Reason}")]
+    internal static partial void ReclassifyFailed(ILogger logger, string reason);
 }

@@ -1,3 +1,4 @@
+using Microsoft.Data.Sqlite;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
 
@@ -29,5 +30,18 @@ public sealed class DatabaseInitialiserShould
         await host.Services.GetRequiredService<IDatabaseInitialiser>().InitialiseAsync(Token);
 
         logs.Entries.ShouldContain(entry => entry.EventId == 4004);
+    }
+
+    [Fact]
+    public async Task switch_on_write_ahead_logging()
+    {
+        await using var host = await PersistenceTestHost.CreateInitialisedAsync(Token);
+
+        await using var connection = new SqliteConnection($"Data Source={host.DatabasePath}");
+        await connection.OpenAsync(Token);
+        await using var command = connection.CreateCommand();
+        command.CommandText = "PRAGMA journal_mode";
+
+        (await command.ExecuteScalarAsync(Token)).ShouldBe("wal");
     }
 }

@@ -46,6 +46,7 @@ public static class PersistenceServiceCollectionExtensions
         services.AddSingleton<IFileClassificationStore, FileClassificationStore>();
         services.AddSingleton<IClassificationStateStore, ClassificationStateStore>();
         services.AddSingleton<IClassifiableFileSource, ClassifiableFileSource>();
+        services.AddSingleton<IReclassifyRunStore, ReclassifyRunStore>();
         services.AddOptions<TelemetryDatabaseOptions>().BindConfiguration(TelemetryDatabaseOptions.ConfigurationSection);
         services.AddDbContextFactory<TelemetryDbContext>((provider, builder) => builder.UseSqlite($"Data Source={provider.GetRequiredService<IOptions<TelemetryDatabaseOptions>>().Value.Path}"));
         services.TryAddSingleton(TimeProvider.System);
