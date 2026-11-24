@@ -9,6 +9,7 @@ public sealed class ErrorsArchitectureTestsShouldEnsure
 {
     private static readonly string[] Modules =
     [
+        "AStarDev.CloudSync.Classification",
         "AStarDev.CloudSync.Daemon",
         "AStarDev.CloudSync.IPC",
         "AStarDev.CloudSync.OneDrive",

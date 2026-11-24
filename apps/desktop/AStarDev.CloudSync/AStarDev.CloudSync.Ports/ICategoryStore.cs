@@ -20,6 +20,12 @@ public interface ICategoryStore
     /// <returns>Success, <see cref="CategoryAlreadyExists"/> when the identity or the name, ignoring case, is taken, or <see cref="StorageFailed"/>.</returns>
     Task<Result<Unit, ClassificationError>> AddAsync(Category category, CancellationToken cancellationToken);
 
+    /// <summary>Returns the category with the name, ignoring case, storing <paramref name="category"/> when none has it. Safe to call twice; two callers racing to add the same new name can make one of them fail with <see cref="StorageFailed"/>.</summary>
+    /// <param name="category">The category to store when the name is free; its identity is used only then.</param>
+    /// <param name="cancellationToken">Cancelling before the write completes leaves nothing stored.</param>
+    /// <returns>The stored category, which keeps its own identity and name when one already existed, or <see cref="StorageFailed"/>.</returns>
+    Task<Result<Category, ClassificationError>> GetOrAddAsync(Category category, CancellationToken cancellationToken);
+
     /// <summary>Gives a category a new name.</summary>
     /// <param name="id">The category to rename.</param>
     /// <param name="name">The new name.</param>

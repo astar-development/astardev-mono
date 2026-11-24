@@ -1,4 +1,5 @@
 using AStarDev.CloudSync.Daemon.Startup;
+using AStarDev.CloudSync.Ports;
 using AStarDev.CloudSync.Persistence;
 using AStarDev.FunctionalParadigm;
 using Microsoft.Extensions.DependencyInjection;
@@ -64,6 +65,41 @@ public sealed class InfrastructureInitialisationStageShould
         await cancelled.CancelAsync();
 
         await Should.ThrowAsync<OperationCanceledException>(() => stage.ExecuteAsync(cancelled.Token));
+    }
+
+    [Fact]
+    public async Task apply_the_classification_seed_when_it_runs()
+    {
+        await using var host = DaemonTestHost.Create();
+
+        await StageFrom(host).ExecuteAsync(Token);
+
+        (await host.Services.GetRequiredService<ICategoryStore>().ListAsync(Token)).Value.ShouldBeOfType<Ok<IReadOnlyList<Domain.Category>>>().Value.ShouldNotBeEmpty();
+        (await host.Services.GetRequiredService<ITermStore>().ListAsync(Token)).Value.ShouldBeOfType<Ok<IReadOnlyList<Domain.Term>>>().Value.ShouldNotBeEmpty();
+    }
+
+    [Fact]
+    public async Task not_apply_the_classification_seed_twice()
+    {
+        await using var host = DaemonTestHost.Create();
+        var terms = host.Services.GetRequiredService<ITermStore>();
+        await StageFrom(host).ExecuteAsync(Token);
+        var first = (await terms.ListAsync(Token)).Value.ShouldBeOfType<Ok<IReadOnlyList<Domain.Term>>>().Value;
+
+        await StageFrom(host).ExecuteAsync(Token);
+
+        (await terms.ListAsync(Token)).Value.ShouldBeOfType<Ok<IReadOnlyList<Domain.Term>>>().Value.ShouldBe(first, ignoreOrder: true);
+    }
+
+    [Fact]
+    public async Task not_seed_classification_in_recovery_mode()
+    {
+        await using var host = DaemonTestHost.Create(CorruptDatabaseAt);
+
+        var result = await StageFrom(host).ExecuteAsync(Token);
+
+        result.Value.ShouldBeOfType<Ok<Unit>>();
+        host.Services.GetRequiredService<IDatabaseState>().Mode.ShouldBe(DatabaseMode.Recovery);
     }
 
     internal static void CorruptDatabaseAt(string path)

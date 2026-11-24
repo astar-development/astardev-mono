@@ -90,4 +90,26 @@ public sealed class CategoryStoreShould
 
         Error(result).Value.ShouldBe(new CategoryNotEmpty(colour.Id));
     }
+
+    [Fact]
+    public async Task store_a_category_that_does_not_exist_when_getting_or_adding()
+    {
+        await using var host = await PersistenceTestHost.CreateInitialisedAsync(Token);
+        var colour = new Category(new CategoryId(Guid.NewGuid()), "Colour");
+
+        var result = await host.Services.GetRequiredService<ICategoryStore>().GetOrAddAsync(colour, Token);
+
+        Ok(result).ShouldBe(colour);
+    }
+
+    [Fact]
+    public async Task return_the_existing_category_when_getting_or_adding_a_name_ignoring_case()
+    {
+        await using var host = await PersistenceTestHost.CreateInitialisedAsync(Token);
+        var colour = await AddCategoryAsync(host, "Colour", Token);
+
+        var result = await host.Services.GetRequiredService<ICategoryStore>().GetOrAddAsync(new Category(new CategoryId(Guid.NewGuid()), "COLOUR"), Token);
+
+        Ok(result).ShouldBe(colour);
+    }
 }

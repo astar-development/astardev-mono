@@ -16,7 +16,7 @@ public sealed class PublicSurfaceArchitectureTestsShouldEnsure
     [Fact]
     public void the_ports_expose_only_their_approved_public_types()
         => ShouldExposeExactly(typeof(ICloudProvider).Assembly,
-            "AccountAlreadyExists", "AccountNotFound", "AuthenticationFailed", "CategoryAlreadyExists", "CategoryNotEmpty", "CategoryNotFound", "ChangeKind", "ClassificationError", "ConflictNotFound", "CrawlCheckpoint", "IAccountStore", "ICategoryStore", "ICloudProvider", "IConflictStore", "IEventJournal", "IFileClassificationStore", "IItemIndexStore", "IItemStateStore", "IKnownSnapshotStore", "ILocalObservationStore", "InvalidDeltaToken", "InvalidSettingValue", "IOperationStore", "ISettingsStore", "IProviderStateStore", "JournalEntry", "KnownEntry", "ISyncJobStore", "ISyncScopeStore", "ITelemetryStore", "ITelemetryWriter", "ITermStore", "ItemNotFound", "ItemTermLinks", "OperationNotDeadLettered", "OperationNotRunning", "Permanent", "ProviderAccount",
+            "AccountAlreadyExists", "AccountNotFound", "AuthenticationFailed", "CategoryAlreadyExists", "CategoryNotEmpty", "CategoryNotFound", "ChangeKind", "ClassificationError", "ConflictNotFound", "CrawlCheckpoint", "IAccountStore", "ICategoryStore", "IClassificationStateStore", "ICloudProvider", "IConflictStore", "IEventJournal", "IFileClassificationStore", "IItemIndexStore", "IItemStateStore", "IKnownSnapshotStore", "ILocalObservationStore", "InvalidDeltaToken", "InvalidSettingValue", "IOperationStore", "ISettingsStore", "IProviderStateStore", "JournalEntry", "KnownEntry", "ISyncJobStore", "ISyncScopeStore", "ITelemetryStore", "ITelemetryWriter", "ITermStore", "ItemNotFound", "ItemTermLinks", "OperationNotDeadLettered", "OperationNotRunning", "Permanent", "ProviderAccount",
             "ProviderChange", "ProviderFeature", "ProviderDeltaPage", "ProviderDriveInfo", "ProviderError", "ProviderItem", "ProviderSnapshotPage", "RateLimited", "SettingNames", "StorageFailed", "StoredItem", "StoreError", "SyncJobAlreadyExists", "SyncJobNotFound", "UploadRequest",
             "SyncScopeAlreadyExists", "SyncScopeNotFound", "TelemetryEntry", "TelemetryKind", "TelemetryQuery", "TermAlreadyExists", "TermNotFound", "Transient", "UnknownSetting");
 
@@ -32,7 +32,7 @@ public sealed class PublicSurfaceArchitectureTestsShouldEnsure
 
     [Fact]
     public void classification_exposes_only_its_approved_public_types()
-        => ShouldExposeExactly(typeof(Classification.ClassificationServiceCollectionExtensions).Assembly, "ClassificationServiceCollectionExtensions");
+        => ShouldExposeExactly(typeof(Classification.ClassificationServiceCollectionExtensions).Assembly, "ClassificationServiceCollectionExtensions", "IClassificationStartup");
 
     [Fact]
     public void the_daemon_exposes_no_public_types()

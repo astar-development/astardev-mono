@@ -22,7 +22,7 @@ public sealed class DaemonArchitectureTestsShouldEnsure
             .Select(reference => Path.GetFileNameWithoutExtension(reference.Attribute("Include")!.Value.Replace('\\', '/')))
             .Order();
 
-        references.ShouldBe(["AStarDev.CloudSync.Domain", "AStarDev.CloudSync.Errors", "AStarDev.CloudSync.FakeProvider", "AStarDev.CloudSync.IPC", "AStarDev.CloudSync.Observability", "AStarDev.CloudSync.OneDrive", "AStarDev.CloudSync.Persistence", "AStarDev.CloudSync.SyncEngine", "AStarDev.FunctionalParadigm", "AStarDev.SingleInstance"]);
+        references.ShouldBe(["AStarDev.CloudSync.Classification", "AStarDev.CloudSync.Domain", "AStarDev.CloudSync.Errors", "AStarDev.CloudSync.FakeProvider", "AStarDev.CloudSync.IPC", "AStarDev.CloudSync.Observability", "AStarDev.CloudSync.OneDrive", "AStarDev.CloudSync.Persistence", "AStarDev.CloudSync.SyncEngine", "AStarDev.FunctionalParadigm", "AStarDev.SingleInstance"]);
     }
 
     private static string ProjectFile()

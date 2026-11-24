@@ -8,6 +8,10 @@
   </ItemGroup>
 
   <ItemGroup>
+    <EmbeddedResource Include="Seed\*.json" />
+  </ItemGroup>
+
+  <ItemGroup>
     <InternalsVisibleTo Include="AStarDev.CloudSync.Classification.TestsUnit" />
   </ItemGroup>
 

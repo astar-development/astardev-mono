@@ -15,7 +15,7 @@ partial class CloudSyncDbContextModelSnapshot : ModelSnapshot
     // If you encounter a merge conflict in the line below, it means you need to
     // discard one of the migration branches and recreate its migrations on top of
     // the other branch. See https://aka.ms/efcore-docs-migrations-conflicts for more info.
-    public override string LastMigrationId => "20261124104858_AddClassification";
+    public override string LastMigrationId => "20261124105845_AddClassificationState";
 
     protected override void BuildModel(ModelBuilder modelBuilder)
     {
@@ -72,6 +72,20 @@ partial class CloudSyncDbContextModelSnapshot : ModelSnapshot
                     .IsUnique();
 
                 b.ToTable("Categories");
+            });
+
+        modelBuilder.Entity("AStarDev.CloudSync.Persistence.ClassificationStateEntity", b =>
+            {
+                b.Property<string>("Name")
+                    .HasColumnType("TEXT");
+
+                b.Property<string>("Value")
+                    .IsRequired()
+                    .HasColumnType("TEXT");
+
+                b.HasKey("Name");
+
+                b.ToTable("ClassificationState");
             });
 
         modelBuilder.Entity("AStarDev.CloudSync.Persistence.ConflictEntity", b =>

@@ -20,6 +20,12 @@ public interface ITermStore
     /// <returns>Success, <see cref="CategoryNotFound"/> when its category is not stored, <see cref="TermAlreadyExists"/> when the category holds the text or the identity is taken, or <see cref="StorageFailed"/>.</returns>
     Task<Result<Unit, ClassificationError>> AddAsync(Term term, CancellationToken cancellationToken);
 
+    /// <summary>Stores the terms the category does not already hold and leaves the others as they are, so a user's edit to a stored term survives. Written in transactions of at most 1,000 terms.</summary>
+    /// <param name="terms">The terms to store; a term is skipped when its category holds its text.</param>
+    /// <param name="cancellationToken">Cancelling stops between transactions; the ones already written stay.</param>
+    /// <returns>Success, <see cref="CategoryNotFound"/> when a term's category is not stored, or <see cref="StorageFailed"/>.</returns>
+    Task<Result<Unit, ClassificationError>> AddMissingAsync(IReadOnlyList<Term> terms, CancellationToken cancellationToken);
+
     /// <summary>Replaces the text, category, source and status of a stored term. Its links stay.</summary>
     /// <param name="term">The term with its new values, found by <see cref="Term.Id"/>.</param>
     /// <param name="cancellationToken">Cancelling before the write completes leaves the old values.</param>
