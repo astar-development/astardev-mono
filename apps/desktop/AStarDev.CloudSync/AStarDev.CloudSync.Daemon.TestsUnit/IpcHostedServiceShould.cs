@@ -49,6 +49,11 @@ public sealed class IpcHostedServiceShould
             services.GetRequiredService<ProvidersQuery>(),
             services.GetRequiredService<AuditQuery>(),
             services.GetRequiredService<ExportQuery>(),
+            services.GetRequiredService<TermsQuery>(),
+            services.GetRequiredService<TermFilesQuery>(),
+            services.GetRequiredService<SuggestionsQuery>(),
+            services.GetRequiredService<StartReclassifyHandler>(),
+            services.GetRequiredService<ReclassifyStatusQuery>(),
             TimeProvider.System,
             NullLogger<IpcHostedService>.Instance);
     }

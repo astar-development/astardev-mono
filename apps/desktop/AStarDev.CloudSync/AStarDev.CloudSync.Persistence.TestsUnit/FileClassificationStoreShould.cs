@@ -169,4 +169,30 @@ public sealed class FileClassificationStoreShould
 
         Ok(await store.GetItemsForTermAsync(red.Id, Token)).ShouldBe([items[1]]);
     }
+
+    [Fact]
+    public async Task return_a_page_of_the_files_for_a_term_with_their_paths_and_account_names()
+    {
+        await using var host = await PersistenceTestHost.CreateInitialisedAsync(Token);
+        var colour = await AddCategoryAsync(host, "Colour", Token);
+        var red = await AddTermAsync(host, colour.Id, "red", Token);
+        var items = await AddItemsAsync(host, 3, Token);
+        var store = host.Services.GetRequiredService<IFileClassificationStore>();
+        await store.ReplaceAutoLinksAsync([.. items.Select(item => new ItemTermLinks(item, [red.Id]))], Token);
+
+        var page = Ok(await store.GetFilesForTermAsync(red.Id, 1, 1, Token));
+
+        page.Total.ShouldBe(3);
+        page.Files.Select(file => (file.Path.Value, file.AccountName)).ShouldBe([("Docs/1.txt", "ada@example.com")]);
+    }
+
+    [Fact]
+    public async Task return_an_empty_page_for_a_term_without_files()
+    {
+        await using var host = await PersistenceTestHost.CreateInitialisedAsync(Token);
+
+        var page = Ok(await host.Services.GetRequiredService<IFileClassificationStore>().GetFilesForTermAsync(new TermId(Guid.NewGuid()), 0, 10, Token));
+
+        (page.Total, page.Files.Count).ShouldBe((0, 0));
+    }
 }

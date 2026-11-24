@@ -63,6 +63,22 @@ internal sealed class FileClassificationStore(IDbContextFactory<CloudSyncDbConte
             new Ok<IReadOnlyList<ItemId>>(await context.FileLinks.AsNoTracking().Where(link => link.TermId == termId).Select(link => link.ItemId).ToListAsync(token).ConfigureAwait(false)), null, cancellationToken);
 
     /// <inheritdoc/>
+    public Task<Result<TermFilesPage, ClassificationError>> GetFilesForTermAsync(TermId termId, int skip, int take, CancellationToken cancellationToken)
+        => ClassificationStore.RunAsync<TermFilesPage>(contextFactory, async (context, token) =>
+        {
+            var files = from link in context.FileLinks.AsNoTracking()
+                        where link.TermId == termId
+                        join item in context.Items on link.ItemId equals item.Id
+                        join job in context.SyncJobs on item.SyncJobId equals job.Id
+                        join account in context.Accounts on job.AccountId equals account.Id
+                        select new { item.Id, item.LocalPath, account.DisplayName };
+            var total = await files.CountAsync(token).ConfigureAwait(false);
+            var page = await files.OrderBy(file => file.LocalPath).ThenBy(file => file.Id).Skip(skip).Take(take).ToListAsync(token).ConfigureAwait(false);
+
+            return new Ok<TermFilesPage>(new TermFilesPage(total, [.. page.Select(file => new TermFile(file.Id, file.LocalPath, file.DisplayName))]));
+        }, null, cancellationToken);
+
+    /// <inheritdoc/>
     public Task<Result<IReadOnlyDictionary<TermId, int>, ClassificationError>> GetFileCountsAsync(CancellationToken cancellationToken)
         => ClassificationStore.RunAsync<IReadOnlyDictionary<TermId, int>>(contextFactory, async (context, token) =>
         {

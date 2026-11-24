@@ -119,6 +119,7 @@ ResumeSync
 ResolveConflict
 RetryOperation
 SetSetting
+StartReclassify
 ```
 
 ---
@@ -228,10 +229,13 @@ Conflicts:           GetConflicts, GetDeadLetters
 History and audit:   GetHistory, GetAudit, ExportHistory, ExportAudit
 Providers:           GetProviders
 Settings:            GetSettings
+Classification:      GetClassificationTerms, GetTermFiles, GetClassificationSuggestions, GetReclassifyStatus
 Telemetry:           GetLogs, GetTraces, GetMetrics, GetDiagnostics
 ```
 
 - `GetSettings` returns every known setting with its saved value or its default; `SetSetting` refuses an unknown name or a value the setting does not allow.
+- `GetClassificationTerms` returns every category and term, ignored ones included, each term with its file count. `GetTermFiles` pages the files of one term in path order, 500 at most per call, each with the name of its account. `GetClassificationSuggestions` scans every file path for unreviewed words, so it can take a while on a large index.
+- `StartReclassify` answers at once and the run goes on in the background; it is `Rejected` while a run is active. `GetReclassifyStatus` says whether a run is active, how far it has got, and when the last one finished.
 - `ExportHistory` and `ExportAudit` take the same filter as `GetHistory` and `GetAudit` and return `ExportView(Csv)`: RFC 4180 with a header row, and a leading `'` on any cell that starts with `=`, `+`, `-` or `@`.
 - `GetAudit` first prunes entries older than the `retention.audit-days` setting (default 90).
 - `GetLogs`, `GetTraces` and `GetMetrics` read the separate `telemetry.db` (kept `retention.telemetry-days`, default 7). Logs and spans are stored with e-mail addresses and paths replaced; metric tags are not stored. `GetDiagnostics` returns only the name and status of each health check, never its description.
@@ -251,6 +255,7 @@ DaemonStatusChanged
 SyncStatusChanged   (published only when the status differs from the last one)
 DashboardChanged
 QueueChanged        (the daemon polls the queue every 2 seconds and publishes on change)
+ReclassifyProgressChanged (after each batch of files, and once more when the run ends)
 ```
 
 A client reads the current state with a query when a screen opens, then follows the events.
