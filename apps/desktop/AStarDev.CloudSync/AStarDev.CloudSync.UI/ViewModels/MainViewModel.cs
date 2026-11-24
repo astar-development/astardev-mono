@@ -1,5 +1,6 @@
 using AStarDev.CloudSync.UI.Navigation;
 using AStarDev.CloudSync.UI.ViewModels.Onboarding;
+using CommunityToolkit.Mvvm.Input;
 
 namespace AStarDev.CloudSync.UI.ViewModels;
 
@@ -20,9 +21,11 @@ public sealed class MainViewModel : ViewModelBase
         Onboarding = onboarding;
         var byId = screens.ToDictionary(screen => screen.Id);
         Destinations = ScreenIds.Primary.Select(id => new DestinationViewModel(id, byId[id].Title, byId[id].Glyph)).ToList();
+        BackCommand = new RelayCommand(() => _ = navigation.Navigate(ScreenId.Settings));
         navigation.Navigated += (_, _) =>
         {
             OnPropertyChanged(nameof(Content));
+            OnPropertyChanged(nameof(IsAdvancedScreen));
             OnPropertyChanged(nameof(SelectedDestination));
         };
     }
@@ -42,6 +45,12 @@ public sealed class MainViewModel : ViewModelBase
             if (value is not null) _ = navigation.Navigate(value.Id);
         }
     }
+
+    /// <summary>True while Metrics, Logs, Traces or Diagnostics is shown, so the window offers a way back to Settings.</summary>
+    public bool IsAdvancedScreen => navigation.Current.Id != ScreenIds.RailEntryOf(navigation.Current.Id);
+
+    /// <summary>Returns from an advanced screen to Settings.</summary>
+    public IRelayCommand BackCommand { get; }
 
     /// <summary>The permanent status bar.</summary>
     public StatusBarViewModel StatusBar { get; }

@@ -63,4 +63,20 @@ public sealed class MainViewModelShould
         main.Content.Id.ShouldBe(ScreenId.Traces);
         main.SelectedDestination!.Id.ShouldBe(ScreenId.Settings);
     }
+
+    [Fact]
+    public void offer_a_way_back_to_settings_from_an_advanced_screen_only()
+    {
+        using var host = CreateHost();
+        var main = host.Services.GetRequiredService<MainViewModel>();
+        var navigation = host.Services.GetRequiredService<INavigationService>();
+
+        main.IsAdvancedScreen.ShouldBeFalse();
+        _ = navigation.Navigate(ScreenId.Metrics);
+        main.IsAdvancedScreen.ShouldBeTrue();
+        main.BackCommand.Execute(null);
+
+        main.Content.Id.ShouldBe(ScreenId.Settings);
+        main.IsAdvancedScreen.ShouldBeFalse();
+    }
 }

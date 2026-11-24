@@ -22,7 +22,10 @@
                 </DataTemplate>
             </ListBox.ItemTemplate>
         </ListBox>
-        <ContentControl Content="{Binding Content}" />
+        <DockPanel>
+            <Button DockPanel.Dock="Top" Content="{loc:Loc Navigation.Back}" Command="{Binding BackCommand}" IsVisible="{Binding IsAdvancedScreen}" HorizontalAlignment="Left" Margin="16,12,0,0" />
+            <ContentControl Content="{Binding Content}" />
+        </DockPanel>
     </DockPanel>
     <ContentControl Content="{Binding Onboarding}" IsVisible="{Binding Onboarding.IsActive}" />
     </Panel>
