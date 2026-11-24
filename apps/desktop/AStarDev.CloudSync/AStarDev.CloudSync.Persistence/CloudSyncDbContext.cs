@@ -55,6 +55,9 @@ internal sealed class CloudSyncDbContext(DbContextOptions<CloudSyncDbContext> op
     /// <summary>Classification terms.</summary>
     public DbSet<TermEntity> Terms => Set<TermEntity>();
 
+    /// <summary>Facts classification remembers between runs.</summary>
+    public DbSet<ClassificationStateEntity> ClassificationState => Set<ClassificationStateEntity>();
+
     /// <summary>Links between items and classification terms.</summary>
     public DbSet<FileLinkEntity> FileLinks => Set<FileLinkEntity>();
 
@@ -189,6 +192,8 @@ internal sealed class CloudSyncDbContext(DbContextOptions<CloudSyncDbContext> op
             term.HasOne<CategoryEntity>().WithMany().HasForeignKey(entity => entity.CategoryId).OnDelete(DeleteBehavior.Restrict);
             term.HasIndex(entity => new { entity.CategoryId, entity.Text }).IsUnique();
         });
+
+        modelBuilder.Entity<ClassificationStateEntity>(state => state.ToTable("ClassificationState").HasKey(entity => entity.Name));
 
         modelBuilder.Entity<FileLinkEntity>(link =>
         {

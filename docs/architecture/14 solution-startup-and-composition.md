@@ -100,6 +100,11 @@ are registered.
 
 No synchronisation begins.
 
+The database is prepared: integrity check, then migrations. On a database in
+normal mode the shipped classification seed is then applied when its version is
+new. A seed that fails is logged and never fails the stage: the daemon works
+without classification. See document 25.
+
 ---
 
 ### Stage 3 - State Recovery

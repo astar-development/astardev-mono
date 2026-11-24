@@ -28,6 +28,19 @@ internal sealed class CategoryStore(IDbContextFactory<CloudSyncDbContext> contex
         }, exception => ToError(exception, category.Name), cancellationToken);
 
     /// <inheritdoc/>
+    public Task<Result<Category, ClassificationError>> GetOrAddAsync(Category category, CancellationToken cancellationToken)
+        => ClassificationStore.RunAsync<Category>(contextFactory, async (context, token) =>
+        {
+            var existing = await context.Categories.AsNoTracking().SingleOrDefaultAsync(row => row.Name == category.Name, token).ConfigureAwait(false);
+            if (existing is not null) return new Ok<Category>(existing.ToCategory());
+
+            context.Categories.Add(CategoryEntity.From(category));
+            await context.SaveChangesAsync(token).ConfigureAwait(false);
+
+            return new Ok<Category>(category);
+        }, null, cancellationToken);
+
+    /// <inheritdoc/>
     public Task<Result<Unit, ClassificationError>> RenameAsync(CategoryId id, string name, CancellationToken cancellationToken)
         => ClassificationStore.RunAsync<Unit>(contextFactory, async (context, token) =>
         {

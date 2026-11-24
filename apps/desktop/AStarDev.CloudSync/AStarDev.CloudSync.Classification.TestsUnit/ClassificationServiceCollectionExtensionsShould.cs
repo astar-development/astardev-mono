@@ -1,26 +1,26 @@
 using Microsoft.Extensions.DependencyInjection;
-using Microsoft.Extensions.Hosting;
 
 namespace AStarDev.CloudSync.Classification.TestsUnit;
 
 public sealed class ClassificationServiceCollectionExtensionsShould
 {
-    [Fact]
-    public void return_the_same_collection_so_the_call_can_be_chained()
-    {
-        var builder = Host.CreateApplicationBuilder();
+    private static CancellationToken Token => TestContext.Current.CancellationToken;
 
-        builder.Services.AddClassification().ShouldBeSameAs(builder.Services);
+    [Fact]
+    public async Task register_the_startup_the_daemon_runs()
+    {
+        await using var host = await ClassificationTestHost.CreateAsync(Token);
+
+        host.Services.GetRequiredService<IClassificationStartup>().ShouldNotBeNull();
     }
 
     [Fact]
-    public void be_safe_to_call_twice()
+    public async Task seed_the_vocabulary_when_the_startup_runs()
     {
-        var builder = Host.CreateApplicationBuilder();
-        var before = builder.Services.Count;
+        await using var host = await ClassificationTestHost.CreateAsync(Token);
 
-        builder.Services.AddClassification().AddClassification();
+        await host.Services.GetRequiredService<IClassificationStartup>().RunAsync(Token);
 
-        builder.Services.Count.ShouldBe(before);
+        (await host.Services.GetRequiredService<IClassificationVocabularyProvider>().GetAsync(Token)).Value.ShouldBeOfType<AStarDev.FunctionalParadigm.Ok<ClassificationVocabulary>>().Value.Terms.ShouldNotBeEmpty();
     }
 }

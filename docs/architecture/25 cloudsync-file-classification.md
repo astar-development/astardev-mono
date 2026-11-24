@@ -87,6 +87,19 @@ batched at 1,000 to 5,000 rows per transaction and a reclassify yields between
 batches. A second file attached with `ATTACH` is reconsidered only if sync
 stalls during a reclassify are measured.
 
+## Seed
+
+The shipped categories and terms are embedded JSON files with a version. The
+daemon applies them in startup stage 2, once per version. Terms already stored
+are left as they are, so a term the user ignored or edited is never restored by
+a newer seed. Terms are written in transactions of at most 1,000.
+
+## Vocabulary
+
+The vocabulary provider loads the categories and terms once and keeps them
+until it is invalidated by a seed or an edit. Ignored terms are dropped when it
+is built, so no signal can emit one.
+
 ## Sync Hook
 
 Files written by a crawl or delta page are classified after the index write.

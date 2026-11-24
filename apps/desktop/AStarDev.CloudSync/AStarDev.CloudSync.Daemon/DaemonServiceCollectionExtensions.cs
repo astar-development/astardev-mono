@@ -1,3 +1,4 @@
+using AStarDev.CloudSync.Classification;
 using AStarDev.CloudSync.Daemon.Startup;
 using AStarDev.CloudSync.IPC;
 using AStarDev.CloudSync.Observability;
@@ -16,7 +17,7 @@ namespace AStarDev.CloudSync.Daemon;
 internal static class DaemonServiceCollectionExtensions
 {
     /// <summary>
-    /// Registers telemetry first, so everything after it is observed, then options, health checks, persistence, the cloud provider, the sync engine, the single-instance guard, the startup stages, the IPC handlers and the hosted services. In debug builds the provider switch comes last, so <c>CloudSync:Provider=Fake</c> can replace the provider. <see cref="StartupHostedService"/> is registered
+    /// Registers telemetry first, so everything after it is observed, then options, health checks, persistence, classification, the cloud provider, the sync engine, the single-instance guard, the startup stages, the IPC handlers and the hosted services. In debug builds the provider switch comes last, so <c>CloudSync:Provider=Fake</c> can replace the provider. <see cref="StartupHostedService"/> is registered
     /// before <see cref="IpcHostedService"/>, so the IPC server only listens once every startup stage has finished.
     /// </summary>
     /// <example>
@@ -32,6 +33,7 @@ internal static class DaemonServiceCollectionExtensions
         services.AddOptions<IpcOptions>().BindConfiguration(ApplicationConstants.IpcConfigurationSection);
         services.AddHealthChecks(); // checks are added by the slices that own database, provider, queue and IPC
         services.AddCloudSyncPersistence();
+        services.AddClassification();
         services.AddSingleton<ILoggerProvider, TelemetryLoggerProvider>();
         services.AddHostedService<TelemetrySpanListener>();
         services.AddSingleton<TelemetryMetricSampler>();
