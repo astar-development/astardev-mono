@@ -46,7 +46,7 @@ internal sealed class OneDriveProvider(IOptions<OneDriveSettings> settings, ITok
     /// <remarks>
     /// Without a successful <see cref="ConnectAsync"/> first, Graph refuses the request and the result is <see cref="AuthenticationFailed"/>.
     /// Returns one page of the whole tree under the root through Graph's delta endpoint, so the listing is recursive and flat; the resume token is a Graph next link. The last page carries the Graph delta link as the delta token. Graph reports no total, so <see cref="ProviderSnapshotPage.TotalItems"/> is <see langword="null"/>.
-    /// Paths are built from parent ids and names, so they are relative to <paramref name="root"/> and correct where OneDrive Personal omits parent paths. A parent not yet seen is read from Graph, costing one request per unknown folder after a restart; an item whose parent Graph no longer has, or that lies outside the root, is left out.
+    /// Paths are built from parent ids and names, so they are relative to the drive root, keeping the scope folder, and correct where OneDrive Personal omits parent paths. A parent not yet seen is read from Graph, costing one request per unknown folder after a restart; an item whose parent Graph no longer has, or that lies outside <paramref name="root"/>, is left out, as is <paramref name="root"/> itself.
     /// </remarks>
     public Task<Result<ProviderSnapshotPage, ProviderError>> GetSnapshotAsync(RemoteItemId root, string? resumeToken, CancellationToken cancellationToken)
         => ObserveAsync("GetSnapshot", null, root.Value, token => enumerator.GetSnapshotAsync(root, resumeToken, token), cancellationToken);
