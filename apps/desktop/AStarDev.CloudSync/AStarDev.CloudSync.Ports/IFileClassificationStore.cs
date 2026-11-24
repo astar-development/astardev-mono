@@ -15,6 +15,13 @@ public interface IFileClassificationStore
     /// <returns>Success, or <see cref="StorageFailed"/>. An item that is no longer stored is skipped, and a term the user already linked is left as a user link.</returns>
     Task<Result<Unit, ClassificationError>> ReplaceAutoLinksAsync(IReadOnlyList<ItemTermLinks> updates, CancellationToken cancellationToken);
 
+    /// <summary>Replaces the automatic links of many items of one job, named by the provider's identity. Same rules and batching as <see cref="ReplaceAutoLinksAsync(IReadOnlyList{ItemTermLinks}, CancellationToken)"/>.</summary>
+    /// <param name="syncJobId">The job the items belong to.</param>
+    /// <param name="updates">The items and the terms that now apply to each.</param>
+    /// <param name="cancellationToken">Cancelling stops between transactions; the ones already written stay.</param>
+    /// <returns>Success, or <see cref="StorageFailed"/>. An item the job does not store is skipped.</returns>
+    Task<Result<Unit, ClassificationError>> ReplaceAutoLinksAsync(SyncJobId syncJobId, IReadOnlyList<RemoteItemTermLinks> updates, CancellationToken cancellationToken);
+
     /// <summary>Links a term to an item as the user's own choice. An automatic link to the same term becomes a user link. Safe to call twice.</summary>
     /// <param name="itemId">The item.</param>
     /// <param name="termId">The term.</param>

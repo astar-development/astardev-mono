@@ -154,4 +154,19 @@ public sealed class FileClassificationStoreShould
 
         Ok(await host.Services.GetRequiredService<IFileClassificationStore>().GetTermsForItemAsync(new ItemId(Guid.NewGuid()), Token)).ShouldBeEmpty();
     }
+
+    [Fact]
+    public async Task replace_the_automatic_links_of_items_named_by_their_remote_id()
+    {
+        await using var host = await PersistenceTestHost.CreateInitialisedAsync(Token);
+        var colour = await AddCategoryAsync(host, "Colour", Token);
+        var red = await AddTermAsync(host, colour.Id, "red", Token);
+        var items = await AddItemsAsync(host, 2, Token);
+        var job = (await host.Services.GetRequiredService<ISyncJobStore>().ListAsync(Token)).Value.ShouldBeOfType<FunctionalParadigm.Ok<IReadOnlyList<SyncJob>>>().Value.Single();
+        var store = host.Services.GetRequiredService<IFileClassificationStore>();
+
+        await store.ReplaceAutoLinksAsync(job.Id, [new RemoteItemTermLinks(new RemoteItemId("remote-1"), [red.Id]), new RemoteItemTermLinks(new RemoteItemId("unknown"), [red.Id])], Token);
+
+        Ok(await store.GetItemsForTermAsync(red.Id, Token)).ShouldBe([items[1]]);
+    }
 }
