@@ -122,19 +122,23 @@ public sealed class ClassificationEditingShould
     }
 
     [Fact]
-    public async Task scan_for_suggestions_the_first_time_the_tab_is_shown_and_only_then()
+    public async Task scan_for_suggestions_when_the_tab_is_shown_and_when_the_screen_is_opened_on_it()
     {
         var client = Client();
         client.SuggestionsReply = new Ok<ClassificationSuggestionsView>(new ClassificationSuggestionsView([new ClassificationSuggestionView("zorblax", 4, false), new ClassificationSuggestionView("jennifer", 2, true)], 2));
         var (host, screen) = Create(client);
         using var lifetime = host;
 
-        await screen.Suggestions.EnsureLoadedAsync(Token);
-        client.SuggestionsReply = new Ok<ClassificationSuggestionsView>(new ClassificationSuggestionsView([], 0));
-        await screen.Suggestions.EnsureLoadedAsync(Token);
+        screen.ShowSuggestionsCommand.Execute(null);
+        await screen.LoadSuggestionsCommand.ExecutionTask!;
 
         screen.Suggestions.Rows.Select(row => (row.Word, row.Detail)).ShouldBe([("zorblax", "in 4 files"), ("jennifer", "in 2 files  ·  looks like a first name")]);
-        screen.Suggestions.IsEmpty.ShouldBeFalse();
+
+        client.SuggestionsReply = new Ok<ClassificationSuggestionsView>(new ClassificationSuggestionsView([new ClassificationSuggestionView("plimbus", 1, false)], 1));
+        screen.OnNavigatedTo(null);
+        await screen.LoadSuggestionsCommand.ExecutionTask!;
+
+        screen.Suggestions.Rows.Select(row => row.Word).ShouldBe(["plimbus"]);
     }
 
     [Fact]
