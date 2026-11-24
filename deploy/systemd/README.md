@@ -20,3 +20,7 @@ The daemon runs as a systemd user service so it keeps running when the UI closes
 The unit runs `dotnet` from the user service PATH; if it is not found, set `Environment=PATH=...` or `DOTNET_ROOT` in a drop-in (`systemctl --user edit astardev-cloudsync`).
 
 The socket is `$XDG_RUNTIME_DIR/astardev-cloudsync/daemon.sock`, the same path the AppHost passes as `Ipc__SocketPath`.
+
+## Stop and restart from the UI
+
+Settings > Advanced > Daemon sends `StopDaemon`. Stop ends the daemon with exit code 0, so systemd leaves it stopped (`systemctl --user start astardev-cloudsync` starts it again). Restart ends it with exit code 75, which `RestartForceExitStatus=75` turns into a restart after `RestartSec` seconds. Run any other way, Restart only stops the daemon.

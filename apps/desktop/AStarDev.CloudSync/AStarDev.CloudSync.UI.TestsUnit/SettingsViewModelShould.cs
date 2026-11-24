@@ -30,6 +30,70 @@ public sealed class SettingsViewModelShould
     private static FakeIpcClient WithSettings(params (string Name, string Value)[] values) => new([], available: true) { SettingsReply = new Ok<SettingsView>(new SettingsView(values.ToDictionary(value => value.Name, value => value.Value))) };
 
     [Fact]
+    public void ask_for_confirmation_before_stopping_the_daemon_and_send_nothing_yet()
+    {
+        var client = new FakeIpcClient([], available: true);
+        var (settings, _) = Create(client, new FakeThemeService(), new FakeNotificationService());
+
+        settings.RequestStopDaemonCommand.Execute(null);
+
+        settings.IsDaemonConfirmationShown.ShouldBeTrue();
+        settings.DaemonConfirmationText.ShouldContain("Stop");
+        client.Sent.ShouldBeEmpty();
+    }
+
+    [Fact]
+    public async Task stop_the_daemon_once_confirmed()
+    {
+        var client = new FakeIpcClient([], available: true);
+        var (settings, _) = Create(client, new FakeThemeService(), new FakeNotificationService());
+        settings.RequestStopDaemonCommand.Execute(null);
+
+        await settings.ConfirmDaemonRequestAsync(TestContext.Current.CancellationToken);
+
+        client.Sent.ShouldBe([new StopDaemon(false)]);
+        settings.IsDaemonConfirmationShown.ShouldBeFalse();
+        settings.ErrorMessage.ShouldBeNull();
+    }
+
+    [Fact]
+    public async Task restart_the_daemon_once_confirmed()
+    {
+        var client = new FakeIpcClient([], available: true);
+        var (settings, _) = Create(client, new FakeThemeService(), new FakeNotificationService());
+        settings.RequestRestartDaemonCommand.Execute(null);
+
+        await settings.ConfirmDaemonRequestAsync(TestContext.Current.CancellationToken);
+
+        client.Sent.ShouldBe([new StopDaemon(true)]);
+    }
+
+    [Fact]
+    public void send_nothing_when_the_daemon_request_is_cancelled()
+    {
+        var client = new FakeIpcClient([], available: true);
+        var (settings, _) = Create(client, new FakeThemeService(), new FakeNotificationService());
+        settings.RequestRestartDaemonCommand.Execute(null);
+
+        settings.CancelDaemonRequestCommand.Execute(null);
+
+        settings.IsDaemonConfirmationShown.ShouldBeFalse();
+        client.Sent.ShouldBeEmpty();
+    }
+
+    [Fact]
+    public async Task show_why_the_daemon_declined_to_stop()
+    {
+        var client = new FakeIpcClient([], available: true) { CommandReply = new Ok<CommandResult>(new CommandResult(CommandOutcome.Rejected, "Busy.")) };
+        var (settings, _) = Create(client, new FakeThemeService(), new FakeNotificationService());
+        settings.RequestStopDaemonCommand.Execute(null);
+
+        await settings.ConfirmDaemonRequestAsync(TestContext.Current.CancellationToken);
+
+        settings.ErrorMessage.ShouldBe("Busy.");
+    }
+
+    [Fact]
     public async Task load_the_values_from_the_daemon()
     {
         var client = WithSettings((SettingKeys.Theme, "Light"), (SettingKeys.NotifyOnConflict, "false"), (SettingKeys.NotifyOnError, "true"), (SettingKeys.NotifyOnCompletion, "true"), (SettingKeys.AuditRetentionDays, "30"), (SettingKeys.TelemetryRetentionDays, "3"));

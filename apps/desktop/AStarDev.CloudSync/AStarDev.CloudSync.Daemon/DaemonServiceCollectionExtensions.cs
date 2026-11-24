@@ -64,6 +64,8 @@ internal static class DaemonServiceCollectionExtensions
         services.AddSingleton<SyncScopesQuery>();
         services.AddSingleton<StartSyncHandler>();
         services.AddSingleton<StopSyncHandler>();
+        services.AddSingleton<DaemonExit>();
+        services.AddSingleton<StopDaemonHandler>();
         services.AddSingleton<ActivitiesQuery>();
         services.AddSingleton<ConflictsQuery>();
         services.AddSingleton<DeadLettersQuery>();

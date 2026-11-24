@@ -214,6 +214,7 @@ Answered with a `CommandResult` (`Accepted`, `Rejected` or `ValidationError`, an
 ConnectAccount, DisconnectAccount
 CreateSyncJob, AddSyncScope, RemoveSyncScope
 StartSync, StopSync
+StopDaemon
 ResolveConflict, RetryOperation, IgnoreOperation
 SetSetting
 ```
