@@ -5,50 +5,117 @@
              x:DataType="vm:ClassificationsViewModel">
     <DockPanel Margin="16">
         <TextBlock DockPanel.Dock="Top" Text="{Binding Title}" FontSize="24" FontWeight="SemiBold" Foreground="{DynamicResource Text.Primary.Brush}" />
-        <StackPanel DockPanel.Dock="Top" Orientation="Horizontal" Spacing="8" Margin="0,8,0,8">
-            <TextBox Text="{Binding Filter}" PlaceholderText="{Binding FilterHint}" MinWidth="240" />
-            <Button Content="{Binding SortTextLabel}" Command="{Binding SortByTextCommand}" />
-            <Button Content="{Binding SortCategoryLabel}" Command="{Binding SortByCategoryCommand}" />
-            <Button Content="{Binding SortFilesLabel}" Command="{Binding SortByFilesCommand}" />
-            <Button Content="{Binding RefreshText}" Command="{Binding RefreshCommand}" />
+        <StackPanel DockPanel.Dock="Top" Orientation="Horizontal" Spacing="8" Margin="0,8,0,0" DataContext="{Binding Reclassify}" x:DataType="vm:ClassificationReclassifyViewModel">
+            <Button Content="{Binding StartText}" Command="{Binding StartCommand}" />
+            <TextBlock Text="{Binding StatusText}" VerticalAlignment="Center" Foreground="{DynamicResource Text.Secondary.Brush}" />
+            <TextBlock Text="{Binding ErrorMessage}" IsVisible="{Binding ErrorMessage, Converter={x:Static ObjectConverters.IsNotNull}}" VerticalAlignment="Center" Foreground="{DynamicResource Trust.Degraded.Brush}" />
         </StackPanel>
-        <TextBlock DockPanel.Dock="Top" Text="{Binding ErrorMessage}" IsVisible="{Binding ErrorMessage, Converter={x:Static ObjectConverters.IsNotNull}}" TextWrapping="Wrap" Foreground="{DynamicResource Trust.Degraded.Brush}" />
-        <Grid ColumnDefinitions="*,16,*">
-            <DockPanel Grid.Column="0">
-                <TextBlock DockPanel.Dock="Top" Text="{Binding EmptyText}" IsVisible="{Binding IsEmpty}" Foreground="{DynamicResource Text.Secondary.Brush}" />
-                <ListBox ItemsSource="{Binding Terms}" SelectedItem="{Binding SelectedTerm}">
-                    <ListBox.ItemTemplate>
-                        <DataTemplate x:DataType="vm:TermRowViewModel">
-                            <StackPanel Margin="0,2">
-                                <TextBlock Text="{Binding Header}" Foreground="{DynamicResource Text.Primary.Brush}" />
-                                <TextBlock Text="{Binding Detail}" Foreground="{DynamicResource Text.Secondary.Brush}" />
-                            </StackPanel>
+        <StackPanel DockPanel.Dock="Top" Orientation="Horizontal" Spacing="8" Margin="0,8,0,8">
+            <Button Content="{Binding TermsTabText}" Command="{Binding ShowTermsCommand}" />
+            <Button Content="{Binding SuggestionsTabText}" Command="{Binding ShowSuggestionsCommand}" />
+        </StackPanel>
+        <ContentControl IsVisible="{Binding IsSuggestionsTab}" Content="{Binding Suggestions}">
+        <ContentControl.ContentTemplate>
+        <DataTemplate x:DataType="vm:ClassificationSuggestionsViewModel">
+        <DockPanel>
+            <StackPanel DockPanel.Dock="Top" Orientation="Horizontal" Spacing="8" Margin="0,0,0,8">
+                <TextBlock Text="{Binding CategoryText}" VerticalAlignment="Center" Foreground="{DynamicResource Text.Secondary.Brush}" />
+                <ComboBox ItemsSource="{Binding $parent[UserControl].((vm:ClassificationsViewModel)DataContext).Editor.Categories}" SelectedItem="{Binding Category}" MinWidth="200" />
+                <Button Content="{Binding RefreshText}" Command="{Binding RefreshCommand}" />
+            </StackPanel>
+            <TextBlock DockPanel.Dock="Top" Text="{Binding ErrorMessage}" IsVisible="{Binding ErrorMessage, Converter={x:Static ObjectConverters.IsNotNull}}" TextWrapping="Wrap" Foreground="{DynamicResource Trust.Degraded.Brush}" />
+            <TextBlock DockPanel.Dock="Top" Text="{Binding EmptyText}" IsVisible="{Binding IsEmpty}" Foreground="{DynamicResource Text.Secondary.Brush}" />
+            <ScrollViewer>
+                <ItemsControl ItemsSource="{Binding Rows}">
+                    <ItemsControl.ItemTemplate>
+                        <DataTemplate x:DataType="vm:SuggestionRowViewModel">
+                            <DockPanel Margin="0,0,0,6">
+                                <StackPanel DockPanel.Dock="Right" Orientation="Horizontal" Spacing="8">
+                                    <Button Content="{Binding $parent[UserControl].((vm:ClassificationsViewModel)DataContext).Suggestions.PromoteText}" Command="{Binding $parent[UserControl].((vm:ClassificationsViewModel)DataContext).Suggestions.PromoteCommand}" CommandParameter="{Binding}" />
+                                    <Button Content="{Binding $parent[UserControl].((vm:ClassificationsViewModel)DataContext).Suggestions.IgnoreText}" Command="{Binding $parent[UserControl].((vm:ClassificationsViewModel)DataContext).Suggestions.IgnoreCommand}" CommandParameter="{Binding}" />
+                                </StackPanel>
+                                <StackPanel>
+                                    <TextBlock Text="{Binding Word}" Foreground="{DynamicResource Text.Primary.Brush}" />
+                                    <TextBlock Text="{Binding Detail}" Foreground="{DynamicResource Text.Secondary.Brush}" />
+                                </StackPanel>
+                            </DockPanel>
                         </DataTemplate>
-                    </ListBox.ItemTemplate>
-                </ListBox>
-            </DockPanel>
-            <DockPanel Grid.Column="2">
-                <TextBlock DockPanel.Dock="Top" Text="{Binding NoSelectionText}" IsVisible="{Binding !HasSelection}" Foreground="{DynamicResource Text.Secondary.Brush}" />
-                <StackPanel DockPanel.Dock="Top" IsVisible="{Binding HasSelection}">
-                    <TextBlock Text="{Binding FilesHeading}" FontWeight="SemiBold" Foreground="{DynamicResource Text.Primary.Brush}" />
-                    <TextBlock Text="{Binding FilesSummary}" Foreground="{DynamicResource Text.Secondary.Brush}" />
-                    <TextBlock Text="{Binding NoFilesText}" IsVisible="{Binding HasNoFiles}" Foreground="{DynamicResource Text.Secondary.Brush}" />
-                    <TextBlock Text="{Binding FilesErrorMessage}" IsVisible="{Binding FilesErrorMessage, Converter={x:Static ObjectConverters.IsNotNull}}" TextWrapping="Wrap" Foreground="{DynamicResource Trust.Degraded.Brush}" />
+                    </ItemsControl.ItemTemplate>
+                </ItemsControl>
+            </ScrollViewer>
+        </DockPanel>
+        </DataTemplate>
+        </ContentControl.ContentTemplate>
+        </ContentControl>
+        <DockPanel IsVisible="{Binding IsTermsTab}">
+            <StackPanel DockPanel.Dock="Top" Orientation="Horizontal" Spacing="8" Margin="0,0,0,8">
+                <TextBox Text="{Binding Filter}" PlaceholderText="{Binding FilterHint}" MinWidth="240" />
+                <Button Content="{Binding SortTextLabel}" Command="{Binding SortByTextCommand}" />
+                <Button Content="{Binding SortCategoryLabel}" Command="{Binding SortByCategoryCommand}" />
+                <Button Content="{Binding SortFilesLabel}" Command="{Binding SortByFilesCommand}" />
+                <Button Content="{Binding RefreshText}" Command="{Binding RefreshCommand}" />
+            </StackPanel>
+            <TextBlock DockPanel.Dock="Top" Text="{Binding ErrorMessage}" IsVisible="{Binding ErrorMessage, Converter={x:Static ObjectConverters.IsNotNull}}" TextWrapping="Wrap" Foreground="{DynamicResource Trust.Degraded.Brush}" />
+            <StackPanel DockPanel.Dock="Bottom" Spacing="6" Margin="0,8,0,0" DataContext="{Binding Editor}" x:DataType="vm:ClassificationEditorViewModel">
+                <TextBlock Text="{Binding ErrorMessage}" IsVisible="{Binding ErrorMessage, Converter={x:Static ObjectConverters.IsNotNull}}" TextWrapping="Wrap" Foreground="{DynamicResource Trust.Degraded.Brush}" />
+                <StackPanel Orientation="Horizontal" Spacing="8">
+                    <TextBox Text="{Binding NewCategoryName}" PlaceholderText="{Binding NewCategoryHint}" MinWidth="200" />
+                    <Button Content="{Binding AddCategoryText}" Command="{Binding AddCategoryCommand}" />
+                    <ComboBox ItemsSource="{Binding Categories}" SelectedItem="{Binding SelectedCategory}" MinWidth="160" />
+                    <TextBox Text="{Binding RenameText}" IsEnabled="{Binding HasSelectedCategory}" MinWidth="160" />
+                    <Button Content="{Binding RenameCategoryText}" Command="{Binding RenameCategoryCommand}" IsEnabled="{Binding HasSelectedCategory}" />
+                    <Button Content="{Binding DeleteCategoryText}" Command="{Binding DeleteCategoryCommand}" IsEnabled="{Binding HasSelectedCategory}" />
                 </StackPanel>
-                <Button DockPanel.Dock="Bottom" Content="{Binding MoreFilesText}" Command="{Binding LoadMoreFilesCommand}" IsVisible="{Binding CanLoadMoreFiles}" Margin="0,8,0,0" />
-                <ScrollViewer>
-                    <ItemsControl ItemsSource="{Binding Files}">
-                        <ItemsControl.ItemTemplate>
-                            <DataTemplate x:DataType="vm:FileRowViewModel">
-                                <StackPanel Margin="0,0,0,6">
-                                    <TextBlock Text="{Binding Path}" TextWrapping="Wrap" Foreground="{DynamicResource Text.Primary.Brush}" />
-                                    <TextBlock Text="{Binding Account}" Foreground="{DynamicResource Text.Secondary.Brush}" />
+                <StackPanel Orientation="Horizontal" Spacing="8">
+                    <TextBox Text="{Binding NewTermText}" PlaceholderText="{Binding NewTermHint}" MinWidth="200" />
+                    <ComboBox ItemsSource="{Binding Categories}" SelectedItem="{Binding NewTermCategory}" MinWidth="160" />
+                    <Button Content="{Binding AddTermText}" Command="{Binding AddTermCommand}" />
+                </StackPanel>
+                <StackPanel Orientation="Horizontal" Spacing="8" IsVisible="{Binding HasSelectedTerm}">
+                    <TextBox Text="{Binding EditText}" MinWidth="200" />
+                    <ComboBox ItemsSource="{Binding Categories}" SelectedItem="{Binding EditCategory}" MinWidth="160" />
+                    <CheckBox Content="{Binding IgnoredText}" IsChecked="{Binding EditIgnored}" />
+                    <Button Content="{Binding SaveTermText}" Command="{Binding SaveTermCommand}" />
+                    <Button Content="{Binding DeleteTermText}" Command="{Binding DeleteTermCommand}" />
+                </StackPanel>
+            </StackPanel>
+            <Grid ColumnDefinitions="*,16,*">
+                <DockPanel Grid.Column="0">
+                    <TextBlock DockPanel.Dock="Top" Text="{Binding EmptyText}" IsVisible="{Binding IsEmpty}" Foreground="{DynamicResource Text.Secondary.Brush}" />
+                    <ListBox ItemsSource="{Binding Terms}" SelectedItem="{Binding SelectedTerm}">
+                        <ListBox.ItemTemplate>
+                            <DataTemplate x:DataType="vm:TermRowViewModel">
+                                <StackPanel Margin="0,2">
+                                    <TextBlock Text="{Binding Header}" Foreground="{DynamicResource Text.Primary.Brush}" />
+                                    <TextBlock Text="{Binding Detail}" Foreground="{DynamicResource Text.Secondary.Brush}" />
                                 </StackPanel>
                             </DataTemplate>
-                        </ItemsControl.ItemTemplate>
-                    </ItemsControl>
-                </ScrollViewer>
-            </DockPanel>
-        </Grid>
+                        </ListBox.ItemTemplate>
+                    </ListBox>
+                </DockPanel>
+                <DockPanel Grid.Column="2">
+                    <TextBlock DockPanel.Dock="Top" Text="{Binding NoSelectionText}" IsVisible="{Binding !HasSelection}" Foreground="{DynamicResource Text.Secondary.Brush}" />
+                    <StackPanel DockPanel.Dock="Top" IsVisible="{Binding HasSelection}">
+                        <TextBlock Text="{Binding FilesHeading}" FontWeight="SemiBold" Foreground="{DynamicResource Text.Primary.Brush}" />
+                        <TextBlock Text="{Binding FilesSummary}" Foreground="{DynamicResource Text.Secondary.Brush}" />
+                        <TextBlock Text="{Binding NoFilesText}" IsVisible="{Binding HasNoFiles}" Foreground="{DynamicResource Text.Secondary.Brush}" />
+                        <TextBlock Text="{Binding FilesErrorMessage}" IsVisible="{Binding FilesErrorMessage, Converter={x:Static ObjectConverters.IsNotNull}}" TextWrapping="Wrap" Foreground="{DynamicResource Trust.Degraded.Brush}" />
+                    </StackPanel>
+                    <Button DockPanel.Dock="Bottom" Content="{Binding MoreFilesText}" Command="{Binding LoadMoreFilesCommand}" IsVisible="{Binding CanLoadMoreFiles}" Margin="0,8,0,0" />
+                    <ScrollViewer>
+                        <ItemsControl ItemsSource="{Binding Files}">
+                            <ItemsControl.ItemTemplate>
+                                <DataTemplate x:DataType="vm:FileRowViewModel">
+                                    <StackPanel Margin="0,0,0,6">
+                                        <TextBlock Text="{Binding Path}" TextWrapping="Wrap" Foreground="{DynamicResource Text.Primary.Brush}" />
+                                        <TextBlock Text="{Binding Account}" Foreground="{DynamicResource Text.Secondary.Brush}" />
+                                    </StackPanel>
+                                </DataTemplate>
+                            </ItemsControl.ItemTemplate>
+                        </ItemsControl>
+                    </ScrollViewer>
+                </DockPanel>
+            </Grid>
+        </DockPanel>
     </DockPanel>
 </UserControl>
