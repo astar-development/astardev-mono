@@ -7,7 +7,8 @@ public sealed class ClassificationMessagesShould
     {
         var termId = Guid.NewGuid();
 
-        IpcJson.FromElement<GetClassificationTerms>(IpcJson.ToElement(new GetClassificationTerms()).ShouldSucceed()).ShouldSucceed().ShouldBe(new GetClassificationTerms());
+        var terms = new GetClassificationTerms("red", ClassificationTermSort.Files, true, 400, 200);
+        IpcJson.FromElement<GetClassificationTerms>(IpcJson.ToElement(terms).ShouldSucceed()).ShouldSucceed().ShouldBe(terms);
         IpcJson.FromElement<GetTermFiles>(IpcJson.ToElement(new GetTermFiles(termId, 5, 100)).ShouldSucceed()).ShouldSucceed().ShouldBe(new GetTermFiles(termId, 5, 100));
         IpcJson.FromElement<GetClassificationSuggestions>(IpcJson.ToElement(new GetClassificationSuggestions()).ShouldSucceed()).ShouldSucceed().ShouldBe(new GetClassificationSuggestions());
         IpcJson.FromElement<StartReclassify>(IpcJson.ToElement(new StartReclassify()).ShouldSucceed()).ShouldSucceed().ShouldBe(new StartReclassify());
@@ -18,12 +19,13 @@ public sealed class ClassificationMessagesShould
     public void round_trip_a_terms_view()
     {
         var category = new ClassificationCategoryView(Guid.NewGuid(), "Colour");
-        var view = new ClassificationTermsView([category], [new ClassificationTermView(Guid.NewGuid(), "red", category.Id, "Seed", false, 3)]);
+        var view = new ClassificationTermsView([category], [new ClassificationTermView(Guid.NewGuid(), "red", category.Id, "Seed", false, 3)], 32000);
 
         var back = IpcJson.FromElement<ClassificationTermsView>(IpcJson.ToElement(view).ShouldSucceed()).ShouldSucceed();
 
         back.Categories.ShouldBe(view.Categories);
         back.Terms.ShouldBe(view.Terms);
+        back.Total.ShouldBe(32000);
     }
 
     [Fact]
@@ -40,9 +42,9 @@ public sealed class ClassificationMessagesShould
     [Fact]
     public void round_trip_a_suggestions_view()
     {
-        var view = new ClassificationSuggestionsView([new ClassificationSuggestionView("zorblax", 4, true)]);
+        var view = new ClassificationSuggestionsView([new ClassificationSuggestionView("zorblax", 4, true)], 900);
 
-        IpcJson.FromElement<ClassificationSuggestionsView>(IpcJson.ToElement(view).ShouldSucceed()).ShouldSucceed().Suggestions.ShouldBe(view.Suggestions);
+        IpcJson.FromElement<ClassificationSuggestionsView>(IpcJson.ToElement(view).ShouldSucceed()).ShouldSucceed().ShouldSatisfyAllConditions(back => back.Suggestions.ShouldBe(view.Suggestions), back => back.Total.ShouldBe(900));
     }
 
     [Fact]

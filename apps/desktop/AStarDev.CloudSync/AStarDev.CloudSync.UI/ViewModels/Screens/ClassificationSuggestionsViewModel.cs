@@ -17,6 +17,7 @@ internal sealed class ClassificationSuggestionsViewModel : ViewModelBase
     private readonly Func<IIpcClient> createClient;
     private CategoryRowViewModel? category;
     private bool isLoaded;
+    private int total;
     private string? errorMessage;
 
     /// <summary>Creates the tab with no suggestions until the first load.</summary>
@@ -49,6 +50,12 @@ internal sealed class ClassificationSuggestionsViewModel : ViewModelBase
 
     /// <summary>True when the scan ran and found nothing.</summary>
     public bool IsEmpty => isLoaded && Rows.Count == 0;
+
+    /// <summary>True when the daemon found more words than it listed, so the tab says it shows the most common ones.</summary>
+    public bool IsCut => total > Rows.Count;
+
+    /// <summary>How many words are shown out of how many were found.</summary>
+    public string SummaryText => localisation.Format("Classifications.Suggestions.Summary", ("shown", Rows.Count), ("total", total));
 
     /// <summary>Why the last scan or change failed, worded for the user. <see langword="null"/> after one that worked.</summary>
     public string? ErrorMessage
@@ -102,7 +109,10 @@ internal sealed class ClassificationSuggestionsViewModel : ViewModelBase
                 foreach (var suggestion in ok.Value.Suggestions) Rows.Add(Row(suggestion));
 
                 isLoaded = true;
+                total = ok.Value.Total;
                 ErrorMessage = null;
+                OnPropertyChanged(nameof(IsCut));
+                OnPropertyChanged(nameof(SummaryText));
                 OnPropertyChanged(nameof(IsLoaded));
                 OnPropertyChanged(nameof(IsEmpty));
                 break;
@@ -146,8 +156,11 @@ internal sealed class ClassificationSuggestionsViewModel : ViewModelBase
         switch (await ClassificationRequests.SendAsync(createClient, command(chosen), localisation.Get("Classifications.Editor.Refused"), cancellationToken))
         {
             case Ok<Unit>:
-                Rows.Remove(row);
+                if (Rows.Remove(row)) total--;
+
                 ErrorMessage = null;
+                OnPropertyChanged(nameof(IsCut));
+                OnPropertyChanged(nameof(SummaryText));
                 OnPropertyChanged(nameof(IsEmpty));
                 Changed?.Invoke();
                 break;
