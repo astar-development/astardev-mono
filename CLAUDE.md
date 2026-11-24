@@ -55,7 +55,7 @@ Architecture docs in `docs/architecture/` = source of truth; start at `00 archit
 
 ## Logging
 
-- Log with `[LoggerMessage]` source-generated methods in a `<Module>Log` class, never `logger.LogX(...)` directly. The event id comes from the module's 1000-block (SyncEngine 1000, IPC 2000, OneDrive 3000, Persistence 4000, Observability 5000, Daemon 6000, UI 7000, SingleInstance 8000); `LogEventIdsArchitectureTestsShouldEnsure` enforces it. CA1848 is an error in `.editorconfig` and `LoggingArchitectureTestsShouldEnsure` fails on any production call to `LoggerExtensions`. See `docs/runbooks/cloudsync-observability.md`.
+- Log with `[LoggerMessage]` source-generated methods in a `<Module>Log` class, never `logger.LogX(...)` directly. The event id comes from the module's 1000-block (SyncEngine 1000, IPC 2000, OneDrive 3000, Persistence 4000, Observability 5000, Daemon 6000, UI 7000, SingleInstance 8000, Classification 9000); `LogEventIdsArchitectureTestsShouldEnsure` enforces it. CA1848 is an error in `.editorconfig` and `LoggingArchitectureTestsShouldEnsure` fails on any production call to `LoggerExtensions`. See `docs/runbooks/cloudsync-observability.md`.
 
 ## Async
 

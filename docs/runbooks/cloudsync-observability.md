@@ -67,6 +67,7 @@ Every log message is a `[LoggerMessage]` method in its module's block of event i
 | Daemon | 6000 to 6999 |
 | UI | 7000 to 7999 |
 | SingleInstance | 8000 to 8999 |
+| Classification | 9000 to 9999 |
 
 `LogEventIdsArchitectureTestsShouldEnsure` fails the build when an id is used twice or sits outside its module's block.
 

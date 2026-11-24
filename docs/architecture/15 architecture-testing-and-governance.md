@@ -268,6 +268,19 @@ Forbidden. The Errors project may reference only `AStarDev.FunctionalParadigm`.
 
 ---
 
+### Classification Depends On Domain, Errors, Ports And FunctionalParadigm Only
+
+```text
+AStarDev.CloudSync.Classification
+    ↓
+SyncEngine, Persistence, OneDrive, IPC, Daemon, UI, Observability
+```
+
+Forbidden, as are EF Core and Avalonia. Only the Daemon may reference
+Classification. Checked on types and on the project file.
+
+---
+
 ### SyncEngine Must Not Reference Microsoft Graph
 
 ```text

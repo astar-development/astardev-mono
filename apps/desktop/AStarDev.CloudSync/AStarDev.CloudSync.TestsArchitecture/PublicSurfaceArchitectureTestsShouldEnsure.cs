@@ -11,7 +11,7 @@ public sealed class PublicSurfaceArchitectureTestsShouldEnsure
     [Fact]
     public void the_domain_exposes_only_its_approved_public_types()
         => ShouldExposeExactly(typeof(ItemId).Assembly,
-            "Account", "AccountId", "AccountStatus", "BootstrapMode", "CanonicalItemState", "Conflict", "ConflictId", "ConflictStatus", "ConflictType", "ContentFingerprint", "CTag", "DeltaToken", "ETag", "ItemId", "ItemType", "KnownSnapshot", "LocalIdentity", "LocalSnapshot", "Operation", "OperationId", "OperationPriority", "OperationStatus", "OperationType", "RelativePath", "RemoteItemId", "RemoteSnapshot", "ScopeCoverage", "SnapshotId", "SyncJob", "SyncJobId", "SyncScope");
+            "Account", "AccountId", "AccountStatus", "BootstrapMode", "CanonicalItemState", "CategoryId", "Conflict", "ConflictId", "ConflictStatus", "ConflictType", "ContentFingerprint", "CTag", "DeltaToken", "ETag", "ItemId", "ItemType", "KnownSnapshot", "LocalIdentity", "LocalSnapshot", "Operation", "OperationId", "OperationPriority", "OperationStatus", "OperationType", "RelativePath", "RemoteItemId", "RemoteSnapshot", "ScopeCoverage", "SnapshotId", "SyncJob", "SyncJobId", "SyncScope", "TermId");
 
     [Fact]
     public void the_ports_expose_only_their_approved_public_types()
@@ -29,6 +29,10 @@ public sealed class PublicSurfaceArchitectureTestsShouldEnsure
              "GetAccounts", "GetProviders", "ProviderCapability", "ProviderInsightsView", "ProviderView", "ProvidersView", "GetActivities", "GetAudit", "GetConflicts", "GetDaemonStatus", "GetDashboardSnapshot", "GetDeadLetters", "GetDiagnostics", "GetDriveInfo", "GetHistory", "GetLogs", "GetQueue", "GetMetrics", "GetRemoteFolders", "GetRemoteRootSummary", "GetSettings", "GetSyncJobs", "GetSyncScopes", "GetSyncStatus", "GetTraces", "HandlerFailed", "HealthCheckView", "HistoryEntryView", "HistoryView", "QueueChanged", "QueuedOperationView", "QueueView", "ICommand",
              "IEvent", "IgnoreOperation", "IIpcClient", "IIpcServer", "IpcError", "IQuery`1", "ListenFailed", "LogEntryView", "LogsView", "MalformedFrame", "MetricSampleView", "MetricsView", "NotConnected", "ProviderHealthState", "RemoteFolderView", "RemoteFoldersView", "RemoteRootSummaryView",
              "RemoveSyncScope", "ResolveConflict", "RetryOperation", "SetSetting", "SettingsView", "SpanView", "StartSync", "StopDaemon", "StopSync", "SyncBootstrapMode", "SyncJobView", "SyncJobsView", "SyncScopeView", "SyncScopesView", "SyncStatusChanged", "SyncStatusView", "TracesView", "UnixSocketIpc"]);
+
+    [Fact]
+    public void classification_exposes_only_its_approved_public_types()
+        => ShouldExposeExactly(typeof(Classification.ClassificationServiceCollectionExtensions).Assembly, "ClassificationServiceCollectionExtensions");
 
     [Fact]
     public void the_daemon_exposes_no_public_types()
