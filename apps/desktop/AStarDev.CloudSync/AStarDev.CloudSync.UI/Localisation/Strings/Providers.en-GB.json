@@ -54,7 +54,7 @@
   "Providers.Add.Step.VerifyAccess.Text": "Access verified: {items}.",
   "Providers.Add.Step.VerifyAccess.Action": "Continue",
   "Providers.Add.Step.ChooseSyncRoot.Title": "5. Choose sync root",
-  "Providers.Add.Step.ChooseSyncRoot.Text": "Choose the local folder and remote folders to sync under Settings once the account is active.",
+  "Providers.Add.Step.ChooseSyncRoot.Text": "Tick the remote folders to sync and choose the local folder they sync to.",
   "Providers.Add.Step.ChooseSyncRoot.Action": "Continue",
   "Providers.Add.Step.ReviewConfiguration.Title": "6. Review configuration",
   "Providers.Add.Step.ReviewConfiguration.Text": "{provider} will be added with safe defaults: nothing is deleted and nothing syncs until you pick folders.",

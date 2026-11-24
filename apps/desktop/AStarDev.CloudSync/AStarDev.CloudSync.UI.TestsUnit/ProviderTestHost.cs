@@ -22,7 +22,9 @@ internal sealed class ProviderTestHost : IDisposable
         var localisation = host.Services.GetRequiredService<ILocalisationService>();
         Connect = new ConnectViewModel(() => client);
         Accounts = new AccountsViewModel(() => client);
-        Providers = new ProvidersViewModel(localisation, Connect, Accounts, host.Services.GetRequiredService<Func<INavigationService>>(), catalogue ?? OneDrive, new IpcProviderInsightsSource(new IpcProvidersSource(() => client), localisation, host.Services.GetRequiredService<ICultureService>()), launcher);
+        var selection = new ScopeSelectionViewModel(() => client, new FakeFolderPicker(null));
+        Folders = new FolderTreeViewModel(() => client, selection);
+        Providers = new ProvidersViewModel(localisation, Connect, Accounts, host.Services.GetRequiredService<Func<INavigationService>>(), catalogue ?? OneDrive, new IpcProviderInsightsSource(new IpcProvidersSource(() => client), localisation, host.Services.GetRequiredService<ICultureService>()), launcher, Folders, selection);
     }
 
     private static FakeProviderCatalogue OneDrive { get; } = new(new ProviderDescriptor("OneDrive", "OneDrive", [ProviderCapability.SelectiveSync, ProviderCapability.DeltaSync, ProviderCapability.Versioning, ProviderCapability.RecycleBin, ProviderCapability.SharedContent]));
@@ -34,6 +36,8 @@ internal sealed class ProviderTestHost : IDisposable
     public ConnectViewModel Connect { get; }
 
     public AccountsViewModel Accounts { get; }
+
+    public FolderTreeViewModel Folders { get; }
 
     public ProvidersViewModel Providers { get; }
 

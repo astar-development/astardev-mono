@@ -48,6 +48,24 @@ public sealed class AddProviderViewModelShould
     }
 
     [Fact]
+    public async Task stay_on_the_sync_root_step_and_show_the_failure_when_the_job_cannot_be_created()
+    {
+        using var host = ProviderTestHost.Create(ProviderTestHost.ClientWith());
+        var add = host.Providers.Add;
+        add.BeginCommand.Execute(null);
+        add.SelectCommand.Execute(add.Providers[0]);
+        while (add.Step != AddProviderStep.ChooseSyncRoot) await add.ContinueCommand.ExecuteAsync(null);
+        add.IsChoosingSyncRoot.ShouldBeTrue();
+        add.Selection.LocalRoot = "/mnt/sync";
+        add.Selection.Select("docs", true);
+
+        await add.ContinueCommand.ExecuteAsync(null);
+
+        add.Step.ShouldBe(AddProviderStep.ChooseSyncRoot);
+        add.Selection.StatusMessage.ShouldNotBeNull();
+    }
+
+    [Fact]
     public void close_and_forget_the_choice_when_cancelled()
     {
         using var host = ProviderTestHost.Create(ProviderTestHost.ClientWith());

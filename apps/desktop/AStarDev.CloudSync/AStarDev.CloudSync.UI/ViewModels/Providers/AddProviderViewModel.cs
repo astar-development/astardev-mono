@@ -8,7 +8,9 @@ namespace AStarDev.CloudSync.UI.ViewModels.Providers;
 /// <param name="connect">Performs the sign-in and verification at the Authenticate step.</param>
 /// <param name="catalogue">Lists the providers to choose from.</param>
 /// <param name="localisation">Supplies step titles and texts.</param>
-internal sealed partial class AddProviderViewModel(ConnectViewModel connect, IProviderCatalogue catalogue, ILocalisationService localisation) : ViewModelBase
+/// <param name="folders">The remote folder tree shown at the sync root step.</param>
+/// <param name="selection">The ticked folders and local folder; Continue at the sync root step creates the sync job from them.</param>
+internal sealed partial class AddProviderViewModel(ConnectViewModel connect, IProviderCatalogue catalogue, ILocalisationService localisation, FolderTreeViewModel folders, ScopeSelectionViewModel selection) : ViewModelBase
 {
     /// <summary>True while the journey is shown.</summary>
     [ObservableProperty]
@@ -16,7 +18,7 @@ internal sealed partial class AddProviderViewModel(ConnectViewModel connect, IPr
 
     /// <summary>The step being shown.</summary>
     [ObservableProperty]
-    [NotifyPropertyChangedFor(nameof(StepTitle), nameof(StepText), nameof(ActionText), nameof(IsSelecting))]
+    [NotifyPropertyChangedFor(nameof(StepTitle), nameof(StepText), nameof(ActionText), nameof(IsSelecting), nameof(IsChoosingSyncRoot))]
     [NotifyCanExecuteChangedFor(nameof(ContinueCommand))]
     public partial AddProviderStep Step { get; set; }
 
@@ -31,6 +33,15 @@ internal sealed partial class AddProviderViewModel(ConnectViewModel connect, IPr
 
     /// <summary>Tells the view the provider list may have changed, after the catalogue was refreshed.</summary>
     public void Refresh() => OnPropertyChanged(nameof(Providers));
+
+    /// <summary>The remote folders to tick at the sync root step.</summary>
+    public FolderTreeViewModel Folders => folders;
+
+    /// <summary>The local folder and ticked folders at the sync root step.</summary>
+    public ScopeSelectionViewModel Selection => selection;
+
+    /// <summary>True at the sync root step, where the folder tree and local folder are shown.</summary>
+    public bool IsChoosingSyncRoot => Step == AddProviderStep.ChooseSyncRoot;
 
     /// <summary>True while the provider list is shown, that is at the first step.</summary>
     public bool IsSelecting => Step == AddProviderStep.SelectProvider;
@@ -68,7 +79,7 @@ internal sealed partial class AddProviderViewModel(ConnectViewModel connect, IPr
 
     /// <summary>
     /// Moves to the next step. At Authenticate it signs in first and stays there when that fails, leaving the reason on <see cref="ConnectViewModel.ErrorMessage"/>.
-    /// At Activate it closes the journey. Cancellation surfaces as <see cref="OperationCanceledException"/>. Also exposed to the view as <c>ContinueCommand</c>.
+    /// At the sync root step it creates the sync job when a local folder and folders are chosen, and stays there when that fails, leaving the reason on <see cref="ScopeSelectionViewModel.StatusMessage"/>; with nothing chosen it moves on. At Activate it closes the journey. Cancellation surfaces as <see cref="OperationCanceledException"/>. Also exposed to the view as <c>ContinueCommand</c>.
     /// </summary>
     [RelayCommand(CanExecute = nameof(CanContinue))]
     public async Task ContinueAsync(CancellationToken cancellationToken)
@@ -81,6 +92,9 @@ internal sealed partial class AddProviderViewModel(ConnectViewModel connect, IPr
                 await connect.ConnectAsync(cancellationToken);
                 if (connect.ErrorMessage is null) Step = AddProviderStep.GrantPermissions;
                 break;
+            case AddProviderStep.ChooseSyncRoot:
+                await CreateJobAsync(cancellationToken);
+                break;
             case AddProviderStep.Activate:
                 IsOpen = false;
                 break;
@@ -88,6 +102,20 @@ internal sealed partial class AddProviderViewModel(ConnectViewModel connect, IPr
                 Step++;
                 break;
         }
+    }
+
+    partial void OnStepChanged(AddProviderStep value)
+    {
+        if (value != AddProviderStep.ChooseSyncRoot) return;
+
+        selection.RefreshCommand.Execute(null);
+        folders.RefreshCommand.Execute(null);
+    }
+
+    private async Task CreateJobAsync(CancellationToken cancellationToken)
+    {
+        await selection.CreateJobAsync(cancellationToken);
+        if (selection.StatusMessage is null) Step++;
     }
 
     private bool CanContinue() => Step != AddProviderStep.SelectProvider || SelectedProvider is not null;

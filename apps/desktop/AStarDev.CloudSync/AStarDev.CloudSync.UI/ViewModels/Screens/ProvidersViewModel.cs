@@ -28,7 +28,9 @@ internal sealed partial class ProvidersViewModel : ViewModelBase, IScreen, IDisp
     /// <param name="catalogue">The provider metadata registry.</param>
     /// <param name="insights">The per-account figures.</param>
     /// <param name="launcher">Opens the help link of an error in the browser.</param>
-    public ProvidersViewModel(ILocalisationService localisation, ConnectViewModel connect, AccountsViewModel accounts, Func<INavigationService> navigation, IProviderCatalogue catalogue, IProviderInsightsSource insights, IUriLauncher launcher)
+    /// <param name="folders">The remote folder tree of the sync root step.</param>
+    /// <param name="selection">The ticked folders and local folder of the sync root step.</param>
+    public ProvidersViewModel(ILocalisationService localisation, ConnectViewModel connect, AccountsViewModel accounts, Func<INavigationService> navigation, IProviderCatalogue catalogue, IProviderInsightsSource insights, IUriLauncher launcher, FolderTreeViewModel folders, ScopeSelectionViewModel selection)
     {
         this.localisation = localisation;
         this.accounts = accounts;
@@ -37,7 +39,7 @@ internal sealed partial class ProvidersViewModel : ViewModelBase, IScreen, IDisp
         this.insights = insights;
         this.launcher = launcher;
         Connect = connect;
-        Add = new AddProviderViewModel(connect, catalogue, localisation);
+        Add = new AddProviderViewModel(connect, catalogue, localisation, folders, selection);
         HealthSummary = BuildSummary();
         accounts.Accounts.CollectionChanged += (_, _) =>
         {
