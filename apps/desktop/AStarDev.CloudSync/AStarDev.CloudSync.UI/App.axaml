@@ -11,6 +11,9 @@
 
     <Application.Styles>
         <FluentTheme />
+        <Style Selector="Window">
+            <Setter Property="Foreground" Value="{DynamicResource Text.Primary.Brush}" />
+        </Style>
         <Style Selector="Border.card">
             <Setter Property="Background" Value="{DynamicResource Surface.Raised.Brush}" />
             <Setter Property="BorderBrush" Value="{DynamicResource Border.Brush}" />
@@ -39,12 +42,12 @@
             <Setter Property="Padding" Value="20,14" />
         </Style>
         <Style Selector="Button.action">
-            <Setter Property="Background" Value="#262B34" />
+            <Setter Property="Background" Value="{DynamicResource Action.Brush}" />
             <Setter Property="CornerRadius" Value="6" />
             <Setter Property="Padding" Value="14,6" />
         </Style>
         <Style Selector="Border.badge">
-            <Setter Property="Background" Value="#2F6FD6" />
+            <Setter Property="Background" Value="{DynamicResource Badge.Brush}" />
             <Setter Property="CornerRadius" Value="6" />
             <Setter Property="Width" Value="28" />
             <Setter Property="Height" Value="28" />

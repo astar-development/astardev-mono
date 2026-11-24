@@ -20,11 +20,11 @@ CloudSync supports multiple visual themes, multiple languages, regional formatti
 
 ## Theme Architecture
 
-Themes: Dark (MVP default), Light, Hacker, High Contrast and future community themes. Theme resources live in dedicated Avalonia resource dictionaries.
+Themes: Dark (MVP default), Light, Hacker (green on black), Purple Unicorn, High Contrast and future community themes. Theme resources live in dedicated Avalonia resource dictionaries.
 
-## Pink Unicorn Theme
+## Purple Unicorn Theme
 
-Post-MVP, the Pink Unicorn Theme is recognised as a valid future theme. It is an architectural reminder: new themes must be addable without modifying existing UI logic.
+Purple Unicorn is a shipped theme and an architectural reminder: new themes must be addable without modifying existing UI logic.
 
 ## Trust and Accessibility
 
@@ -58,13 +58,13 @@ Future settings provide Theme selection, Language selection, Culture selection a
 
 ## Relationship to Dashboard
 
-The dashboard trust model works identically in Dark, Light, Hacker, High Contrast, Pink Unicorn and any future theme. Theme changes never alter meaning.
+The dashboard trust model works identically in Dark, Light, Hacker, High Contrast, Purple Unicorn and any future theme. Theme changes never alter meaning.
 
 ## Future Roadmap
 
 - MVP: Dark theme, en-GB.
-- Post-MVP: Light theme, culture abstraction, localisation framework.
-- Later: Hacker theme, High Contrast theme, multilingual support, community themes, Pink Unicorn theme.
+- Post-MVP: Light, Hacker and Purple Unicorn themes (shipped), culture abstraction, localisation framework.
+- Later: High Contrast theme, multilingual support, community themes.
 
 ## Key Principle
 

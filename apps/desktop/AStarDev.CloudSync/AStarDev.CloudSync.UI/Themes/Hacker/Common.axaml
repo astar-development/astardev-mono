@@ -1,0 +1,16 @@
+<ResourceDictionary xmlns="https://github.com/avaloniaui"
+                    xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml">
+  <SolidColorBrush x:Key="Trust.Healthy.Brush" Color="#00FF41" />
+  <SolidColorBrush x:Key="Trust.Active.Brush" Color="#00E5FF" />
+  <SolidColorBrush x:Key="Trust.Degraded.Brush" Color="#FFD600" />
+  <SolidColorBrush x:Key="Trust.Attention.Brush" Color="#FF9100" />
+  <SolidColorBrush x:Key="Trust.Critical.Brush" Color="#FF1744" />
+  <SolidColorBrush x:Key="Surface.Brush" Color="#000000" />
+  <SolidColorBrush x:Key="Surface.Raised.Brush" Color="#0A120A" />
+  <SolidColorBrush x:Key="Border.Brush" Color="#1F5F1F" />
+  <SolidColorBrush x:Key="Text.Primary.Brush" Color="#33FF33" />
+  <SolidColorBrush x:Key="Text.Secondary.Brush" Color="#1FA81F" />
+  <SolidColorBrush x:Key="Accent.Brush" Color="#00FF41" />
+  <SolidColorBrush x:Key="Action.Brush" Color="#0D1F0D" />
+  <SolidColorBrush x:Key="Badge.Brush" Color="#0B7A2B" />
+</ResourceDictionary>

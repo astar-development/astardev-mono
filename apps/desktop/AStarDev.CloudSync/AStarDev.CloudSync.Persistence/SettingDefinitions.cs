@@ -5,7 +5,7 @@ namespace AStarDev.CloudSync.Persistence;
 /// <summary>The default and the accepted values of every setting in <see cref="SettingNames"/>.</summary>
 internal static class SettingDefinitions
 {
-    private static readonly string[] Themes = ["Dark", "Light", "System"];
+    private static readonly string[] Themes = ["Dark", "Light", "Hacker", "Purple Unicorn", "System"];
 
     private static readonly string[] Booleans = ["true", "false"];
 
