@@ -8,6 +8,7 @@ var builder = Host.CreateApplicationBuilder(args);
 builder.Services.AddCloudSyncDaemon();
 
 var host = builder.Build();
+var exit = host.Services.GetRequiredService<DaemonExit>();
 await host.RunAsync();
 
-return host.Services.GetRequiredService<DaemonExit>().Code;
+return exit.Code;
