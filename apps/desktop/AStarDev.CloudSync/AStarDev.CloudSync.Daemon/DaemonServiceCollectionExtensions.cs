@@ -88,6 +88,12 @@ internal static class DaemonServiceCollectionExtensions
         services.AddSingleton<DiagnosticsQuery>();
         services.AddSingleton<MetricsQuery>();
         services.AddSingleton<ProvidersQuery>();
+        services.AddSingleton<TermsQuery>();
+        services.AddSingleton<TermFilesQuery>();
+        services.AddSingleton<SuggestionsQuery>();
+        services.AddSingleton<ReclassifyTracker>();
+        services.AddSingleton<StartReclassifyHandler>();
+        services.AddSingleton<ReclassifyStatusQuery>();
         services.AddHealthChecks().AddCheck<ProviderHealthCheck>(ApplicationConstants.ProviderHealthCheckName);
         services.AddHealthChecks().AddCheck<QueueHealthCheck>(ApplicationConstants.QueueHealthCheckName);
         services.AddHostedService<IpcHostedService>();

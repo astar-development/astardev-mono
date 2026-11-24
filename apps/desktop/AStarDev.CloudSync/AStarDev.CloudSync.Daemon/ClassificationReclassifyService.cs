@@ -9,8 +9,9 @@ namespace AStarDev.CloudSync.Daemon;
 /// It starts after the startup sequence, so a long run never delays the daemon accepting connections, and it is skipped on a database in recovery mode.
 /// </summary>
 /// <param name="reclassifier">Runs the reclassify.</param>
+/// <param name="tracker">Runs it one at a time and publishes its progress.</param>
 /// <param name="databaseState">Tells whether the database can be trusted.</param>
-internal sealed class ClassificationReclassifyService(IClassificationReclassifier reclassifier, IDatabaseState databaseState) : BackgroundService
+internal sealed class ClassificationReclassifyService(IClassificationReclassifier reclassifier, ReclassifyTracker tracker, IDatabaseState databaseState) : BackgroundService
 {
     /// <inheritdoc/>
     protected override async Task ExecuteAsync(CancellationToken stoppingToken)
@@ -18,6 +19,6 @@ internal sealed class ClassificationReclassifyService(IClassificationReclassifie
         if (databaseState.Mode != DatabaseMode.Normal) return;
 
         await Task.Yield();
-        _ = await reclassifier.StartIfStaleAsync(new Progress<ReclassifyProgress>(), stoppingToken);
+        _ = await tracker.RunAsync(progress => reclassifier.StartIfStaleAsync(progress, stoppingToken), stoppingToken);
     }
 }

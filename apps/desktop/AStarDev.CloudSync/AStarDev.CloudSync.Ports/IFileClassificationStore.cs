@@ -41,6 +41,14 @@ public interface IFileClassificationStore
     /// <returns>The item identities; empty when no item has the term or the term is unknown. Fails only with <see cref="StorageFailed"/>.</returns>
     Task<Result<IReadOnlyList<ItemId>, ClassificationError>> GetItemsForTermAsync(TermId termId, CancellationToken cancellationToken);
 
+    /// <summary>Reads one page of the files linked to a term, with their paths and account names, for display.</summary>
+    /// <param name="termId">The term.</param>
+    /// <param name="skip">How many files to skip, in path order.</param>
+    /// <param name="take">The most files to return.</param>
+    /// <param name="cancellationToken">Cancelling abandons the read.</param>
+    /// <returns>The page and the term's total; empty with a total of zero when no file has the term or the term is unknown. Fails only with <see cref="StorageFailed"/>.</returns>
+    Task<Result<TermFilesPage, ClassificationError>> GetFilesForTermAsync(TermId termId, int skip, int take, CancellationToken cancellationToken);
+
     /// <summary>Counts the items linked to each term.</summary>
     /// <param name="cancellationToken">Cancelling abandons the read.</param>
     /// <returns>The count per term; a term with no items is absent. Fails only with <see cref="StorageFailed"/>.</returns>
