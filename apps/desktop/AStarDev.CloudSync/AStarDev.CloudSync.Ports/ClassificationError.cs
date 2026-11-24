@@ -70,5 +70,16 @@ public sealed record ItemNotFound(ItemId Id) : IErrorInfo
     public string HelpLink => ErrorLinks.For(Code);
 }
 
+/// <summary>The text is empty once trimmed, so it cannot be a term. Nothing was written.</summary>
+/// <param name="Text">The text that was given.</param>
+public sealed record InvalidTermText(string Text) : IErrorInfo
+{
+    /// <inheritdoc/>
+    public ErrorCode Code => PortsErrorCodes.InvalidTermText;
+
+    /// <inheritdoc/>
+    public string HelpLink => ErrorLinks.For(Code);
+}
+
 /// <summary>Closed set of failures that cross the classification store boundary.</summary>
-public union ClassificationError(CategoryNotFound, CategoryAlreadyExists, CategoryNotEmpty, TermNotFound, TermAlreadyExists, ItemNotFound, StorageFailed);
+public union ClassificationError(CategoryNotFound, CategoryAlreadyExists, CategoryNotEmpty, TermNotFound, TermAlreadyExists, ItemNotFound, InvalidTermText, StorageFailed);

@@ -28,6 +28,7 @@ internal static class PortsErrorCodes
     public static readonly ErrorCode TermNotFound = Of("CS-PORTS-0021");
     public static readonly ErrorCode TermAlreadyExists = Of("CS-PORTS-0022");
     public static readonly ErrorCode ItemNotFound = Of("CS-PORTS-0023");
+    public static readonly ErrorCode InvalidTermText = Of("CS-PORTS-0024");
 
     private static ErrorCode Of(string value) => ErrorCode.Create(value).Value is Ok<ErrorCode> ok ? ok.Value : default;
 }

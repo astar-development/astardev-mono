@@ -17,6 +17,7 @@ public sealed class ClassificationErrorShould
             new TermNotFound(new TermId(Guid.NewGuid())),
             new TermAlreadyExists("red", category),
             new ItemNotFound(new ItemId(Guid.NewGuid())),
+            new InvalidTermText(" "),
             new StorageFailed("locked")
         ];
 
