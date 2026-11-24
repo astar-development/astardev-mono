@@ -11,6 +11,7 @@ namespace AStarDev.CloudSync.UI.ViewModels.Screens;
 /// The Classifications screen: every term with its category, where it came from and how many files it has, filtered by text and ordered by term, category or file count.
 /// Selecting a term lists its files a page at a time, each with the account that holds it. The daemon does the counting and the paging; the screen only shows what it is sent.
 /// Terms load each time the screen is opened and whenever <see cref="RefreshCommand"/> runs.
+/// Beside the terms it hosts the Suggestions tab, the forms that add, edit and remove categories and terms, and the reclassify control; a change any of them makes reads the terms again.
 /// </summary>
 internal sealed class ClassificationsViewModel : ViewModelBase, IScreen
 {
@@ -27,14 +28,27 @@ internal sealed class ClassificationsViewModel : ViewModelBase, IScreen
     private int filesTotal;
     private string? errorMessage;
     private string? filesErrorMessage;
+    private ClassificationTab tab = ClassificationTab.Terms;
 
     /// <summary>Creates the screen with no terms until the first refresh.</summary>
     /// <param name="localisation">Supplies every text.</param>
+    /// <param name="culture">Formats the numbers and times of the reclassify control.</param>
     /// <param name="createClient">Creates a fresh client per request; one client is one connection.</param>
-    public ClassificationsViewModel(ILocalisationService localisation, Func<IIpcClient> createClient)
+    /// <param name="connection">Delivers the reclassify progress the daemon publishes.</param>
+    public ClassificationsViewModel(ILocalisationService localisation, ICultureService culture, Func<IIpcClient> createClient, ConnectionViewModel connection)
     {
         this.localisation = localisation;
         this.createClient = createClient;
+        Editor = new ClassificationEditorViewModel(localisation, createClient);
+        Suggestions = new ClassificationSuggestionsViewModel(localisation, createClient);
+        Reclassify = new ClassificationReclassifyViewModel(localisation, culture, createClient, connection);
+        Editor.Changed += ReadAgain;
+        Suggestions.Changed += ReadAgain;
+        Reclassify.Finished += ReadAgain;
+        LoadSuggestionsCommand = new AsyncRelayCommand(cancellationToken => Suggestions.EnsureLoadedAsync(cancellationToken));
+        LoadReclassifyStatusCommand = new AsyncRelayCommand(cancellationToken => Reclassify.LoadStatusAsync(cancellationToken));
+        ShowTermsCommand = new RelayCommand(() => Tab = ClassificationTab.Terms);
+        ShowSuggestionsCommand = new RelayCommand(() => Tab = ClassificationTab.Suggestions);
         RefreshCommand = new AsyncRelayCommand(RefreshAsync);
         LoadMoreFilesCommand = new AsyncRelayCommand(cancellationToken => LoadFilesAsync(false, cancellationToken));
         ReloadFilesCommand = new AsyncRelayCommand(cancellationToken => LoadFilesAsync(true, cancellationToken));
@@ -51,6 +65,53 @@ internal sealed class ClassificationsViewModel : ViewModelBase, IScreen
 
     /// <inheritdoc/>
     public string Glyph => localisation.Get("Classifications.Glyph");
+
+    /// <summary>The forms that add, edit and remove categories and terms.</summary>
+    public ClassificationEditorViewModel Editor { get; }
+
+    /// <summary>The Suggestions tab.</summary>
+    public ClassificationSuggestionsViewModel Suggestions { get; }
+
+    /// <summary>The reclassify control.</summary>
+    public ClassificationReclassifyViewModel Reclassify { get; }
+
+    /// <summary>Which list is shown. Terms until changed; choosing Suggestions runs the scan the first time.</summary>
+    public ClassificationTab Tab
+    {
+        get => tab;
+        private set
+        {
+            if (!SetProperty(ref tab, value)) return;
+
+            OnPropertyChanged(nameof(IsTermsTab));
+            OnPropertyChanged(nameof(IsSuggestionsTab));
+            if (value == ClassificationTab.Suggestions) LoadSuggestionsCommand.Execute(null);
+        }
+    }
+
+    /// <summary>True while the terms are shown.</summary>
+    public bool IsTermsTab => tab == ClassificationTab.Terms;
+
+    /// <summary>True while the suggestions are shown.</summary>
+    public bool IsSuggestionsTab => tab == ClassificationTab.Suggestions;
+
+    /// <summary>Scans the file paths for suggestions the first time it runs.</summary>
+    public IAsyncRelayCommand LoadSuggestionsCommand { get; }
+
+    /// <summary>Asks the daemon whether a reclassify run is active.</summary>
+    public IAsyncRelayCommand LoadReclassifyStatusCommand { get; }
+
+    /// <summary>Shows the terms.</summary>
+    public IRelayCommand ShowTermsCommand { get; }
+
+    /// <summary>Shows the suggestions.</summary>
+    public IRelayCommand ShowSuggestionsCommand { get; }
+
+    /// <summary>Label of the terms tab.</summary>
+    public string TermsTabText => localisation.Get("Classifications.Tab.Terms");
+
+    /// <summary>Label of the suggestions tab.</summary>
+    public string SuggestionsTabText => localisation.Get("Classifications.Tab.Suggestions");
 
     /// <summary>The terms that match <see cref="Filter"/>, in the chosen order.</summary>
     public ObservableCollection<TermRowViewModel> Terms { get; } = [];
@@ -85,6 +146,7 @@ internal sealed class ClassificationsViewModel : ViewModelBase, IScreen
         {
             if (!SetProperty(ref selectedTerm, value)) return;
 
+            Editor.ShowTerm(value);
             OnPropertyChanged(nameof(HasSelection));
             OnPropertyChanged(nameof(FilesHeading));
             ReloadFilesCommand.Execute(null);
@@ -166,7 +228,11 @@ internal sealed class ClassificationsViewModel : ViewModelBase, IScreen
     public string MoreFilesText => localisation.Get("Classifications.Files.More");
 
     /// <inheritdoc/>
-    public void OnNavigatedTo(string? targetId) => RefreshCommand.Execute(null);
+    public void OnNavigatedTo(string? targetId)
+    {
+        RefreshCommand.Execute(null);
+        LoadReclassifyStatusCommand.Execute(null);
+    }
 
     /// <summary>Reads every term from the daemon. A failure keeps the terms shown and lands in <see cref="ErrorMessage"/>.</summary>
     /// <param name="cancellationToken">Cancelling abandons the wait and surfaces as <see cref="OperationCanceledException"/>.</param>
@@ -183,6 +249,7 @@ internal sealed class ClassificationsViewModel : ViewModelBase, IScreen
             case Ok<ClassificationTermsView> ok:
                 terms = ok.Value.Terms;
                 categoryNames = ok.Value.Categories.ToDictionary(category => category.Id, category => category.Name);
+                Editor.SetCategories(ok.Value.Categories);
                 ErrorMessage = null;
                 ShowTerms();
                 break;
@@ -242,6 +309,8 @@ internal sealed class ClassificationsViewModel : ViewModelBase, IScreen
             Fail<IpcError> fail => new Fail<ConnectFailure>(ConnectFailure.From(fail.Error))
         };
 
+    private void ReadAgain() => RefreshCommand.Execute(null);
+
     private void SortBy(TermSortColumn column)
     {
         sortDescending = column == sortColumn && !sortDescending;
@@ -274,7 +343,7 @@ internal sealed class ClassificationsViewModel : ViewModelBase, IScreen
     private string CategoryOf(ClassificationTermView term) => categoryNames.GetValueOrDefault(term.CategoryId, string.Empty);
 
     private TermRowViewModel Row(ClassificationTermView term)
-        => new(term.Id, localisation.Format(term.Ignored ? "Classifications.Term.HeaderIgnored" : "Classifications.Term.Header", ("text", term.Text)), localisation.Format("Classifications.Term.Detail", ("category", CategoryOf(term)), ("source", term.Source), ("count", term.FileCount)));
+        => new(term.Id, localisation.Format(term.Ignored ? "Classifications.Term.HeaderIgnored" : "Classifications.Term.Header", ("text", term.Text)), localisation.Format("Classifications.Term.Detail", ("category", CategoryOf(term)), ("source", term.Source), ("count", term.FileCount)), term.Text, term.CategoryId, term.Ignored);
 
     private void ClearFiles()
     {

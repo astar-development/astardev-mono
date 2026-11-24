@@ -144,6 +144,14 @@ filtered by text and ordered by term, category or file count. Selecting a term
 lists its files a page at a time, each with the account that holds it. The UI
 reads and edits only through IPC; the daemon counts and pages.
 
+A Suggestions tab lists the unreviewed words, scanned the first time the tab is
+shown, with a category picker and a promote and an ignore button per word. Forms
+below the terms add, rename and remove categories and add, edit and remove
+terms; the daemon words every refusal and the form shows it and keeps what was
+typed. A reclassify button starts a run and shows its progress from the
+daemon's events, also for a run the daemon started at startup. Any accepted
+change, and the end of a run, makes the screen read the terms again.
+
 ## Logging
 
 Classification log messages use the 9000 block of event ids, in a

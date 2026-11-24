@@ -1,0 +1,162 @@
+using System.Collections.ObjectModel;
+using AStarDev.CloudSync.IPC;
+using AStarDev.CloudSync.UI.Localisation;
+using AStarDev.FunctionalParadigm;
+using CommunityToolkit.Mvvm.Input;
+
+namespace AStarDev.CloudSync.UI.ViewModels.Screens;
+
+/// <summary>
+/// The Suggestions tab of the Classifications screen: the words found in file paths that are not yet terms, most common first. The user promotes a word into a category or ignores it; the daemon never assigns one by itself.
+/// The scan reads every file path, so it runs the first time the tab is shown and then only when <see cref="RefreshCommand"/> runs.
+/// <see cref="Changed"/> is raised after the daemon accepted a promotion or an ignore, so the screen can read the terms again.
+/// </summary>
+internal sealed class ClassificationSuggestionsViewModel : ViewModelBase
+{
+    private readonly ILocalisationService localisation;
+    private readonly Func<IIpcClient> createClient;
+    private CategoryRowViewModel? category;
+    private bool isLoaded;
+    private string? errorMessage;
+
+    /// <summary>Creates the tab with no suggestions until the first load.</summary>
+    /// <param name="localisation">Supplies every text.</param>
+    /// <param name="createClient">Creates a fresh client per request; one client is one connection.</param>
+    public ClassificationSuggestionsViewModel(ILocalisationService localisation, Func<IIpcClient> createClient)
+    {
+        this.localisation = localisation;
+        this.createClient = createClient;
+        RefreshCommand = new AsyncRelayCommand(LoadAsync);
+        PromoteCommand = new AsyncRelayCommand<SuggestionRowViewModel>(PromoteAsync);
+        IgnoreCommand = new AsyncRelayCommand<SuggestionRowViewModel>(IgnoreAsync);
+    }
+
+    /// <summary>Raised after the daemon accepted a promotion or an ignore.</summary>
+    public event Action? Changed;
+
+    /// <summary>The suggested words, most common first.</summary>
+    public ObservableCollection<SuggestionRowViewModel> Rows { get; } = [];
+
+    /// <summary>The category a promoted or ignored word goes into. The user must choose one before promoting.</summary>
+    public CategoryRowViewModel? Category
+    {
+        get => category;
+        set => SetProperty(ref category, value);
+    }
+
+    /// <summary>True once the scan has run, so the tab shows "no suggestions" only after it looked.</summary>
+    public bool IsLoaded => isLoaded;
+
+    /// <summary>True when the scan ran and found nothing.</summary>
+    public bool IsEmpty => isLoaded && Rows.Count == 0;
+
+    /// <summary>Why the last scan or change failed, worded for the user. <see langword="null"/> after one that worked.</summary>
+    public string? ErrorMessage
+    {
+        get => errorMessage;
+        private set => SetProperty(ref errorMessage, value);
+    }
+
+    /// <summary>Scans the file paths again.</summary>
+    public IAsyncRelayCommand RefreshCommand { get; }
+
+    /// <summary>Makes the row's word an active term in <see cref="Category"/>.</summary>
+    public IAsyncRelayCommand<SuggestionRowViewModel> PromoteCommand { get; }
+
+    /// <summary>Marks the row's word ignored so it is never suggested again.</summary>
+    public IAsyncRelayCommand<SuggestionRowViewModel> IgnoreCommand { get; }
+
+    /// <summary>Label of the scan button.</summary>
+    public string RefreshText => localisation.Get("Classifications.Suggestions.Refresh");
+
+    /// <summary>Label of the promote button.</summary>
+    public string PromoteText => localisation.Get("Classifications.Suggestions.Promote");
+
+    /// <summary>Label of the ignore button.</summary>
+    public string IgnoreText => localisation.Get("Classifications.Suggestions.Ignore");
+
+    /// <summary>Text shown when the scan found nothing.</summary>
+    public string EmptyText => localisation.Get("Classifications.Suggestions.Empty");
+
+    /// <summary>Text above the category picker.</summary>
+    public string CategoryText => localisation.Get("Classifications.Suggestions.Category");
+
+    /// <summary>Scans the file paths when they were not scanned yet.</summary>
+    /// <param name="cancellationToken">Cancelling abandons the wait and surfaces as <see cref="OperationCanceledException"/>.</param>
+    public Task EnsureLoadedAsync(CancellationToken cancellationToken) => isLoaded ? Task.CompletedTask : LoadAsync(cancellationToken);
+
+    /// <summary>Reads the suggestions from the daemon. A failure keeps the words shown and lands in <see cref="ErrorMessage"/>.</summary>
+    /// <param name="cancellationToken">Cancelling abandons the wait and surfaces as <see cref="OperationCanceledException"/>.</param>
+    public async Task LoadAsync(CancellationToken cancellationToken)
+    {
+        await using var client = createClient();
+
+        switch (await ConnectAsync(client, cancellationToken) switch
+        {
+            Ok<Unit> => await ScanAsync(client, cancellationToken),
+            Fail<ConnectFailure> fail => fail
+        })
+        {
+            case Ok<ClassificationSuggestionsView> ok:
+                Rows.Clear();
+                foreach (var suggestion in ok.Value.Suggestions) Rows.Add(Row(suggestion));
+
+                isLoaded = true;
+                ErrorMessage = null;
+                OnPropertyChanged(nameof(IsLoaded));
+                OnPropertyChanged(nameof(IsEmpty));
+                break;
+            case Fail<ConnectFailure> fail:
+                ErrorMessage = fail.Error.Message;
+                break;
+        }
+    }
+
+    private static async Task<Result<Unit, ConnectFailure>> ConnectAsync(IIpcClient client, CancellationToken cancellationToken)
+        => await client.ConnectAsync(cancellationToken) switch
+        {
+            Ok<Unit> ok => ok,
+            Fail<IpcError> fail => new Fail<ConnectFailure>(ConnectFailure.From(fail.Error))
+        };
+
+    private static async Task<Result<ClassificationSuggestionsView, ConnectFailure>> ScanAsync(IIpcClient client, CancellationToken cancellationToken)
+        => await client.QueryAsync(new GetClassificationSuggestions(), cancellationToken) switch
+        {
+            Ok<ClassificationSuggestionsView> ok => ok,
+            Fail<IpcError> fail => new Fail<ConnectFailure>(ConnectFailure.From(fail.Error))
+        };
+
+    private Task PromoteAsync(SuggestionRowViewModel? row, CancellationToken cancellationToken)
+        => ApplyAsync(row, chosen => new PromoteSuggestion(row!.Word, chosen.Id), cancellationToken);
+
+    private Task IgnoreAsync(SuggestionRowViewModel? row, CancellationToken cancellationToken)
+        => ApplyAsync(row, chosen => new IgnoreSuggestion(row!.Word, chosen.Id), cancellationToken);
+
+    private async Task ApplyAsync(SuggestionRowViewModel? row, Func<CategoryRowViewModel, ICommand> command, CancellationToken cancellationToken)
+    {
+        if (row is null) return;
+
+        if (category is not { } chosen)
+        {
+            ErrorMessage = localisation.Get("Classifications.Suggestions.ChooseCategory");
+
+            return;
+        }
+
+        switch (await ClassificationRequests.SendAsync(createClient, command(chosen), localisation.Get("Classifications.Editor.Refused"), cancellationToken))
+        {
+            case Ok<Unit>:
+                Rows.Remove(row);
+                ErrorMessage = null;
+                OnPropertyChanged(nameof(IsEmpty));
+                Changed?.Invoke();
+                break;
+            case Fail<ConnectFailure> fail:
+                ErrorMessage = fail.Error.Message;
+                break;
+        }
+    }
+
+    private SuggestionRowViewModel Row(ClassificationSuggestionView suggestion)
+        => new(suggestion.Word, localisation.Format(suggestion.IsFirstName ? "Classifications.Suggestion.DetailFirstName" : "Classifications.Suggestion.Detail", ("count", suggestion.FileCount)));
+}
