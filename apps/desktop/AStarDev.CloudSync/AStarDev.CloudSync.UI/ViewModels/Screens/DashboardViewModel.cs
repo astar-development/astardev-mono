@@ -214,13 +214,15 @@ internal sealed class DashboardViewModel : ViewModelBase, IScreen, IDisposable
         return new StatusIndicatorViewModel(level, localisation.Format("Dashboard.Providers.Row", ("name", provider.Name), ("health", localisation.Get($"Common.Trust.{level}"))));
     }
 
+    private bool IsDrained(ReconciliationStage stage) => stage == ReconciliationStage.ExecuteQueue && snapshot.Pending == 0 && snapshot.Running == 0;
+
     private PipelineStageRow StageRow(ReconciliationStage stage)
     {
         var current = snapshot.Stage.Value is Some<ReconciliationStage> some ? (ReconciliationStage?)some.Value : null;
         var state = current is null ? "Pending" : stage.CompareTo(current.Value) switch
         {
             < 0 => "Done",
-            0 => "Running",
+            0 => IsDrained(stage) ? "Done" : "Running",
             _ => "Pending"
         };
 

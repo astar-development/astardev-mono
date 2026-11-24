@@ -17,9 +17,9 @@ public sealed class DashboardViewModelShould
 
     private static readonly DateTimeOffset Moment = new(2026, 11, 21, 14, 32, 11, TimeSpan.Zero);
 
-    private static DashboardSnapshot Snapshot(SyncHealth health, int conflicts = 0, int errors = 0, int warnings = 0, Option<ReconciliationStage>? stage = null, IPC.DashboardSetup setup = IPC.DashboardSetup.Ready) => new(
+    private static DashboardSnapshot Snapshot(SyncHealth health, int conflicts = 0, int errors = 0, int warnings = 0, Option<ReconciliationStage>? stage = null, IPC.DashboardSetup setup = IPC.DashboardSetup.Ready, long pending = 1245, long running = 8) => new(
         health, Option.Some(Moment), Option.Some(Moment), Option.Some(Moment), 183442, 702144, stage ?? Option.Some(ReconciliationStage.EnumerateRemoteState), 4232, TimeSpan.FromMinutes(17),
-        [("OneDrive", SyncHealth.Healthy)], 1245, 8, 181223, 0, conflicts, errors, warnings, [(DashboardOperation.Download, "Documents/Design.md")], [DashboardEvent.QueueDrained], setup);
+        [("OneDrive", SyncHealth.Healthy)], pending, running, 181223, 0, conflicts, errors, warnings, [(DashboardOperation.Download, "Documents/Design.md")], [DashboardEvent.QueueDrained], setup);
 
     private static LocalisationService RealLocalisation(CultureService culture)
     {
@@ -88,6 +88,14 @@ public sealed class DashboardViewModelShould
         dashboard.Stages.Count.ShouldBe(6);
         dashboard.Stages.Select(stage => stage.State).Distinct().Count().ShouldBe(3);
         dashboard.Stages.Single(stage => stage.IsCurrent).Name.ShouldBe(dashboard.Stages[1].Name);
+    }
+
+    [Fact]
+    public void show_every_stage_as_done_once_the_queue_has_drained()
+    {
+        var (dashboard, _) = Create(Snapshot(SyncHealth.Healthy, stage: Option.Some(ReconciliationStage.ExecuteQueue), pending: 0, running: 0));
+
+        dashboard.Stages.Select(stage => stage.State).Distinct().ShouldBe(["Done"]);
     }
 
     [Fact]

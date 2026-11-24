@@ -18,7 +18,7 @@
         <ListBox Classes="rail" DockPanel.Dock="Left" Width="64" Padding="0,8" ItemsSource="{Binding Destinations}" SelectedItem="{Binding SelectedDestination, Mode=TwoWay}" Background="{DynamicResource Navigation.Rail.Brush}">
             <ListBox.ItemTemplate>
                 <DataTemplate x:DataType="vm:DestinationViewModel">
-                    <TextBlock Text="{Binding Glyph}" FontSize="22" HorizontalAlignment="Center" ToolTip.Tip="{Binding Title}" AutomationProperties.Name="{Binding Title}" />
+                    <TextBlock Text="{Binding Glyph}" FontFamily="Noto Color Emoji" FontSize="22" HorizontalAlignment="Center" ToolTip.Tip="{Binding Title}" AutomationProperties.Name="{Binding Title}" />
                 </DataTemplate>
             </ListBox.ItemTemplate>
         </ListBox>
