@@ -5,7 +5,7 @@ plan. Date: 2026-11-24.
 
 ## Epic
 
-Title: `feat(cloudsync): file classifications`.
+Issue #279. Title: `feat(cloudsync): file classifications`.
 
 Port file classification from the old OneDrive sync client into CloudSync as a
 new `AStarDev.CloudSync.Classification` module, one `CloudSyncDbContext`
@@ -46,7 +46,7 @@ whichever slice merges second.
 
 ## Slices
 
-### S1: Architecture doc and module skeleton
+### S1 (#280): Architecture doc and module skeleton
 
 Enabling slice: every later slice needs the module, its test project, the rules
 and the event-id block.
@@ -76,7 +76,7 @@ Tests first:
 `ClassificationArchitectureTestsShouldEnsure.not_reference_persistence_or_avalonia`
 (fails until the module exists).
 
-### S2: Classification engine
+### S2 (#281): Classification engine
 
 Covers: PRD requirements 1, 2, 9 (combiner honours ignored terms).
 
@@ -99,7 +99,7 @@ Verification:
 
 All in `Classification.TestsUnit`. Tests first: the four above.
 
-### S3: Persistence and ports
+### S3 (#282): Persistence and ports
 
 Covers: PRD requirements 3, 4, 5, 6, 9 (user links survive replace).
 
@@ -127,7 +127,7 @@ Verification:
 
 All in `Persistence.TestsUnit`. Tests first: the four tests above.
 
-### S4: Seed and vocabulary
+### S4 (#283): Seed and vocabulary
 
 Covers: PRD requirements 7, 11 (seed part), 15.
 
@@ -151,7 +151,7 @@ Verification:
 
 Tests first: the three tests above.
 
-### S5: Classify on sync
+### S5 (#284): Classify on sync
 
 Covers: PRD requirements 8, 9 (hook part).
 
@@ -173,7 +173,7 @@ Verification:
 
 Tests first: the four above.
 
-### S6: Reclassify run
+### S6 (#285): Reclassify run
 
 Covers: PRD requirements 10, 11 (reclassify part), 2.
 
@@ -197,7 +197,7 @@ Verification:
 
 Tests first: the four tests above.
 
-### S7: Suggestions
+### S7 (#286): Suggestions
 
 Covers: PRD requirements 9, 12 (suggestion part).
 
@@ -217,7 +217,7 @@ Verification:
 
 Tests first: the three above.
 
-### S8: IPC read side
+### S8 (#287): IPC read side
 
 Covers: PRD requirement 12 (read, reclassify).
 
@@ -239,7 +239,7 @@ Verification:
 
 Tests first: the four above.
 
-### S9: IPC write side
+### S9 (#288): IPC write side
 
 Covers: PRD requirement 12 (writes, category editing).
 
@@ -259,7 +259,7 @@ Verification:
 
 All in `Daemon.TestsUnit`. Tests first: the three above.
 
-### S10: Classifications screen and terms
+### S10 (#289): Classifications screen and terms
 
 Covers: PRD requirement 13 (terms part), 15.
 
@@ -282,7 +282,7 @@ Verification:
 
 Tests first: the three tests above.
 
-### S11: Suggestions, reclassify and category editing in the UI
+### S11 (#290): Suggestions, reclassify and category editing in the UI
 
 Covers: PRD requirements 13 (rest), 12 (UI use).
 
