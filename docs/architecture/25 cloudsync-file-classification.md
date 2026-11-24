@@ -136,6 +136,14 @@ daemon accepting connections. It is skipped on a database in recovery mode. A
 run that was cancelled or failed is not recorded, so the next start tries
 again.
 
+## Screen
+
+The Classifications screen is a primary destination (documents 18 and 19). It
+lists every term with its category, where it came from and its file count,
+filtered by text and ordered by term, category or file count. Selecting a term
+lists its files a page at a time, each with the account that holds it. The UI
+reads and edits only through IPC; the daemon counts and pages.
+
 ## Logging
 
 Classification log messages use the 9000 block of event ids, in a

@@ -22,7 +22,7 @@ The Dashboard is the default landing screen.
 
 ## Primary Navigation
 
-Dashboard, Queue, Conflicts, Activity, History, Audit, Providers and Settings are first-class destinations. This is the authoritative destination list; document 24 does not add a Sync Relationships screen.
+Dashboard, Queue, Conflicts, Activity, History, Audit, Providers, Classifications and Settings are first-class destinations. This is the authoritative destination list; document 24 does not add a Sync Relationships screen.
 
 ## Advanced Operational Surfaces
 
@@ -39,6 +39,7 @@ Metrics, Logs, Traces and Diagnostics are available through Settings > Advanced.
 | History | Completed activity |
 | Audit | Proof that significant actions happened |
 | Providers | Provider management |
+| Classifications | The categories and terms files are grouped by, and the files behind each term |
 | Settings | Configuration |
 
 ## Prohibited Responsibilities
@@ -46,6 +47,7 @@ Metrics, Logs, Traces and Diagnostics are available through Settings > Advanced.
 - Dashboard is not a file browser.
 - Queue does not resolve conflicts.
 - Providers do not expose reconciliation logic.
+- Classifications does not change sync state: it reads terms and files from the daemon and sends the user's edits back.
 - Settings does not mutate sync state directly.
 
 ## Screens versus Panels
@@ -94,6 +96,7 @@ Users locate operational information quickly while retaining confidence that Clo
 📜 History
 🧾 Audit
 ☁ Providers
+🏷 Classifications
 ⚙ Settings
 
 Settings

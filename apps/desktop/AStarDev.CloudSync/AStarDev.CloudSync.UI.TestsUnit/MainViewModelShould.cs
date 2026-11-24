@@ -16,13 +16,13 @@ public sealed class MainViewModelShould
     }
 
     [Fact]
-    public void expose_eight_primary_destinations()
+    public void expose_nine_primary_destinations()
     {
         using var host = CreateHost();
 
         var destinations = host.Services.GetRequiredService<MainViewModel>().Destinations;
 
-        destinations.Select(destination => destination.Id).ShouldBe([ScreenId.Dashboard, ScreenId.Queue, ScreenId.Conflicts, ScreenId.Activity, ScreenId.History, ScreenId.Audit, ScreenId.Providers, ScreenId.Settings]);
+        destinations.Select(destination => destination.Id).ShouldBe([ScreenId.Dashboard, ScreenId.Queue, ScreenId.Conflicts, ScreenId.Activity, ScreenId.History, ScreenId.Audit, ScreenId.Providers, ScreenId.Classifications, ScreenId.Settings]);
         foreach (var destination in destinations)
         {
             destination.Title.ShouldNotStartWith("!");

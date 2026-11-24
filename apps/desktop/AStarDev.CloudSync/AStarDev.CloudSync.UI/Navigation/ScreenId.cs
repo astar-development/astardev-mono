@@ -1,6 +1,6 @@
 namespace AStarDev.CloudSync.UI.Navigation;
 
-/// <summary>Every destination the navigation service can show. The first eight are the rail; the rest sit under Settings &gt; Advanced. Each value needs exactly one registered <see cref="IScreen"/>.</summary>
+/// <summary>Every destination the navigation service can show. The first nine are the rail; the rest sit under Settings &gt; Advanced. Each value needs exactly one registered <see cref="IScreen"/>.</summary>
 public enum ScreenId
 {
     /// <summary>Trust and health overview, and the landing screen.</summary>
@@ -23,6 +23,9 @@ public enum ScreenId
 
     /// <summary>Provider management.</summary>
     Providers,
+
+    /// <summary>Classification: the categories and terms files are grouped by, and the files behind each term.</summary>
+    Classifications,
 
     /// <summary>Configuration.</summary>
     Settings,

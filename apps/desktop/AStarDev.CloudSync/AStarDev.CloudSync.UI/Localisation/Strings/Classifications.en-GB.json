@@ -1,0 +1,20 @@
+{
+  "Classifications.Title": "Classifications",
+  "Classifications.Glyph": "🏷️",
+  "Classifications.Refresh": "Refresh",
+  "Classifications.Filter.Hint": "Filter terms",
+  "Classifications.Sort.Text": "Sort by term",
+  "Classifications.Sort.Category": "Sort by category",
+  "Classifications.Sort.Files": "Sort by files",
+  "Classifications.Empty": "No terms match.",
+  "Classifications.Term.Header": "{text}",
+  "Classifications.Term.HeaderIgnored": "{text} (ignored)",
+  "Classifications.Term.Detail": "{category}  ·  {source}  ·  {count} files",
+  "Classifications.Files.None": "Select a term to see its files.",
+  "Classifications.Files.Empty": "No file has this term.",
+  "Classifications.Files.Heading": "Files for {text}",
+  "Classifications.Files.Summary": "Showing {shown} of {total}",
+  "Classifications.Files.More": "Show more",
+  "Classifications.File.Row": "{path}",
+  "Classifications.File.Account": "{account}"
+}
