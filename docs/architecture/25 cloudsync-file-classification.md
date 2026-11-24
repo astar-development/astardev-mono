@@ -97,7 +97,8 @@ a newer seed. Terms are written in transactions of at most 1,000.
 ## Vocabulary
 
 The vocabulary provider loads the categories and terms once and keeps them
-until it is invalidated by a seed or an edit. Ignored terms are dropped when it
+until it is invalidated. The term and category stores are wrapped so any
+successful write, from the seed or from the user, invalidates it. Ignored terms are dropped when it
 is built, so no signal can emit one.
 
 ## Sync Hook
