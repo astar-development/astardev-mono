@@ -12,7 +12,7 @@ internal sealed class RootEnumerator(HttpClient client, OneDriveTelemetry teleme
 {
     private readonly PathResolver resolver = new(client, telemetry);
 
-    /// <summary>Fetches one page of the whole tree under a remote root through Graph's delta endpoint, which lists every descendant flat. Paths are built from parent ids and are relative to <paramref name="root"/>. The resume token is Graph's next link, used as the request URL.</summary>
+    /// <summary>Fetches one page of the whole tree under a remote root through Graph's delta endpoint, which lists every descendant flat. Paths are built from parent ids and are relative to the drive root, so a scope folder stays in them; <paramref name="root"/> itself and items outside it are left out. The resume token is Graph's next link, used as the request URL.</summary>
     /// <returns>The page, with the final page carrying Graph's delta link as the delta token, or the <see cref="ProviderError"/> met. Cancellation propagates as <see cref="OperationCanceledException"/>.</returns>
     public async Task<Result<ProviderSnapshotPage, ProviderError>> GetSnapshotAsync(RemoteItemId root, string? resumeToken, CancellationToken cancellationToken)
         => await GetPageAsync(resumeToken ?? $"me/drive/items/{Uri.EscapeDataString(root.Value)}/delta", cancellationToken).ConfigureAwait(false) switch

@@ -8,7 +8,7 @@ using AStarDev.FunctionalParadigm;
 namespace AStarDev.CloudSync.OneDrive;
 
 /// <summary>
-/// Works out where each item of a Graph page sits below a sync root from the parent ids and names Graph sends, because OneDrive Personal leaves the parent path out of delta responses.
+/// Works out where each item of a Graph page sits in the drive from the parent ids and names Graph sends, because OneDrive Personal leaves the parent path out of delta responses.
 /// Folder paths are remembered between pages in a map capped at <see cref="MaxRememberedFolders"/>. The map is only a cache: a folder it does not hold is read from Graph and its own parents followed, so a restart or an eviction costs requests, never a wrong path.
 /// </summary>
 /// <param name="client">Authorised client whose base address is the Graph root.</param>
@@ -21,11 +21,11 @@ internal sealed class PathResolver(HttpClient client, OneDriveTelemetry telemetr
 
     private readonly ConcurrentDictionary<string, string> folders = new();
 
-    /// <summary>Resolves the path of every live item of a page relative to the sync root.</summary>
-    /// <param name="root">The sync root. The drive root alias <c>root</c> makes paths relative to the drive.</param>
+    /// <summary>Resolves the drive-relative path of every live item below the sync root, so an item of a scope folder keeps the folder in its path.</summary>
+    /// <param name="root">The sync root. Only items below it are returned; the drive root alias <c>root</c> admits every item.</param>
     /// <param name="items">One page of items in the order Graph sent them. A child may precede its parent, on this page or one not yet seen.</param>
     /// <param name="cancellationToken">Cancelling abandons the fetches and propagates as <see cref="OperationCanceledException"/>.</param>
-    /// <returns>The path by item id. An item is left out when it is deleted, is the sync root itself, lies outside the sync root, or has a parent Graph no longer knows. Otherwise the <see cref="ProviderError"/> of the first parent fetch that failed.</returns>
+    /// <returns>The path from the drive root by item id. An item is left out when it is deleted, is the sync root itself, lies outside the sync root, or has a parent Graph no longer knows. Otherwise the <see cref="ProviderError"/> of the first parent fetch that failed.</returns>
     public async Task<Result<IReadOnlyDictionary<string, string>, ProviderError>> ResolveAsync(RemoteItemId root, IReadOnlyList<GraphDriveItem> items, CancellationToken cancellationToken)
     {
         var live = items.Where(item => item.Deleted is null).ToList();
@@ -60,7 +60,7 @@ internal sealed class PathResolver(HttpClient client, OneDriveTelemetry telemetr
             var path = await ItemPathAsync(item, pageFolders, memo, cancellationToken).ConfigureAwait(false);
 
             if (path.Value is Fail<ProviderError> fail) return fail;
-            if (path.Value is Ok<string?> { Value: { } full } && Below(rootPath, full) is { Length: > 0 } relative) resolved[item.Id] = relative;
+            if (path.Value is Ok<string?> { Value: { } full } && IsBelow(rootPath, full)) resolved[item.Id] = full;
         }
 
         return new Ok<IReadOnlyDictionary<string, string>>(resolved);
@@ -154,6 +154,6 @@ internal sealed class PathResolver(HttpClient client, OneDriveTelemetry telemetr
         return markerAt < 0 ? null : parentPath![(markerAt + RootMarker.Length)..].Trim('/');
     }
 
-    private static string? Below(string rootPath, string full)
-        => rootPath.Length == 0 ? full : full.StartsWith($"{rootPath}/", StringComparison.Ordinal) ? full[(rootPath.Length + 1)..] : null;
+    private static bool IsBelow(string rootPath, string full)
+        => full.Length > 0 && (rootPath.Length == 0 || full.StartsWith($"{rootPath}/", StringComparison.Ordinal));
 }

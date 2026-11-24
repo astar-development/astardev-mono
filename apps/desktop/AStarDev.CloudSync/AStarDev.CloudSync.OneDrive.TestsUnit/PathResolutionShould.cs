@@ -32,17 +32,17 @@ public sealed class PathResolutionShould
     }
 
     [Fact]
-    public async Task make_paths_relative_to_a_subfolder_root()
+    public async Task keep_the_scope_folder_in_snapshot_paths()
     {
         var handler = new FakeGraphHandler(_ => FakeGraphHandler.Json(Page(Top("R"), Folder("d", "docs", "R"), Folder("s", "sub", "d"), File("f", "a.txt", "s"), Folder("i", "inner", "s"), File("g", "b.txt", "i"), File("h", "other.txt", "d"))));
 
         var page = await Snapshot(handler, new RemoteItemId("s"));
 
-        page.Items.Select(item => (item.RemoteItemId.Value, item.Path.Value)).ShouldBe([("f", "a.txt"), ("i", "inner"), ("g", "inner/b.txt")]);
+        page.Items.Select(item => (item.RemoteItemId.Value, item.Path.Value)).ShouldBe([("f", "docs/sub/a.txt"), ("i", "docs/sub/inner"), ("g", "docs/sub/inner/b.txt")]);
     }
 
     [Fact]
-    public async Task make_delta_paths_relative_to_a_subfolder_root_with_the_same_mapping()
+    public async Task keep_the_scope_folder_in_delta_paths()
     {
         var handler = new FakeGraphHandler(_ => FakeGraphHandler.Json(Page(Top("R"), Folder("d", "docs", "R"), Folder("s", "sub", "d"), File("f", "a.txt", "s"))));
         using var telemetry = new OneDriveTelemetry();
@@ -50,7 +50,7 @@ public sealed class PathResolutionShould
         var result = await new RootEnumerator(Client(handler), telemetry).GetDeltasAsync(new RemoteItemId("s"), new DeltaToken("https://graph.test/delta?token=t"), null, TestContext.Current.CancellationToken);
 
         var page = result.Value.ShouldBeOfType<Ok<ProviderDeltaPage>>().Value;
-        page.Changes.Select(change => (change.RemoteItemId.Value, change.Item!.Path.Value)).ShouldBe([("f", "a.txt")]);
+        page.Changes.Select(change => (change.RemoteItemId.Value, change.Item!.Path.Value)).ShouldBe([("f", "docs/sub/a.txt")]);
     }
 
     [Fact]
