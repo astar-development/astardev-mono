@@ -10,7 +10,7 @@ namespace AStarDev.CloudSync.Ports;
 public interface ISyncScopeStore
 {
     /// <summary>Selects a remote folder for a job.</summary>
-    /// <param name="scope">The folder and the job it joins.</param>
+    /// <param name="scope">The folder, its path from the drive root and the job it joins. The path is stored so ownership of local paths survives a restart.</param>
     /// <param name="cancellationToken">Cancelling before the write completes leaves nothing stored.</param>
     /// <returns>Success, <see cref="SyncJobNotFound"/> when the job is not stored, <see cref="SyncScopeAlreadyExists"/> when the job already holds the folder, or <see cref="StorageFailed"/>.</returns>
     Task<Result<Unit, StoreError>> AddAsync(SyncScope scope, CancellationToken cancellationToken);

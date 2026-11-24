@@ -203,9 +203,10 @@ The remote folders a sync job synchronises. Only selected scopes are indexed and
 | -------- | -------- |
 | SyncJobId | FK, part of the PK; deleting the job deletes its scopes |
 | RemoteRootId | Provider id of the selected folder, part of the PK |
+| Path | The folder's path from the drive root, which is also where it sits below the local root. Decides which local paths the scope owns: nothing outside every scope is uploaded or deleted locally. The drive root alias `root` covers everything |
 
 ```csharp
-public sealed record SyncScope(SyncJobId SyncJobId, RemoteItemId RemoteRootId);
+public sealed record SyncScope(SyncJobId SyncJobId, RemoteItemId RemoteRootId, RelativePath Path = default);
 ```
 
 ### Items

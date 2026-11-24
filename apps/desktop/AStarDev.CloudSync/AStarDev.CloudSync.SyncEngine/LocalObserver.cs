@@ -8,10 +8,10 @@ using Microsoft.Extensions.Options;
 namespace AStarDev.CloudSync.SyncEngine;
 
 /// <summary>
-/// Watches one job's local root and records what it sees as <c>Local</c> snapshots. It decides nothing: no operation is created and no file is touched.
+/// Watches one job's local root and records what it sees as <c>Local</c> snapshots. It decides nothing: no operation is created and no file is touched. A file outside every scope of the job is not recorded, so it can never be uploaded.
 /// It scans the whole root at start, scans the changed paths once the disk has been quiet for <see cref="LocalObservationOptions.Debounce"/>, and scans the whole root again after the watcher overflows.
 /// </summary>
-internal sealed class LocalObserver(ILocalFileSystem fileSystem, ILocalObservationStore store, IOptions<LocalObservationOptions> options, TimeProvider timeProvider, ILogger<LocalObserver> logger)
+internal sealed class LocalObserver(ILocalFileSystem fileSystem, ILocalObservationStore store, ISyncScopeStore scopes, IOptions<LocalObservationOptions> options, TimeProvider timeProvider, ILogger<LocalObserver> logger)
 {
     private const int BatchSize = 500;
     private static readonly TimeSpan TimestampTolerance = TimeSpan.FromMilliseconds(1);
@@ -35,18 +35,25 @@ internal sealed class LocalObserver(ILocalFileSystem fileSystem, ILocalObservati
     /// <param name="job">The job whose root to scan.</param>
     /// <param name="subtree">A file or folder relative to the root; empty scans the whole root.</param>
     /// <param name="cancellationToken">Cancelling stops before the next batch is stored and surfaces as <see cref="OperationCanceledException"/>.</param>
-    /// <returns>Success, also when nothing changed, so scanning twice is safe; or the reason the disk or the store failed. A file that cannot be read for its digest is logged and left for the next scan.</returns>
+    /// <returns>Success, also when nothing changed, so scanning twice is safe; or the reason the disk or the store failed, including the scopes of the job that cannot be read. A file that cannot be read for its digest is logged and left for the next scan.</returns>
     public async Task<Result<Unit, LocalObservationError>> ScanAsync(SyncJob job, RelativePath subtree, CancellationToken cancellationToken)
+        => await scopes.ListAsync(job.Id, cancellationToken) switch
+        {
+            Ok<IReadOnlyList<SyncScope>> selected => await ListAsync(job, subtree, selected.Value, cancellationToken),
+            Fail<StoreError> fail => new Fail<LocalObservationError>(new ObservationStoreFailed(fail.Error))
+        };
+
+    private async Task<Result<Unit, LocalObservationError>> ListAsync(SyncJob job, RelativePath subtree, IReadOnlyList<SyncScope> selected, CancellationToken cancellationToken)
         => await fileSystem.ListFilesAsync(job.LocalRootPath, subtree, cancellationToken) switch
         {
-            Ok<IReadOnlyList<LocalFile>> ok => await CompareAsync(job, subtree, ok.Value, cancellationToken),
+            Ok<IReadOnlyList<LocalFile>> ok => await CompareAsync(job, subtree, [.. ok.Value.Where(file => ScopeCoverage.Covers(selected, file.Path))], selected, cancellationToken),
             Fail<LocalObservationError> fail => fail
         };
 
-    private async Task<Result<Unit, LocalObservationError>> CompareAsync(SyncJob job, RelativePath subtree, IReadOnlyList<LocalFile> disk, CancellationToken cancellationToken)
+    private async Task<Result<Unit, LocalObservationError>> CompareAsync(SyncJob job, RelativePath subtree, IReadOnlyList<LocalFile> disk, IReadOnlyList<SyncScope> selected, CancellationToken cancellationToken)
         => await store.ListPresentAsync(job.Id, subtree, cancellationToken) switch
         {
-            Ok<IReadOnlyList<LocalSnapshot>> ok => await ApplyDifferenceAsync(job, disk, ok.Value.ToDictionary(snapshot => snapshot.Path), cancellationToken),
+            Ok<IReadOnlyList<LocalSnapshot>> ok => await ApplyDifferenceAsync(job, disk, ok.Value.Where(snapshot => ScopeCoverage.Covers(selected, snapshot.Path)).ToDictionary(snapshot => snapshot.Path), cancellationToken),
             Fail<StoreError> fail => new Fail<LocalObservationError>(new ObservationStoreFailed(fail.Error))
         };
 

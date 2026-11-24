@@ -23,6 +23,12 @@ public sealed partial class ScopeSelectionViewModel(Func<IIpcClient> createClien
     /// <summary>The ticked folders, as the provider's ids, in the order they were ticked or listed. Empty until the user ticks something or a stored job is loaded.</summary>
     public ObservableCollection<string> SelectedFolderIds { get; } = [];
 
+    /// <summary>Names of the local top-level folders that no scope covers. They are not synced, so nothing in them is uploaded or deleted. Empty until a stored job is loaded.</summary>
+    public ObservableCollection<string> UnsyncedFolders { get; } = [];
+
+    /// <summary>True when <see cref="UnsyncedFolders"/> holds a folder, so the view shows its heading only then.</summary>
+    public bool HasUnsyncedFolders => UnsyncedFolders.Count > 0;
+
     /// <summary>The bootstrap modes the user can pick from.</summary>
     public IReadOnlyList<SyncBootstrapMode> BootstrapModes { get; } = [SyncBootstrapMode.Download, SyncBootstrapMode.Upload, SyncBootstrapMode.Merge];
 
@@ -162,7 +168,7 @@ public sealed partial class ScopeSelectionViewModel(Func<IIpcClient> createClien
             })
             {
                 case Ok<CreatedJob> ok:
-                    Show(new StoredSelection(ok.Value.Job, [.. SelectedFolderIds]));
+                    Show(new StoredSelection(ok.Value.Job, [.. SelectedFolderIds], []));
                     StatusMessage = ok.Value.ScopeFailure;
                     break;
                 case Fail<ConnectFailure> fail:
@@ -211,14 +217,14 @@ public sealed partial class ScopeSelectionViewModel(Func<IIpcClient> createClien
         => await client.QueryAsync(new GetSyncJobs(), cancellationToken) switch
         {
             Ok<SyncJobsView> { Value.Jobs: [var stored, ..] } => await LoadScopesAsync(client, stored, cancellationToken),
-            Ok<SyncJobsView> => new Ok<StoredSelection>(new StoredSelection(null, [])),
+            Ok<SyncJobsView> => new Ok<StoredSelection>(new StoredSelection(null, [], [])),
             Fail<IpcError> fail => new Fail<ConnectFailure>(ConnectFailure.From(fail.Error))
         };
 
     private static async Task<Result<StoredSelection, ConnectFailure>> LoadScopesAsync(IIpcClient client, SyncJobView stored, CancellationToken cancellationToken)
         => await client.QueryAsync(new GetSyncScopes(stored.Id), cancellationToken) switch
         {
-            Ok<SyncScopesView> ok => new Ok<StoredSelection>(new StoredSelection(stored, [.. ok.Value.Scopes.Select(scope => scope.RemoteRootId)])),
+            Ok<SyncScopesView> ok => new Ok<StoredSelection>(new StoredSelection(stored, [.. ok.Value.Scopes.Select(scope => scope.RemoteRootId)], ok.Value.UnsyncedFolders)),
             Fail<IpcError> fail => new Fail<ConnectFailure>(ConnectFailure.From(fail.Error))
         };
 
@@ -273,6 +279,9 @@ public sealed partial class ScopeSelectionViewModel(Func<IIpcClient> createClien
             BootstrapMode = stored.Job.BootstrapMode;
             SelectedFolderIds.Clear();
             foreach (var folderId in stored.FolderIds) SelectedFolderIds.Add(folderId);
+            UnsyncedFolders.Clear();
+            foreach (var name in stored.UnsyncedFolders) UnsyncedFolders.Add(name);
+            OnPropertyChanged(nameof(HasUnsyncedFolders));
         }
 
         OnPropertyChanged(nameof(HasJob));
@@ -280,7 +289,7 @@ public sealed partial class ScopeSelectionViewModel(Func<IIpcClient> createClien
         OnPropertyChanged(nameof(CanCreateJob));
     }
 
-    private sealed record StoredSelection(SyncJobView? Job, IReadOnlyList<string> FolderIds);
+    private sealed record StoredSelection(SyncJobView? Job, IReadOnlyList<string> FolderIds, IReadOnlyList<string> UnsyncedFolders);
 
     private sealed record CreatedJob(SyncJobView Job, string? ScopeFailure);
 }

@@ -17,7 +17,7 @@ internal sealed class FakeIpcClient(List<string> calls, bool available) : IIpcCl
 
     public Result<SyncJobsView, IpcError> JobsReply { get; init; } = new Ok<SyncJobsView>(new SyncJobsView([]));
 
-    public Func<GetSyncScopes, Result<SyncScopesView, IpcError>> ScopesReply { get; init; } = _ => new Ok<SyncScopesView>(new SyncScopesView([]));
+    public Func<GetSyncScopes, Result<SyncScopesView, IpcError>> ScopesReply { get; init; } = _ => new Ok<SyncScopesView>(new SyncScopesView([], []));
 
     public Result<ActivitiesView, IpcError> ActivitiesReply { get; init; } = new Ok<ActivitiesView>(new ActivitiesView([]));
 

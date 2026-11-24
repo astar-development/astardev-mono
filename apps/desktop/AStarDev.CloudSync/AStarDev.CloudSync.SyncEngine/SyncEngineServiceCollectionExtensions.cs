@@ -43,7 +43,7 @@ public static class SyncEngineServiceCollectionExtensions
         services.AddOptions<LocalObservationOptions>().BindConfiguration(LocalObservationOptions.ConfigurationSection);
         services.TryAddSingleton<ILocalIdentityReader, UnixLocalIdentityReader>();
         services.TryAddSingleton<ILocalFileSystem, PhysicalLocalFileSystem>();
-        services.AddSingleton(provider => new LocalObserver(provider.GetRequiredService<ILocalFileSystem>(), provider.GetRequiredService<ILocalObservationStore>(), provider.GetRequiredService<IOptions<LocalObservationOptions>>(), provider.GetRequiredService<TimeProvider>(), provider.GetRequiredService<ILogger<LocalObserver>>()));
+        services.AddSingleton(provider => new LocalObserver(provider.GetRequiredService<ILocalFileSystem>(), provider.GetRequiredService<ILocalObservationStore>(), provider.GetRequiredService<ISyncScopeStore>(), provider.GetRequiredService<IOptions<LocalObservationOptions>>(), provider.GetRequiredService<TimeProvider>(), provider.GetRequiredService<ILogger<LocalObserver>>()));
         services.AddSingleton(provider => new LocalObservationRunner(provider.GetRequiredService<ISyncJobStore>(), provider.GetRequiredService<LocalObserver>(), provider.GetRequiredService<ILogger<LocalObservationRunner>>()));
         services.AddOptions<OperationSchedulerOptions>().BindConfiguration(OperationSchedulerOptions.ConfigurationSection);
         services.TryAddSingleton<ILocalFileStore, PhysicalLocalFileStore>();
@@ -62,6 +62,7 @@ public static class SyncEngineServiceCollectionExtensions
         services.TryAddSingleton<IConflictEventSink, NullConflictEventSink>();
         services.AddSingleton(provider => new SyncPlanner(
             provider.GetRequiredService<ISyncJobStore>(),
+            provider.GetRequiredService<ISyncScopeStore>(),
             provider.GetRequiredService<IItemStateStore>(),
             provider.GetRequiredService<IKnownSnapshotStore>(),
             provider.GetRequiredService<IOperationStore>(),

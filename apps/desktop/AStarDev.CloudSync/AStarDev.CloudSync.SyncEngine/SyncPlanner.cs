@@ -25,6 +25,7 @@ public sealed class SyncPlanner
 
     private readonly ISyncJobStore jobStore;
     private readonly IItemStateStore itemStore;
+    private readonly ISyncScopeStore scopeStore;
     private readonly IKnownSnapshotStore knownStore;
     private readonly IOperationStore operationStore;
     private readonly IConflictStore conflictStore;
@@ -34,11 +35,12 @@ public sealed class SyncPlanner
     private readonly TimeProvider timeProvider;
     private readonly ILogger<SyncPlanner> logger;
 
-    internal SyncPlanner(ISyncJobStore jobStore, IItemStateStore itemStore, IKnownSnapshotStore knownStore, IOperationStore operationStore, IConflictStore conflictStore, IEventJournal journal, IConflictEventSink conflictEvents, TimeProvider timeProvider, ILogger<SyncPlanner> logger)
+    internal SyncPlanner(ISyncJobStore jobStore, ISyncScopeStore scopeStore, IItemStateStore itemStore, IKnownSnapshotStore knownStore, IOperationStore operationStore, IConflictStore conflictStore, IEventJournal journal, IConflictEventSink conflictEvents, TimeProvider timeProvider, ILogger<SyncPlanner> logger)
     {
         this.journal = journal;
         this.conflictEvents = conflictEvents;
         this.jobStore = jobStore;
+        this.scopeStore = scopeStore;
         this.itemStore = itemStore;
         this.knownStore = knownStore;
         this.operationStore = operationStore;
@@ -51,7 +53,7 @@ public sealed class SyncPlanner
     /// Plans the work for every item of the job. An item gone from both sides loses its baseline and leftover rows, unless it still has such an operation, so the baselines do not pile up and a later item at the same path is new. An item that already has a pending, running or dead-lettered operation is left alone, so planning again never queues the same work twice;
     /// an item in conflict gets one open conflict per reason however often it is planned, and none while it has such work, which is how a resolved conflict is not raised again before its operations finish. A newly stored conflict is journaled as <c>ConflictDetected</c> and then announced to the <see cref="IConflictEventSink"/>.
     /// </summary>
-    /// <param name="jobId">The job to plan. Its stored bootstrap mode governs only the first plan, while the job has no baseline and no operation: Download copies remote content over local, Upload copies local over remote, and neither deletes the other side's extra items. Merge, and every later plan, use the normal rules, so differing content on both sides is a conflict.</param>
+    /// <param name="jobId">The job to plan. Only items inside one of its scopes are planned: an item outside every scope is never uploaded and never deleted locally, so nothing happens without an explicit scope, and removing a scope leaves its local files alone. Its stored bootstrap mode governs only the first plan, while the job has no baseline and no operation: Download copies remote content over local, Upload copies local over remote, and neither deletes the other side's extra items. Merge, and every later plan, use the normal rules, so differing content on both sides is a conflict.</param>
     /// <param name="cancellationToken">Cancelling stops planning and surfaces as <see cref="OperationCanceledException"/>; what was already queued stays queued.</param>
     /// <returns>How many operations were queued and conflicts stored, or the <see cref="StoreError"/> that stopped planning, including <see cref="SyncJobNotFound"/> when the job does not exist.</returns>
     public async Task<Result<PlanSummary, StoreError>> PlanAsync(SyncJobId jobId, CancellationToken cancellationToken)
@@ -60,9 +62,10 @@ public sealed class SyncPlanner
         using var span = WorkflowTelemetry.StartPlan(jobId);
         using var scope = CorrelationScope.Begin(logger, syncJobId: jobId.Value.ToString());
         var outcome = await ThenAsync(jobStore.GetAsync(jobId, cancellationToken), job =>
-            ThenAsync(itemStore.ListAsync(jobId, cancellationToken), rows =>
-                ThenAsync(knownStore.ListAsync(jobId, cancellationToken), known =>
-                    ThenAsync(operationStore.ListAsync(cancellationToken), existing => PlanAllAsync(jobId, BootstrapModeFor(job, known, existing), CanonicalStateBuilder.Build(rows, known), BusyItems(existing), cancellationToken)))));
+            ThenAsync(scopeStore.ListAsync(jobId, cancellationToken), scopes =>
+                ThenAsync(itemStore.ListAsync(jobId, cancellationToken), rows =>
+                    ThenAsync(knownStore.ListAsync(jobId, cancellationToken), known =>
+                        ThenAsync(operationStore.ListAsync(cancellationToken), existing => PlanAllAsync(jobId, BootstrapModeFor(job, known, existing), InScope(CanonicalStateBuilder.Build(rows, known), scopes), BusyItems(existing), cancellationToken))))));
         PerformanceMetrics.Shared.RecordReconciliation(timeProvider.GetElapsedTime(reconcileStarted));
         if (outcome.Value is Fail<StoreError> failed) WorkflowTelemetry.Fail(span, failed.Error.Value?.GetType().Name ?? "unknown", "Planning stopped on a store error.");
 
@@ -77,6 +80,11 @@ public sealed class SyncPlanner
             Ok<TIn> ok => await next(ok.Value),
             Fail<StoreError> fail => fail
         };
+
+    private static List<CanonicalItemState> InScope(IReadOnlyList<CanonicalItemState> states, IReadOnlyList<SyncScope> scopes)
+        => states.Where(state => PathOf(state) is { } path && ScopeCoverage.Covers(scopes, path)).ToList();
+
+    private static RelativePath? PathOf(CanonicalItemState state) => state.Remote?.Path ?? state.Local?.Path ?? state.Known?.Path;
 
     internal static HashSet<ItemId> BusyItems(IReadOnlyList<Operation> existing)
         => existing.Where(operation => operation.Status is OperationStatus.Pending or OperationStatus.Running or OperationStatus.DeadLetter).Select(operation => operation.ItemId).ToHashSet();

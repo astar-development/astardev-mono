@@ -17,7 +17,9 @@ public sealed class LocalObserverShould
 
     private static CancellationToken Token => TestContext.Current.CancellationToken;
 
-    private LocalObserver Observer() => new(fileSystem, store, Options.Create(new LocalObservationOptions { Debounce = Debounce }), time, NullLogger<LocalObserver>.Instance);
+    private LocalObserver Observer() => Observer(new SyncScope(Job.Id, new RemoteItemId("root")));
+
+    private LocalObserver Observer(params SyncScope[] scopes) => new(fileSystem, store, new FakeScopeStore(scopes), Options.Create(new LocalObservationOptions { Debounce = Debounce }), time, NullLogger<LocalObserver>.Instance);
 
     [Fact]
     public async Task record_new_changed_and_deleted_files_in_one_scan()
@@ -32,6 +34,48 @@ public sealed class LocalObserverShould
         result.Value.ShouldBeOfType<Ok<Unit>>();
         store.Recorded.SelectMany(recorded => recorded.Present).Select(snapshot => (snapshot.Path.Value, snapshot.Size, snapshot.Fingerprint!.Value.Value)).ShouldBe([("new.txt", 3, "fp-new.txt"), ("changed.txt", 9, "fp-changed.txt")], ignoreOrder: true);
         store.Recorded.SelectMany(recorded => recorded.Deleted).ShouldBe([new RelativePath("gone.txt")]);
+    }
+
+    [Fact]
+    public async Task not_record_a_file_outside_every_scope()
+    {
+        fileSystem.Put("docs/a.txt", 1, Stamp);
+        fileSystem.Put("stray/b.txt", 1, Stamp);
+
+        var result = await Observer(new SyncScope(Job.Id, new RemoteItemId("docs-id"), new RelativePath("docs"))).ScanAsync(Job, default, Token);
+
+        result.Value.ShouldBeOfType<Ok<Unit>>();
+        store.Recorded.SelectMany(recorded => recorded.Present).Select(snapshot => snapshot.Path.Value).ShouldBe(["docs/a.txt"]);
+        fileSystem.Fingerprinted.ShouldBe(1);
+    }
+
+    [Fact]
+    public async Task record_nothing_while_the_job_has_no_scope()
+    {
+        fileSystem.Put("a.txt", 1, Stamp);
+
+        await Observer([]).ScanAsync(Job, default, Token);
+
+        store.Recorded.ShouldBeEmpty();
+    }
+
+    [Fact]
+    public async Task not_record_a_deletion_for_a_stored_file_outside_every_scope()
+    {
+        store.Present.Add(new LocalSnapshot(new RelativePath("stray/b.txt"), 1, Stamp, null, new ContentFingerprint("old")));
+
+        await Observer(new SyncScope(Job.Id, new RemoteItemId("docs-id"), new RelativePath("docs"))).ScanAsync(Job, default, Token);
+
+        store.Recorded.SelectMany(recorded => recorded.Deleted).ShouldBeEmpty();
+    }
+
+    [Fact]
+    public async Task honour_cancellation_when_reading_the_scopes()
+    {
+        using var cancelled = new CancellationTokenSource();
+        await cancelled.CancelAsync();
+
+        await Should.ThrowAsync<OperationCanceledException>(() => Observer().ScanAsync(Job, default, cancelled.Token));
     }
 
     [Fact]

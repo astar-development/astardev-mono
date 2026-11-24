@@ -38,6 +38,7 @@ public sealed class BackgroundServicesStageShould : IDisposable
         await using var host = DaemonTestHost.CreateWith(new StubCloudProvider());
         var account = await host.AddAccountAsync("id", AccountStatus.Connected, Token);
         var job = await host.AddJobAsync(account, localRoot, Token);
+        await host.Services.GetRequiredService<ISyncScopeStore>().AddAsync(new SyncScope(job.Id, new RemoteItemId("root")), Token);
 
         await host.Services.GetServices<IStartupStage>().OfType<BackgroundServicesStage>().Single().ExecuteAsync(Token);
         var store = host.Services.GetRequiredService<ILocalObservationStore>();

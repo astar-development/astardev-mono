@@ -104,7 +104,7 @@ public sealed class ScopeSelectionViewModelShould
         var client = new FakeIpcClient([], available: true)
         {
             JobsReply = new Ok<SyncJobsView>(new SyncJobsView([Job])),
-            ScopesReply = _ => new Ok<SyncScopesView>(new SyncScopesView([new SyncScopeView("docs"), new SyncScopeView("notes")]))
+            ScopesReply = _ => new Ok<SyncScopesView>(new SyncScopesView([new SyncScopeView("docs"), new SyncScopeView("notes")], ["Photos"]))
         };
         var viewModel = new ScopeSelectionViewModel(() => client, new FakeFolderPicker(null));
 
@@ -116,6 +116,8 @@ public sealed class ScopeSelectionViewModelShould
         viewModel.SelectedFolderIds.ShouldBe(["docs", "notes"]);
         viewModel.IsSelected("docs").ShouldBeTrue();
         viewModel.IsSelected("other").ShouldBeFalse();
+        viewModel.UnsyncedFolders.ShouldBe(["Photos"]);
+        viewModel.HasUnsyncedFolders.ShouldBeTrue();
     }
 
     [Fact]

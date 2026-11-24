@@ -111,6 +111,7 @@ public sealed class LocalObservationShould : IDisposable
         var job = new SyncJob(new SyncJobId(Guid.NewGuid()), account.Id, "OneDrive", root, new RemoteItemId("root"), BootstrapMode.Merge, true, account.CreatedUtc, account.CreatedUtc);
         (await host.Services.GetRequiredService<IAccountStore>().AddAsync(account, Token)).Value.ShouldBeOfType<Ok<Unit>>();
         (await host.Services.GetRequiredService<ISyncJobStore>().AddAsync(job, Token)).Value.ShouldBeOfType<Ok<Unit>>();
+        (await host.Services.GetRequiredService<ISyncScopeStore>().AddAsync(new SyncScope(job.Id, new RemoteItemId("root")), Token)).Value.ShouldBeOfType<Ok<Unit>>();
 
         return job;
     }

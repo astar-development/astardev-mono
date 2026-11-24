@@ -9,15 +9,22 @@ using Microsoft.Extensions.Logging;
 namespace AStarDev.CloudSync.Daemon;
 
 /// <summary>Answers <see cref="AddSyncScope"/> by storing the folder as a scope of the job in the <see cref="ISyncScopeStore"/>, then starting the job's crawl and local observation, or waking the crawl when it already runs, so the folder syncs at once.</summary>
-internal sealed class AddSyncScopeHandler(ISyncScopeStore store, SyncRunner runner, LocalObservationRunner observation, AuditJournal audit, ILogger<AddSyncScopeHandler> logger)
+internal sealed class AddSyncScopeHandler(ISyncScopeStore store, ICloudProvider provider, SyncRunner runner, LocalObservationRunner observation, AuditJournal audit, ILogger<AddSyncScopeHandler> logger)
 {
     /// <summary>Stores the folder as a scope of the job.</summary>
     /// <returns>
-    /// <see cref="CommandOutcome.Accepted"/> once stored, recorded in the audit trail and handed to the running crawl, or <see cref="CommandOutcome.Rejected"/> with a message for the user when the job is unknown, already holds the folder or the store fails.
+    /// <see cref="CommandOutcome.Accepted"/> once stored, recorded in the audit trail and handed to the running crawl, or <see cref="CommandOutcome.Rejected"/> with a message for the user when the folder cannot be found in the drive, the job is unknown, already holds the folder or the store fails. The folder's path from the drive root is looked up first and stored with the scope, because it decides which local paths the scope owns.
     /// Cancellation propagates as <see cref="OperationCanceledException"/>.
     /// </returns>
     public async Task<Result<CommandResult, IpcError>> HandleAsync(AddSyncScope command, CancellationToken cancellationToken)
-        => await store.AddAsync(new SyncScope(new SyncJobId(command.SyncJobId), new RemoteItemId(command.RemoteRootId)), cancellationToken) switch
+        => await RemoteFolderPaths.FindAsync(provider, new RemoteItemId(command.RemoteRootId), cancellationToken) switch
+        {
+            Ok<RelativePath> path => await StoreAsync(command, path.Value, cancellationToken),
+            Fail<ProviderError> fail => Reject(ProviderErrorMessages.Describe(fail.Error), ErrorInfo.CodeOf(fail.Error.Value))
+        };
+
+    private async Task<Result<CommandResult, IpcError>> StoreAsync(AddSyncScope command, RelativePath path, CancellationToken cancellationToken)
+        => await store.AddAsync(new SyncScope(new SyncJobId(command.SyncJobId), new RemoteItemId(command.RemoteRootId), path), cancellationToken) switch
         {
             Ok<Unit> => await StartAsync(command, cancellationToken),
             Fail<StoreError> fail => Reject(StoreErrorMessages.Describe(fail.Error, "saved", "folder selection"), ErrorInfo.CodeOf(fail.Error.Value))
