@@ -41,6 +41,9 @@ public static class PersistenceServiceCollectionExtensions
         services.AddSingleton<IEventJournal, EventJournalStore>();
         services.AddSingleton<ISettingsStore, SettingsStore>();
         services.AddSingleton<IProviderStateStore, ProviderStateStore>();
+        services.AddSingleton<ICategoryStore, CategoryStore>();
+        services.AddSingleton<ITermStore, TermStore>();
+        services.AddSingleton<IFileClassificationStore, FileClassificationStore>();
         services.AddOptions<TelemetryDatabaseOptions>().BindConfiguration(TelemetryDatabaseOptions.ConfigurationSection);
         services.AddDbContextFactory<TelemetryDbContext>((provider, builder) => builder.UseSqlite($"Data Source={provider.GetRequiredService<IOptions<TelemetryDatabaseOptions>>().Value.Path}"));
         services.TryAddSingleton(TimeProvider.System);

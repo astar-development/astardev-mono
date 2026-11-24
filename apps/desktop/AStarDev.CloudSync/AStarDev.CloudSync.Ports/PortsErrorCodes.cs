@@ -22,6 +22,12 @@ internal static class PortsErrorCodes
     public static readonly ErrorCode ConflictNotFound = Of("CS-PORTS-0015");
     public static readonly ErrorCode UnknownSetting = Of("CS-PORTS-0016");
     public static readonly ErrorCode InvalidSettingValue = Of("CS-PORTS-0017");
+    public static readonly ErrorCode CategoryNotFound = Of("CS-PORTS-0018");
+    public static readonly ErrorCode CategoryAlreadyExists = Of("CS-PORTS-0019");
+    public static readonly ErrorCode CategoryNotEmpty = Of("CS-PORTS-0020");
+    public static readonly ErrorCode TermNotFound = Of("CS-PORTS-0021");
+    public static readonly ErrorCode TermAlreadyExists = Of("CS-PORTS-0022");
+    public static readonly ErrorCode ItemNotFound = Of("CS-PORTS-0023");
 
     private static ErrorCode Of(string value) => ErrorCode.Create(value).Value is Ok<ErrorCode> ok ? ok.Value : default;
 }

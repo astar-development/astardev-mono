@@ -49,6 +49,15 @@ internal sealed class CloudSyncDbContext(DbContextOptions<CloudSyncDbContext> op
     /// <summary>The user settings that were changed from their defaults.</summary>
     public DbSet<SettingEntity> Settings => Set<SettingEntity>();
 
+    /// <summary>Classification categories.</summary>
+    public DbSet<CategoryEntity> Categories => Set<CategoryEntity>();
+
+    /// <summary>Classification terms.</summary>
+    public DbSet<TermEntity> Terms => Set<TermEntity>();
+
+    /// <summary>Links between items and classification terms.</summary>
+    public DbSet<FileLinkEntity> FileLinks => Set<FileLinkEntity>();
+
     /// <summary>Saves inside a <c>persistence.save</c> span; see <see cref="PersistenceTelemetry"/>.</summary>
     public override int SaveChanges(bool acceptAllChangesOnSuccess)
     {
@@ -163,6 +172,31 @@ internal sealed class CloudSyncDbContext(DbContextOptions<CloudSyncDbContext> op
         {
             state.ToTable("ProviderState").HasKey(entity => entity.SyncJobId);
             state.HasOne<SyncJobEntity>().WithOne().HasForeignKey<ProviderStateEntity>(entity => entity.SyncJobId).OnDelete(DeleteBehavior.Cascade);
+        });
+
+        modelBuilder.Entity<CategoryEntity>(category =>
+        {
+            category.ToTable("Categories").HasKey(entity => entity.Id);
+            category.Property(entity => entity.Name).UseCollation("NOCASE");
+            category.HasIndex(entity => entity.Name).IsUnique();
+        });
+
+        modelBuilder.Entity<TermEntity>(term =>
+        {
+            term.ToTable("Terms").HasKey(entity => entity.Id);
+            term.Property(entity => entity.Source).HasConversion<string>();
+            term.Property(entity => entity.Status).HasConversion<string>();
+            term.HasOne<CategoryEntity>().WithMany().HasForeignKey(entity => entity.CategoryId).OnDelete(DeleteBehavior.Restrict);
+            term.HasIndex(entity => new { entity.CategoryId, entity.Text }).IsUnique();
+        });
+
+        modelBuilder.Entity<FileLinkEntity>(link =>
+        {
+            link.ToTable("FileLinks").HasKey(entity => new { entity.ItemId, entity.TermId });
+            link.Property(entity => entity.Origin).HasConversion<string>();
+            link.HasOne<ItemEntity>().WithMany().HasForeignKey(entity => entity.ItemId).OnDelete(DeleteBehavior.Cascade);
+            link.HasOne<TermEntity>().WithMany().HasForeignKey(entity => entity.TermId).OnDelete(DeleteBehavior.Cascade);
+            link.HasIndex(entity => new { entity.TermId, entity.ItemId });
         });
 
         foreach (var entityType in modelBuilder.Model.GetEntityTypes().ToList())

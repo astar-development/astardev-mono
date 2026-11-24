@@ -15,7 +15,7 @@ partial class CloudSyncDbContextModelSnapshot : ModelSnapshot
     // If you encounter a merge conflict in the line below, it means you need to
     // discard one of the migration branches and recreate its migrations on top of
     // the other branch. See https://aka.ms/efcore-docs-migrations-conflicts for more info.
-    public override string LastMigrationId => "20261124073124_AddSyncScopePath";
+    public override string LastMigrationId => "20261124104858_AddClassification";
 
     protected override void BuildModel(ModelBuilder modelBuilder)
     {
@@ -54,6 +54,24 @@ partial class CloudSyncDbContextModelSnapshot : ModelSnapshot
                     .IsUnique();
 
                 b.ToTable("Accounts");
+            });
+
+        modelBuilder.Entity("AStarDev.CloudSync.Persistence.CategoryEntity", b =>
+            {
+                b.Property<Guid>("Id")
+                    .HasColumnType("TEXT");
+
+                b.Property<string>("Name")
+                    .IsRequired()
+                    .HasColumnType("TEXT")
+                    .UseCollation("NOCASE");
+
+                b.HasKey("Id");
+
+                b.HasIndex("Name")
+                    .IsUnique();
+
+                b.ToTable("Categories");
             });
 
         modelBuilder.Entity("AStarDev.CloudSync.Persistence.ConflictEntity", b =>
@@ -130,6 +148,25 @@ partial class CloudSyncDbContextModelSnapshot : ModelSnapshot
                 b.HasKey("SyncJobId", "RemoteRootId");
 
                 b.ToTable("DeltaStates");
+            });
+
+        modelBuilder.Entity("AStarDev.CloudSync.Persistence.FileLinkEntity", b =>
+            {
+                b.Property<Guid>("ItemId")
+                    .HasColumnType("TEXT");
+
+                b.Property<Guid>("TermId")
+                    .HasColumnType("TEXT");
+
+                b.Property<string>("Origin")
+                    .IsRequired()
+                    .HasColumnType("TEXT");
+
+                b.HasKey("ItemId", "TermId");
+
+                b.HasIndex("TermId", "ItemId");
+
+                b.ToTable("FileLinks");
             });
 
         modelBuilder.Entity("AStarDev.CloudSync.Persistence.ItemEntity", b =>
@@ -443,6 +480,34 @@ partial class CloudSyncDbContextModelSnapshot : ModelSnapshot
                 b.ToTable("SyncScopes");
             });
 
+        modelBuilder.Entity("AStarDev.CloudSync.Persistence.TermEntity", b =>
+            {
+                b.Property<Guid>("Id")
+                    .HasColumnType("TEXT");
+
+                b.Property<Guid>("CategoryId")
+                    .HasColumnType("TEXT");
+
+                b.Property<string>("Source")
+                    .IsRequired()
+                    .HasColumnType("TEXT");
+
+                b.Property<string>("Status")
+                    .IsRequired()
+                    .HasColumnType("TEXT");
+
+                b.Property<string>("Text")
+                    .IsRequired()
+                    .HasColumnType("TEXT");
+
+                b.HasKey("Id");
+
+                b.HasIndex("CategoryId", "Text")
+                    .IsUnique();
+
+                b.ToTable("Terms");
+            });
+
         modelBuilder.Entity("AStarDev.CloudSync.Persistence.ConflictEntity", b =>
             {
                 b.HasOne("AStarDev.CloudSync.Persistence.SyncJobEntity", null)
@@ -466,6 +531,21 @@ partial class CloudSyncDbContextModelSnapshot : ModelSnapshot
                 b.HasOne("AStarDev.CloudSync.Persistence.SyncScopeEntity", null)
                     .WithOne()
                     .HasForeignKey("AStarDev.CloudSync.Persistence.DeltaStateEntity", "SyncJobId", "RemoteRootId")
+                    .OnDelete(DeleteBehavior.Cascade)
+                    .IsRequired();
+            });
+
+        modelBuilder.Entity("AStarDev.CloudSync.Persistence.FileLinkEntity", b =>
+            {
+                b.HasOne("AStarDev.CloudSync.Persistence.ItemEntity", null)
+                    .WithMany()
+                    .HasForeignKey("ItemId")
+                    .OnDelete(DeleteBehavior.Cascade)
+                    .IsRequired();
+
+                b.HasOne("AStarDev.CloudSync.Persistence.TermEntity", null)
+                    .WithMany()
+                    .HasForeignKey("TermId")
                     .OnDelete(DeleteBehavior.Cascade)
                     .IsRequired();
             });
@@ -544,6 +624,15 @@ partial class CloudSyncDbContextModelSnapshot : ModelSnapshot
                     .WithMany()
                     .HasForeignKey("SyncJobId")
                     .OnDelete(DeleteBehavior.Cascade)
+                    .IsRequired();
+            });
+
+        modelBuilder.Entity("AStarDev.CloudSync.Persistence.TermEntity", b =>
+            {
+                b.HasOne("AStarDev.CloudSync.Persistence.CategoryEntity", null)
+                    .WithMany()
+                    .HasForeignKey("CategoryId")
+                    .OnDelete(DeleteBehavior.Restrict)
                     .IsRequired();
             });
 #pragma warning restore 612, 618

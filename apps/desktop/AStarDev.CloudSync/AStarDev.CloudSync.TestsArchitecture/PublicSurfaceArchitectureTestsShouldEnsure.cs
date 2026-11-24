@@ -16,9 +16,9 @@ public sealed class PublicSurfaceArchitectureTestsShouldEnsure
     [Fact]
     public void the_ports_expose_only_their_approved_public_types()
         => ShouldExposeExactly(typeof(ICloudProvider).Assembly,
-            "AccountAlreadyExists", "AccountNotFound", "AuthenticationFailed", "ChangeKind", "ConflictNotFound", "CrawlCheckpoint", "IAccountStore", "ICloudProvider", "IConflictStore", "IEventJournal", "IItemIndexStore", "IItemStateStore", "IKnownSnapshotStore", "ILocalObservationStore", "InvalidDeltaToken", "InvalidSettingValue", "IOperationStore", "ISettingsStore", "IProviderStateStore", "JournalEntry", "KnownEntry", "ISyncJobStore", "ISyncScopeStore", "ITelemetryStore", "ITelemetryWriter", "OperationNotDeadLettered", "OperationNotRunning", "Permanent", "ProviderAccount",
+            "AccountAlreadyExists", "AccountNotFound", "AuthenticationFailed", "CategoryAlreadyExists", "CategoryNotEmpty", "CategoryNotFound", "ChangeKind", "ClassificationError", "ConflictNotFound", "CrawlCheckpoint", "IAccountStore", "ICategoryStore", "ICloudProvider", "IConflictStore", "IEventJournal", "IFileClassificationStore", "IItemIndexStore", "IItemStateStore", "IKnownSnapshotStore", "ILocalObservationStore", "InvalidDeltaToken", "InvalidSettingValue", "IOperationStore", "ISettingsStore", "IProviderStateStore", "JournalEntry", "KnownEntry", "ISyncJobStore", "ISyncScopeStore", "ITelemetryStore", "ITelemetryWriter", "ITermStore", "ItemNotFound", "ItemTermLinks", "OperationNotDeadLettered", "OperationNotRunning", "Permanent", "ProviderAccount",
             "ProviderChange", "ProviderFeature", "ProviderDeltaPage", "ProviderDriveInfo", "ProviderError", "ProviderItem", "ProviderSnapshotPage", "RateLimited", "SettingNames", "StorageFailed", "StoredItem", "StoreError", "SyncJobAlreadyExists", "SyncJobNotFound", "UploadRequest",
-            "SyncScopeAlreadyExists", "SyncScopeNotFound", "TelemetryEntry", "TelemetryKind", "TelemetryQuery", "Transient", "UnknownSetting");
+            "SyncScopeAlreadyExists", "SyncScopeNotFound", "TelemetryEntry", "TelemetryKind", "TelemetryQuery", "TermAlreadyExists", "TermNotFound", "Transient", "UnknownSetting");
 
     [Fact]
     public void ipc_exposes_only_its_approved_public_types_and_no_transport()
