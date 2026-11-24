@@ -9,6 +9,7 @@
 
   <ItemGroup>
     <EmbeddedResource Include="Seed\*.json" />
+    <EmbeddedResource Include="Lists\*.txt" />
   </ItemGroup>
 
   <ItemGroup>

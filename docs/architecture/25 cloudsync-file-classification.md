@@ -109,6 +109,16 @@ carries no item identity. A deleted item loses its links with the item.
 A classification failure is logged and never fails the sync. When the
 vocabulary changes while a batch is classified, the batch is classified again.
 
+## Suggestions
+
+A scan of every stored file path finds words that are not yet terms and ranks
+them by the number of files containing them. A word that is a term in any
+status, or a common English word, is left out. A first name carries a hint,
+and is never assigned automatically. The user can promote a word to an active
+user term or ignore it; an ignored word is kept, never deleted, so it never
+comes back. Files are read a page at a time, so a scan never holds the whole
+index in memory.
+
 ## Reclassify
 
 A reclassify recomputes the automatic links of every file in batches, reports

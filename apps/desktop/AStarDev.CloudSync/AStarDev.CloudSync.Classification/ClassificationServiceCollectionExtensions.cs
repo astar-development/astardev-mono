@@ -7,9 +7,10 @@ namespace AStarDev.CloudSync.Classification;
 public static class ClassificationServiceCollectionExtensions
 {
     private const string SeedResourcePrefix = "AStarDev.CloudSync.Classification.Seed.";
+    private const string ListResourcePrefix = "AStarDev.CloudSync.Classification.Lists.";
 
     /// <summary>
-    /// Registers the shipped seed and its seeder, the vocabulary provider and <see cref="IClassificationStartup"/>. The stores come from Persistence, which must be registered first: the item index it registers is wrapped so every crawled or changed file is classified.
+    /// Registers the shipped seed and its seeder, the vocabulary provider, <see cref="IClassificationSuggestions"/> and <see cref="IClassificationStartup"/>. The stores come from Persistence, which must be registered first: the item index it registers is wrapped so every crawled or changed file is classified.
     /// Nothing touches the database until <see cref="IClassificationStartup.RunAsync"/> runs.
     /// </summary>
     /// <param name="services">The collection to add the classification services to.</param>
@@ -28,6 +29,10 @@ public static class ClassificationServiceCollectionExtensions
         services.AddSingleton<IClassificationSignal, FolderSegmentSignal>();
         services.AddSingleton<IClassificationSignal, DictionaryTermSignal>();
         services.AddSingleton<FileClassifier>();
+        services.AddSingleton(_ => new EmbeddedWordLists(typeof(ClassificationServiceCollectionExtensions).Assembly, ListResourcePrefix));
+        services.AddSingleton<IKnownWordList>(provider => provider.GetRequiredService<EmbeddedWordLists>());
+        services.AddSingleton<IFirstNameList>(provider => provider.GetRequiredService<EmbeddedWordLists>());
+        services.AddSingleton<IClassificationSuggestions, ClassificationSuggestions>();
         services.AddSingleton<ClassificationSeeder>();
         services.AddSingleton<IClassificationStartup, ClassificationStartup>();
 

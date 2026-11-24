@@ -2,13 +2,12 @@ using AStarDev.CloudSync.Domain;
 using AStarDev.CloudSync.Ports;
 using AStarDev.FunctionalParadigm;
 using Microsoft.Extensions.DependencyInjection;
+using static AStarDev.CloudSync.Classification.TestsUnit.SyncTestData;
 
 namespace AStarDev.CloudSync.Classification.TestsUnit;
 
 public sealed class ClassifyingItemIndexStoreShould
 {
-    private static readonly DateTimeOffset Now = new(2026, 11, 24, 0, 0, 0, TimeSpan.Zero);
-
     private static CancellationToken Token => TestContext.Current.CancellationToken;
 
     [Fact]
@@ -97,8 +96,6 @@ public sealed class ClassifyingItemIndexStoreShould
         await Should.ThrowAsync<OperationCanceledException>(() => host.Services.GetRequiredService<IItemIndexStore>().SavePageAsync(scope, [File("a", "Holiday/beach.jpg")], CrawlCheckpoint.None, Now, cancelled.Token));
     }
 
-    private static ProviderItem File(string remoteId, string path) => new(new RemoteItemId(remoteId), new RelativePath(path), ItemType.File, 10, Now);
-
     private static async Task<ClassificationTestHost> SeededHostAsync()
     {
         var seed = FixedSeedSource.Seed("1", new SeedTerm("jpg", "Colour"), new SeedTerm("holiday", "Place"));
@@ -108,17 +105,7 @@ public sealed class ClassifyingItemIndexStoreShould
         return host;
     }
 
-    private static async Task<SyncScope> AddScopeAsync(ClassificationTestHost host)
-    {
-        var account = new Account(new AccountId(Guid.NewGuid()), "OneDrive", "ada@example.com", "acct-1", Now);
-        await host.Services.GetRequiredService<IAccountStore>().AddAsync(account, Token);
-        var job = new SyncJob(new SyncJobId(Guid.NewGuid()), account.Id, "OneDrive", "/home/ada/OneDrive", new RemoteItemId("root"), BootstrapMode.Merge, true, Now, Now);
-        await host.Services.GetRequiredService<ISyncJobStore>().AddAsync(job, Token);
-        var scope = new SyncScope(job.Id, new RemoteItemId("root"));
-        await host.Services.GetRequiredService<ISyncScopeStore>().AddAsync(scope, Token);
-
-        return scope;
-    }
+    private static Task<SyncScope> AddScopeAsync(ClassificationTestHost host) => SyncTestData.AddScopeAsync(host, Token);
 
     private static async Task<IReadOnlyList<ItemId>> FilesFor(ClassificationTestHost host, string term)
     {
