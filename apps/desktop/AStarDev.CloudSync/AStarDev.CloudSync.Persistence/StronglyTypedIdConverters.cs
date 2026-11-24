@@ -14,6 +14,8 @@ internal static class StronglyTypedIdConverters
         [typeof(SnapshotId)] = new ValueConverter<SnapshotId, Guid>(id => id.Value, value => new SnapshotId(value)),
         [typeof(OperationId)] = new ValueConverter<OperationId, Guid>(id => id.Value, value => new OperationId(value)),
         [typeof(ConflictId)] = new ValueConverter<ConflictId, Guid>(id => id.Value, value => new ConflictId(value)),
+        [typeof(CategoryId)] = new ValueConverter<CategoryId, Guid>(id => id.Value, value => new CategoryId(value)),
+        [typeof(TermId)] = new ValueConverter<TermId, Guid>(id => id.Value, value => new TermId(value)),
         [typeof(RemoteItemId)] = new ValueConverter<RemoteItemId, string>(id => id.Value, value => new RemoteItemId(value)),
         [typeof(RelativePath)] = new ValueConverter<RelativePath, string>(path => path.Value, value => new RelativePath(value)),
         [typeof(DeltaToken)] = new ValueConverter<DeltaToken, string>(token => token.Value, value => new DeltaToken(value)),
