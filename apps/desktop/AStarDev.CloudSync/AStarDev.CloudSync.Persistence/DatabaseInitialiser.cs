@@ -6,7 +6,7 @@ using Microsoft.Extensions.Options;
 
 namespace AStarDev.CloudSync.Persistence;
 
-/// <summary>Startup stage 2 work for the database: integrity check, then migrations, or recovery mode when the file is corrupt.</summary>
+/// <summary>Startup stage 2 work for the database: integrity check, then migrations, then write-ahead logging, or recovery mode when the file is corrupt. Write-ahead logging is switched on after the migrations because the journal mode cannot change inside a transaction, and without it a reader blocks the commit of a writer, which can silently lose a single-statement insert.</summary>
 internal sealed class DatabaseInitialiser(IOptions<DatabaseOptions> options, IDbContextFactory<CloudSyncDbContext> contextFactory, DatabaseState state, ILogger<DatabaseInitialiser> logger) : IDatabaseInitialiser
 {
     private const int SqliteCorrupt = 11;
@@ -62,6 +62,7 @@ internal sealed class DatabaseInitialiser(IOptions<DatabaseOptions> options, IDb
     {
         await using var context = await contextFactory.CreateDbContextAsync(cancellationToken).ConfigureAwait(false);
         await context.Database.MigrateAsync(cancellationToken).ConfigureAwait(false);
+        await context.Database.ExecuteSqlRawAsync("PRAGMA journal_mode = WAL", cancellationToken).ConfigureAwait(false);
 
         return default;
     }

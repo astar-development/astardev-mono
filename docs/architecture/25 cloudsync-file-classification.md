@@ -121,10 +121,19 @@ index in memory.
 
 ## Reclassify
 
-A reclassify recomputes the automatic links of every file in batches, reports
-progress after each batch, honours cancellation and gives the same result when
-rerun. The daemon runs one at startup when the seed is newly applied or no run
-was ever recorded.
+A reclassify recomputes the automatic links of every file a page at a time,
+reports progress after each page, honours cancellation and gives the same
+result when rerun. It pauses briefly after each page so sync writes get the
+single SQLite writer between pages, and starts over when the vocabulary changes
+during the run, up to three passes. User links and ignored terms are never
+touched.
+
+The last finished run is remembered with the seed version applied at the time.
+After startup has finished, a background service starts a run when none was
+ever recorded or a newer seed was applied since, so a long run never delays the
+daemon accepting connections. It is skipped on a database in recovery mode. A
+run that was cancelled or failed is not recorded, so the next start tries
+again.
 
 ## Logging
 
