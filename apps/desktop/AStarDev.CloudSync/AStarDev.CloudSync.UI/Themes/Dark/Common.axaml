@@ -11,4 +11,6 @@
   <SolidColorBrush x:Key="Text.Primary.Brush" Color="#F0F2F5" />
   <SolidColorBrush x:Key="Text.Secondary.Brush" Color="#9AA3AF" />
   <SolidColorBrush x:Key="Accent.Brush" Color="#3B82F6" />
+  <SolidColorBrush x:Key="Action.Brush" Color="#262B34" />
+  <SolidColorBrush x:Key="Badge.Brush" Color="#2F6FD6" />
 </ResourceDictionary>

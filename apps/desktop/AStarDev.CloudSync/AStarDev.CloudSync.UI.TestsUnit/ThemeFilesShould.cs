@@ -5,8 +5,12 @@ namespace AStarDev.CloudSync.UI.TestsUnit;
 
 public sealed class ThemeFilesShould
 {
-    [Fact]
-    public void list_every_dictionary_under_the_dark_and_shared_folders() => ThemeService.Files("Dark").Order().ShouldBe(OnDisk("Dark").Concat(OnDisk("Shared")).Order());
+    [Theory]
+    [InlineData("Dark", "Dark")]
+    [InlineData("Light", "Light")]
+    [InlineData("Hacker", "Hacker")]
+    [InlineData("Purple Unicorn", "PurpleUnicorn")]
+    public void list_every_dictionary_under_the_theme_and_shared_folders(string theme, string folder) => ThemeService.Files(theme).Order().ShouldBe(OnDisk(folder).Concat(OnDisk("Shared")).Order());
 
     private static IEnumerable<string> OnDisk(string folder) => Directory.GetFiles(Path.Combine(ThemesRoot(), folder), "*.axaml").Select(file => $"{folder}/{Path.GetFileNameWithoutExtension(file)}");
 

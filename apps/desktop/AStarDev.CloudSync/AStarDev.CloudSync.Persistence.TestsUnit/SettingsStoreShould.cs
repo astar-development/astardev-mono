@@ -41,6 +41,19 @@ public sealed class SettingsStoreShould
         settings[SettingNames.TelemetryRetentionDays].ShouldBe("7");
     }
 
+    [Theory]
+    [InlineData("Light")]
+    [InlineData("Hacker")]
+    [InlineData("Purple Unicorn")]
+    public async Task accept_every_theme_the_ui_offers(string theme)
+    {
+        await using var host = await PersistenceTestHost.CreateInitialisedAsync(Token);
+
+        var result = await host.Services.GetRequiredService<ISettingsStore>().SetAsync(SettingNames.Theme, theme, Token);
+
+        result.Value.ShouldBeOfType<Ok<Unit>>();
+    }
+
     [Fact]
     public async Task return_a_failure_for_an_unknown_setting()
     {

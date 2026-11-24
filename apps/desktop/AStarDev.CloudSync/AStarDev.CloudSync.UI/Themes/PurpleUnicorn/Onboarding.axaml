@@ -1,0 +1,5 @@
+<ResourceDictionary xmlns="https://github.com/avaloniaui"
+                    xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml">
+  <SolidColorBrush x:Key="Onboarding.Overlay.Brush" Color="#1A0D2E" />
+  <SolidColorBrush x:Key="Onboarding.Card.Brush" Color="#2A1647" />
+</ResourceDictionary>

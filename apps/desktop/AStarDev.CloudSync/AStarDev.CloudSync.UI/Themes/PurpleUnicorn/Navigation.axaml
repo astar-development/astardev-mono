@@ -1,0 +1,5 @@
+<ResourceDictionary xmlns="https://github.com/avaloniaui"
+                    xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml">
+  <SolidColorBrush x:Key="Navigation.Rail.Brush" Color="#160A28" />
+  <SolidColorBrush x:Key="Navigation.Selected.Brush" Color="#4B2A7A" />
+</ResourceDictionary>

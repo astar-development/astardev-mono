@@ -1,5 +1,6 @@
 using Avalonia;
 using Avalonia.Markup.Xaml.Styling;
+using Avalonia.Styling;
 using AStarDev.FunctionalParadigm;
 
 namespace AStarDev.CloudSync.UI.Theming;
@@ -11,7 +12,15 @@ internal sealed class ThemeService : IThemeService
 
     private static readonly string[] Shared = ["Icons", "ProvidersIcons"];
 
-    private static readonly Dictionary<string, string[]> Themes = new() { ["Dark"] = ["Common", "Conflicts", "Navigation", "Onboarding", "Providers", "Settings"] };
+    private static readonly string[] Features = ["Common", "Conflicts", "Navigation", "Onboarding", "Providers", "Settings"];
+
+    private static readonly Dictionary<string, ThemeVariant> Themes = new()
+    {
+        ["Dark"] = ThemeVariant.Dark,
+        ["Light"] = ThemeVariant.Light,
+        ["Hacker"] = ThemeVariant.Dark,
+        ["Purple Unicorn"] = ThemeVariant.Dark
+    };
 
     private readonly List<ResourceInclude> applied = [];
 
@@ -26,19 +35,20 @@ internal sealed class ThemeService : IThemeService
     {
         if (Application.Current is not { } application) return new Fail<ThemeError>(new NoApplication());
 
-        if (!Themes.ContainsKey(themeName)) return new Fail<ThemeError>(new UnknownTheme(themeName));
+        if (!Themes.TryGetValue(themeName, out var variant)) return new Fail<ThemeError>(new UnknownTheme(themeName));
 
         var includes = Files(themeName).Select(Include).ToList();
         foreach (var previous in applied) application.Resources.MergedDictionaries.Remove(previous);
         applied.Clear();
         foreach (var include in includes) application.Resources.MergedDictionaries.Add(include);
         applied.AddRange(includes);
+        application.RequestedThemeVariant = variant;
         Current = themeName;
 
         return new Ok<Unit>(default);
     }
 
-    internal static IEnumerable<string> Files(string themeName) => Themes[themeName].Select(file => $"{themeName}/{file}").Concat(Shared.Select(file => $"Shared/{file}"));
+    internal static IEnumerable<string> Files(string themeName) => Features.Select(file => $"{themeName.Replace(" ", "")}/{file}").Concat(Shared.Select(file => $"Shared/{file}"));
 
     private static ResourceInclude Include(string path) => new(new Uri(Root)) { Source = new Uri($"{Root}{path}.axaml") };
 }

@@ -88,7 +88,7 @@ public sealed class UiServiceCollectionExtensionsShould
         using var host = CreateHost();
 
         host.Services.GetRequiredService<SettingsStartup>().ShouldBeSameAs(host.Services.GetRequiredService<SettingsStartup>());
-        host.Services.GetServices<IScreen>().OfType<SettingsViewModel>().Single().Themes.ShouldBe(["Dark"]);
+        host.Services.GetServices<IScreen>().OfType<SettingsViewModel>().Single().Themes.ShouldBe(["Dark", "Light", "Hacker", "Purple Unicorn"]);
     }
 
     [Fact]
