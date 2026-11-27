@@ -19,7 +19,7 @@ internal sealed class DaemonActivityRowViewModel
         HasPercent = activity.Percent is not null;
         EtaText = activity.EtaSeconds is { } seconds ? Eta(seconds, localisation) : null;
         RetryText = activity.RetryInSeconds is { } retry ? localisation.Format("Activity.Daemon.Retry", ("seconds", retry)) : null;
-        ActionRequiredText = activity.ActionRequired ? localisation.Get("Activity.Daemon.ActionRequired") : null;
+        ActionRequiredText = activity.ActionRequired ? localisation.Get(activity.SignInRequired ? "Activity.Daemon.SignInRequired" : "Activity.Daemon.ActionRequired") : null;
     }
 
     /// <summary>The state and the job name, for example "Initial indexing: OneDrive".</summary>

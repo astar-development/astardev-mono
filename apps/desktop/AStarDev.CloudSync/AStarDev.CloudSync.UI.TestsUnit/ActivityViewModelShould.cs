@@ -46,6 +46,20 @@ public sealed class ActivityViewModelShould
     }
 
     [Fact]
+    public void ask_the_user_to_sign_in_again_when_the_account_was_refused()
+    {
+        using var host = OperationScreensHost.Create();
+        var activity = host.Screen<ActivityViewModel>();
+        var started = new DateTimeOffset(2026, 11, 22, 9, 0, 0, TimeSpan.Zero);
+
+        host.Services.GetRequiredService<ConnectionViewModel>().Activities.Add(new ActivityView(Guid.NewGuid(), "OneDrive", ActivityState.Healthy, 1000, null, null, null, started, started, null, true, SignInRequired: true));
+
+        var row = activity.DaemonActivities.ShouldHaveSingleItem();
+        row.ActionRequiredText.ShouldNotBeNull().ShouldContain("sign in again");
+        row.ActionRequiredText.ShouldNotContain("Start the sync");
+    }
+
+    [Fact]
     public void hide_the_daemon_section_when_nothing_is_reported()
     {
         using var host = OperationScreensHost.Create();
