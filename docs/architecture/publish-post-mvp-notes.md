@@ -2,11 +2,11 @@
 
 Status: notes from a review on 2026-11-24, kept so the decisions can be picked up later. Nothing here is implemented, and nothing here changes the architecture docs. Where a statement was not verified it says so.
 
-Context: the PRD (`docs/prds/cloudsync-mvp.md`) scopes the MVP as Linux only, with "Release automation, upgrade strategy" and "Windows support, named-pipe transport" as non-goals. This note records what shipping the app (AppImage, auto-update) and supporting other platforms would involve, based on the old app's publishing in `astar-dev-mono`.
+Context: the PRD (`docs/prds/cloudsync-mvp.md`) scopes the MVP as Linux only, with "Release automation, upgrade strategy" and "Windows support, named-pipe transport" as non-goals. This note records what shipping the app (AppImage, auto-update) and supporting other platforms would involve, based on the old app's publishing in `astardev-mono`.
 
 ## 1. What the old repo does today
 
-Reviewed in `astar-dev-mono` (`.github/workflows`, `.github/desktop-apps.json`, `.github/scripts`, `packages/core/utilities`).
+Reviewed in `astardev-mono` (`.github/workflows`, `.github/desktop-apps.json`, `.github/scripts`, `packages/core/utilities`).
 
 ### Release pipeline
 
