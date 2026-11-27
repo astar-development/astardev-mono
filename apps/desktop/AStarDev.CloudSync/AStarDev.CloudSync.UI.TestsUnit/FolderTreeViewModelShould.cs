@@ -158,5 +158,49 @@ public sealed class FolderTreeViewModelShould
     }
 
     private static Ok<RemoteFoldersView> Folders(params (string Id, string Name)[] folders)
-        => new(new RemoteFoldersView(folders.Select(folder => new RemoteFolderView(folder.Id, folder.Name)).ToList()));
+        => new(new RemoteFoldersView(folders.Length, folders.Select(folder => new RemoteFolderView(folder.Id, folder.Name)).ToList()));
+
+    [Fact]
+    public async Task end_a_level_with_a_more_row_that_lists_the_next_page_in_its_place()
+    {
+        var client = new FakeIpcClient([], available: true) { FoldersReply = query => query.Skip == 0 ? Page(3, ("a", "Alpha"), ("b", "Beta")) : Page(3, ("c", "Gamma")) };
+        var tree = TreeOf(() => client);
+        await tree.RefreshAsync(Token);
+        tree.Roots.Select(row => row.Kind).ShouldBe([FolderRowKind.Folder, FolderRowKind.Folder, FolderRowKind.More]);
+        tree.Roots[2].IsMore.ShouldBeTrue();
+        tree.Roots[2].CanSelect.ShouldBeFalse();
+
+        await tree.Roots[2].LoadMoreAsync(Token);
+
+        client.FolderQueries[1].Skip.ShouldBe(2);
+        client.FolderQueries[1].ParentId.ShouldBeNull();
+        tree.Roots.Select(row => row.Text).ShouldBe(["Alpha", "Beta", "Gamma"]);
+    }
+
+    [Fact]
+    public async Task keep_the_more_row_below_an_error_when_the_next_page_fails()
+    {
+        var client = new FakeIpcClient([], available: true) { FoldersReply = query => query.Skip == 0 ? Page(3, ("a", "Alpha")) : new Fail<IpcError>(new HandlerFailed("drive offline")) };
+        var tree = TreeOf(() => client);
+        await tree.RefreshAsync(Token);
+
+        await tree.Roots[1].LoadMoreAsync(Token);
+
+        tree.Roots.Select(row => (row.Kind, row.Text)).ShouldBe([(FolderRowKind.Folder, "Alpha"), (FolderRowKind.Error, "drive offline"), (FolderRowKind.More, ApplicationConstants.MoreFoldersText)]);
+    }
+
+    [Fact]
+    public async Task honour_cancellation_when_loading_more()
+    {
+        var client = new FakeIpcClient([], available: true) { FoldersReply = _ => Page(3, ("a", "Alpha")) };
+        var tree = TreeOf(() => client);
+        await tree.RefreshAsync(Token);
+        using var cancelled = new CancellationTokenSource();
+        await cancelled.CancelAsync();
+
+        await Should.ThrowAsync<OperationCanceledException>(() => tree.Roots[1].LoadMoreAsync(cancelled.Token));
+    }
+
+    private static Ok<RemoteFoldersView> Page(int total, params (string Id, string Name)[] folders)
+        => new(new RemoteFoldersView(total, folders.Select(folder => new RemoteFolderView(folder.Id, folder.Name)).ToList()));
 }

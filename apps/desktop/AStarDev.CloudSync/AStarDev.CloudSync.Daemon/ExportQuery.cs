@@ -19,12 +19,12 @@ internal sealed class ExportQuery(HistoryQuery history, AuditQuery audit)
             Fail<IpcError> fail => fail
         };
 
-    /// <summary>Exports the entries <see cref="AuditQuery"/> lists for the same filter, oldest first, with the columns <c>Id, OccurredUtc, EventType, AggregateId, Details</c>.</summary>
+    /// <summary>Exports the entries <see cref="AuditQuery"/> lists for the same filter, newest first, with the columns <c>Id, OccurredUtc, EventType, AggregateId, Details</c>.</summary>
     /// <returns>The CSV, or the failure <see cref="AuditQuery"/> gave. Cancellation propagates as <see cref="OperationCanceledException"/>.</returns>
     public async Task<Result<ExportView, IpcError>> HandleAsync(ExportAudit query, CancellationToken cancellationToken)
-        => await audit.HandleAsync(query.Filter, cancellationToken) switch
+        => await audit.ListAllAsync(query.Filter, cancellationToken) switch
         {
-            Ok<AuditView> ok => new Ok<ExportView>(new ExportView(CsvRows.Write(AuditHeader, ok.Value.Entries.Select(entry => (IReadOnlyList<string>)[entry.Id.ToString(), Stamp(entry.OccurredUtc), entry.EventType, entry.AggregateId.ToString(), entry.DetailsJson])))),
+            Ok<IReadOnlyList<AuditEntryView>> ok => new Ok<ExportView>(new ExportView(CsvRows.Write(AuditHeader, ok.Value.Select(entry => (IReadOnlyList<string>)[entry.Id.ToString(), Stamp(entry.OccurredUtc), entry.EventType, entry.AggregateId.ToString(), entry.DetailsJson])))),
             Fail<IpcError> fail => fail
         };
 

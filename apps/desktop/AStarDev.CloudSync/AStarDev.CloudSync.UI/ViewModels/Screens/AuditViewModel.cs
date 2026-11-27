@@ -19,6 +19,8 @@ internal sealed class AuditViewModel : ViewModelBase, IScreen
     private readonly TimeProvider time;
     private readonly ExportCommand exporter;
     private string? errorMessage;
+    private int total;
+    private int version;
 
     /// <summary>Creates the screen with no entries until the first refresh.</summary>
     /// <param name="localisation">Supplies every text.</param>
@@ -34,6 +36,7 @@ internal sealed class AuditViewModel : ViewModelBase, IScreen
         this.createClient = createClient;
         this.time = time;
         RefreshCommand = new AsyncRelayCommand(RefreshAsync);
+        LoadMoreCommand = new AsyncRelayCommand(cancellationToken => LoadAsync(false, cancellationToken));
         ExportCommand = new AsyncRelayCommand(ExportAsync);
     }
 
@@ -46,7 +49,7 @@ internal sealed class AuditViewModel : ViewModelBase, IScreen
     /// <inheritdoc/>
     public string Glyph => localisation.Get("Audit.Glyph");
 
-    /// <summary>The recorded entries, newest first. Each row's message is the entry's details as JSON.</summary>
+    /// <summary>The recorded entries loaded so far, newest first. Each row's message is the entry's details as JSON.</summary>
     public ObservableCollection<LogRowViewModel> Entries { get; } = [];
 
     /// <summary>True when the last refresh found nothing, so the screen shows the "nothing recorded" text.</summary>
@@ -59,8 +62,17 @@ internal sealed class AuditViewModel : ViewModelBase, IScreen
         private set => SetProperty(ref errorMessage, value);
     }
 
-    /// <summary>Reads the entries again.</summary>
+    /// <summary>Reads the first page of entries again, replacing those shown.</summary>
     public IAsyncRelayCommand RefreshCommand { get; }
+
+    /// <summary>Reads the page of older entries after those shown and adds it below them.</summary>
+    public IAsyncRelayCommand LoadMoreCommand { get; }
+
+    /// <summary>True while the daemon keeps older entries than those shown, so the view offers <see cref="LoadMoreCommand"/>.</summary>
+    public bool CanLoadMore => Entries.Count < total;
+
+    /// <summary>Label of the button that loads older entries.</summary>
+    public string MoreText => localisation.Get("Audit.More");
 
     /// <summary>Saves the entries to a file the user chooses.</summary>
     public IAsyncRelayCommand ExportCommand { get; }
@@ -77,17 +89,25 @@ internal sealed class AuditViewModel : ViewModelBase, IScreen
     /// <inheritdoc/>
     public void OnNavigatedTo(string? targetId) => RefreshCommand.Execute(null);
 
-    /// <summary>Reads every kept entry from the daemon. A failure keeps the entries shown and lands in <see cref="ErrorMessage"/>.</summary>
+    /// <summary>Reads the newest page of kept entries from the daemon, replacing those shown. A failure keeps the entries shown and lands in <see cref="ErrorMessage"/>.</summary>
     /// <param name="cancellationToken">Cancelling abandons the wait and surfaces as <see cref="OperationCanceledException"/>.</param>
-    public async Task RefreshAsync(CancellationToken cancellationToken)
+    public Task RefreshAsync(CancellationToken cancellationToken) => LoadAsync(true, cancellationToken);
+
+    /// <summary>Reads a page of entries: the newest when <paramref name="restart"/> is set, otherwise the one after those shown. A reply that a newer refresh has replaced is dropped. A failure keeps the entries shown and lands in <see cref="ErrorMessage"/>.</summary>
+    /// <param name="restart"><see langword="true"/> to replace the entries shown with the newest page.</param>
+    /// <param name="cancellationToken">Cancelling abandons the wait and surfaces as <see cref="OperationCanceledException"/>.</param>
+    public async Task LoadAsync(bool restart, CancellationToken cancellationToken)
     {
+        var asked = restart ? ++version : version;
+        var skip = restart ? 0 : Entries.Count;
         await using var client = createClient();
 
-        Show(await ConnectAsync(client, cancellationToken) switch
+        var result = await ConnectAsync(client, cancellationToken) switch
         {
-            Ok<Unit> => await ListAsync(client, cancellationToken),
+            Ok<Unit> => await ListAsync(client, skip, cancellationToken),
             Fail<ConnectFailure> fail => fail
-        });
+        };
+        if (asked == version) Show(result, restart);
     }
 
     /// <summary>Saves every kept entry to a file the user chooses. A failure lands in <see cref="ErrorMessage"/>; a dismissed dialog changes nothing.</summary>
@@ -101,6 +121,8 @@ internal sealed class AuditViewModel : ViewModelBase, IScreen
 
     private GetAudit Everything() => new(DateTimeOffset.UnixEpoch, time.GetUtcNow().AddDays(1), []);
 
+    private GetAudit Page(int skip) => Everything() with { Skip = skip };
+
     private static async Task<Result<Unit, ConnectFailure>> ConnectAsync(IIpcClient client, CancellationToken cancellationToken)
         => await client.ConnectAsync(cancellationToken) switch
         {
@@ -108,21 +130,23 @@ internal sealed class AuditViewModel : ViewModelBase, IScreen
             Fail<IpcError> fail => new Fail<ConnectFailure>(ConnectFailure.From(fail.Error))
         };
 
-    private async Task<Result<AuditView, ConnectFailure>> ListAsync(IIpcClient client, CancellationToken cancellationToken)
-        => await client.QueryAsync(Everything(), cancellationToken) switch
+    private async Task<Result<AuditView, ConnectFailure>> ListAsync(IIpcClient client, int skip, CancellationToken cancellationToken)
+        => await client.QueryAsync(Page(skip), cancellationToken) switch
         {
             Ok<AuditView> ok => ok,
             Fail<IpcError> fail => new Fail<ConnectFailure>(ConnectFailure.From(fail.Error))
         };
 
-    private void Show(Result<AuditView, ConnectFailure> result)
+    private void Show(Result<AuditView, ConnectFailure> result, bool restart)
     {
         switch (result)
         {
             case Ok<AuditView> ok:
-                Entries.Clear();
-                foreach (var entry in ok.Value.Entries.OrderByDescending(entry => entry.OccurredUtc)) Entries.Add(Row(entry));
+                if (restart) Entries.Clear();
+                foreach (var entry in ok.Value.Entries) Entries.Add(Row(entry));
+                total = ok.Value.Total;
                 OnPropertyChanged(nameof(IsEmpty));
+                OnPropertyChanged(nameof(CanLoadMore));
                 ErrorMessage = null;
                 break;
             case Fail<ConnectFailure> fail:

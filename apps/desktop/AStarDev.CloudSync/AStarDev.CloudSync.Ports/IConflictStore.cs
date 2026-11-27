@@ -21,6 +21,14 @@ public interface IConflictStore
     /// <returns>The <see cref="ConflictStatus.Open"/> and <see cref="ConflictStatus.Deferred"/> conflicts, oldest first; empty when none; or <see cref="StorageFailed"/>.</returns>
     Task<Result<IReadOnlyList<Conflict>, StoreError>> ListOpenAsync(SyncJobId jobId, CancellationToken cancellationToken);
 
+    /// <summary>Reads one page of the conflicts <see cref="ListOpenAsync"/> would list, so a long list can be shown a page at a time.</summary>
+    /// <param name="jobId">The job whose conflicts to read.</param>
+    /// <param name="skip">How many of the oldest conflicts to pass over. Zero or more.</param>
+    /// <param name="take">The most conflicts to return. At least one.</param>
+    /// <param name="cancellationToken">Cancelling abandons the read.</param>
+    /// <returns>The page, oldest first, with the number of conflicts the job has waiting; an empty page with a total of zero for an unknown job; or <see cref="StorageFailed"/>.</returns>
+    Task<Result<Page<Conflict>, StoreError>> PageOpenAsync(SyncJobId jobId, int skip, int take, CancellationToken cancellationToken);
+
     /// <summary>Reads one conflict whatever its status.</summary>
     /// <param name="id">The conflict to read.</param>
     /// <param name="cancellationToken">Cancelling abandons the read.</param>

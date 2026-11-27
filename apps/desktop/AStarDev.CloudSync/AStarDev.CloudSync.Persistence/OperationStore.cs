@@ -92,14 +92,16 @@ internal sealed class OperationStore(IDbContextFactory<CloudSyncDbContext> conte
     }
 
     /// <inheritdoc/>
-    public async Task<Result<IReadOnlyList<Operation>, StoreError>> ListDeadLettersAsync(CancellationToken cancellationToken)
+    public async Task<Result<Page<Operation>, StoreError>> ListDeadLettersAsync(int skip, int take, CancellationToken cancellationToken)
     {
-        var outcome = await Try.RunAsync<IReadOnlyList<Operation>>(async token =>
+        var outcome = await Try.RunAsync<Page<Operation>>(async token =>
         {
             await using var context = await contextFactory.CreateDbContextAsync(token).ConfigureAwait(false);
-            var rows = await context.Operations.AsNoTracking().Where(row => row.Status == OperationStatus.DeadLetter).OrderBy(row => row.Priority).ThenBy(row => row.CreatedUtc).ToListAsync(token).ConfigureAwait(false);
+            var deadLetters = context.Operations.AsNoTracking().Where(row => row.Status == OperationStatus.DeadLetter);
+            var total = await deadLetters.CountAsync(token).ConfigureAwait(false);
+            var rows = await deadLetters.OrderBy(row => row.Priority).ThenBy(row => row.CreatedUtc).ThenBy(row => row.Id).Skip(skip).Take(take).ToListAsync(token).ConfigureAwait(false);
 
-            return rows.Select(row => row.ToOperation()).ToList();
+            return new Page<Operation>(total, [.. rows.Select(row => row.ToOperation())]);
         }, cancellationToken).ConfigureAwait(false);
 
         return outcome.ToResult(ToStorageFailure);

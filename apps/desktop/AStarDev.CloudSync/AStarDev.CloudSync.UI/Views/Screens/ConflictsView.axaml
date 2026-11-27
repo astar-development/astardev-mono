@@ -32,6 +32,7 @@
                     </DataTemplate>
                 </ListBox.ItemTemplate>
             </ListBox>
+            <Button Content="{loc:Loc Conflicts.More}" Command="{Binding LoadMoreCommand}" IsVisible="{Binding CanLoadMore}" />
             <Border BorderThickness="1" BorderBrush="{DynamicResource Border.Brush}" Padding="12">
                 <StackPanel Spacing="8">
                     <TextBlock Text="{loc:Loc Conflicts.NoDetail}" IsVisible="{Binding SelectedConflict, Converter={x:Static ObjectConverters.IsNull}}" Foreground="{DynamicResource Text.Secondary.Brush}" />

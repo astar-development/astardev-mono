@@ -2,6 +2,7 @@
   "Conflicts.Title": "Conflicts",
   "Conflicts.Glyph": "⚠",
   "Conflicts.ListHeading": "Conflicts waiting for you",
+  "Conflicts.More": "Show more conflicts",
   "Conflicts.Empty": "No conflicts. Nothing needs your decision.",
   "Conflicts.SelectAll": "Select all",
   "Conflicts.ClearSelection": "Clear selection",

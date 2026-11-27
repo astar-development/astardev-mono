@@ -33,10 +33,10 @@ internal sealed class DashboardViewModel : ViewModelBase, IScreen, IDisposable
         this.navigation = navigation;
         this.source = source;
         this.connection = connection;
-        connection.Conflicts.CollectionChanged += (_, _) => OnPropertyChanged(nameof(ConflictsText));
         connection.PropertyChanged += (_, args) =>
         {
             if (args.PropertyName == nameof(ConnectionViewModel.State)) OnLinkChanged();
+            if (args.PropertyName == nameof(ConnectionViewModel.ConflictsTotal)) OnPropertyChanged(nameof(ConflictsText));
         };
         connection.EventReceived += OnEvent;
         OnLinkChanged();
@@ -129,7 +129,7 @@ internal sealed class DashboardViewModel : ViewModelBase, IScreen, IDisposable
     public string AttentionHeading => localisation.Get("Dashboard.Attention.Heading");
 
     /// <summary>Conflict count, shown even when zero: the conflicts waiting for the user, deferred ones included, kept current as the daemon reports them.</summary>
-    public string ConflictsText => Count("Dashboard.Attention.Conflicts", connection.Conflicts.Count);
+    public string ConflictsText => Count("Dashboard.Attention.Conflicts", connection.ConflictsTotal);
 
     /// <summary>Error count, shown even when zero.</summary>
     public string ErrorsText => Count("Dashboard.Attention.Errors", snapshot.Errors);

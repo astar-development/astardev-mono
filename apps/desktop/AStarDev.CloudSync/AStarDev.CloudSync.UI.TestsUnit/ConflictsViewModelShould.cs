@@ -26,10 +26,10 @@ public sealed class ConflictsViewModelShould
     private static (IHost Host, ConflictsViewModel Screen, ConnectionViewModel Connection, FakeIpcClient Client) Create(params ConflictView[] conflicts)
     {
         var client = new FakeIpcClient([], available: true) { JobsReply = new Ok<SyncJobsView>(new SyncJobsView([new SyncJobView(Job, Guid.NewGuid(), "OneDrive", "/home/ada/OneDrive", SyncBootstrapMode.Merge)])) };
-        client.ConflictsReply = _ => new Ok<ConflictsView>(new ConflictsView(conflicts));
+        client.ConflictsReply = _ => new Ok<ConflictsView>(new ConflictsView(conflicts.Length, conflicts));
         var host = OperationScreensHost.Create(client, new FixedTimeProvider(Now));
         var connection = host.Services.GetRequiredService<ConnectionViewModel>();
-        connection.ReplaceConflicts(conflicts);
+        connection.ReplaceConflicts(ConflictPages.Of(conflicts));
 
         return (host, host.Screen<ConflictsViewModel>(), connection, client);
     }
@@ -196,7 +196,7 @@ public sealed class ConflictsViewModelShould
         var second = View(path: "b.txt", age: TimeSpan.FromDays(1));
         var (host, screen, connection, client) = Create(first, second);
         using var lifetime = host;
-        client.ConflictsReply = _ => new Ok<ConflictsView>(new ConflictsView([second]));
+        client.ConflictsReply = _ => new Ok<ConflictsView>(new ConflictsView(1, [second]));
         screen.SelectedConflict = screen.Rows[0];
 
         screen.RequestResolution(ConflictChoice.KeepLocal);
@@ -219,7 +219,7 @@ public sealed class ConflictsViewModelShould
         var views = new[] { View(path: "a.txt", age: TimeSpan.FromDays(3)), View(path: "b.txt", age: TimeSpan.FromDays(2)), View(path: "c.txt", age: TimeSpan.FromDays(1)) };
         var (host, screen, connection, client) = Create(views);
         using var lifetime = host;
-        client.ConflictsReply = _ => new Ok<ConflictsView>(new ConflictsView([views[2]]));
+        client.ConflictsReply = _ => new Ok<ConflictsView>(new ConflictsView(1, [views[2]]));
         screen.Rows[0].IsSelected = true;
         screen.Rows[1].IsSelected = true;
 
@@ -238,7 +238,7 @@ public sealed class ConflictsViewModelShould
         var views = new[] { View(path: "a.txt"), View(path: "b.txt") };
         var (host, screen, _, client) = Create(views);
         using var lifetime = host;
-        client.ConflictsReply = _ => new Ok<ConflictsView>(new ConflictsView([]));
+        client.ConflictsReply = _ => new Ok<ConflictsView>(new ConflictsView(0, []));
 
         screen.SelectAll();
         screen.RequestResolution(ConflictChoice.KeepBoth);
@@ -254,7 +254,7 @@ public sealed class ConflictsViewModelShould
         var open = View(path: "a.txt");
         var (host, screen, connection, client) = Create(open);
         using var lifetime = host;
-        client.ConflictsReply = _ => new Ok<ConflictsView>(new ConflictsView([open with { Status = "Deferred" }]));
+        client.ConflictsReply = _ => new Ok<ConflictsView>(new ConflictsView(1, [open with { Status = "Deferred" }]));
         screen.SelectedConflict = screen.Rows[0];
 
         screen.RequestResolution(ConflictChoice.Defer);
@@ -272,7 +272,7 @@ public sealed class ConflictsViewModelShould
         var deferred = View(status: "Deferred");
         var (host, screen, connection, client) = Create(deferred);
         using var lifetime = host;
-        client.ConflictsReply = _ => new Ok<ConflictsView>(new ConflictsView([]));
+        client.ConflictsReply = _ => new Ok<ConflictsView>(new ConflictsView(0, []));
         screen.SelectedConflict = screen.Rows[0];
 
         screen.RequestResolution(ConflictChoice.KeepRemote);
@@ -290,7 +290,7 @@ public sealed class ConflictsViewModelShould
         var (host, screen, _, client) = Create(first, second);
         using var lifetime = host;
         client.CommandReply = new Ok<CommandResult>(new CommandResult(CommandOutcome.Rejected, "That conflict no longer exists."));
-        client.ConflictsReply = _ => new Ok<ConflictsView>(new ConflictsView([second]));
+        client.ConflictsReply = _ => new Ok<ConflictsView>(new ConflictsView(1, [second]));
         screen.SelectAll();
 
         screen.RequestResolution(ConflictChoice.KeepLocal);
@@ -307,7 +307,7 @@ public sealed class ConflictsViewModelShould
         var unreachable = new FakeIpcClient([], available: false);
         using var host = OperationScreensHost.Create(unreachable, new FixedTimeProvider(Now));
         var screen = host.Screen<ConflictsViewModel>();
-        host.Services.GetRequiredService<ConnectionViewModel>().ReplaceConflicts([view]);
+        host.Services.GetRequiredService<ConnectionViewModel>().ReplaceConflicts(ConflictPages.Of(view));
         screen.SelectedConflict = screen.Rows[0];
 
         screen.RequestResolution(ConflictChoice.KeepLocal);
@@ -351,7 +351,7 @@ public sealed class ConflictsViewModelShould
         var client = new FakeIpcClient([], available: true)
         {
             JobsReply = new Ok<SyncJobsView>(new SyncJobsView([new SyncJobView(Job, Guid.NewGuid(), "OneDrive", "/home/ada/OneDrive", SyncBootstrapMode.Merge)])),
-            ConflictsReply = _ => new Ok<ConflictsView>(new ConflictsView([existing]))
+            ConflictsReply = _ => new Ok<ConflictsView>(new ConflictsView(1, [existing]))
         };
         using var host = OperationScreensHost.Create(client, new FixedTimeProvider(Now));
         var connection = new ConnectionViewModel(() => client, TimeSpan.FromMilliseconds(100), TimeSpan.FromMilliseconds(100));
@@ -418,5 +418,35 @@ public sealed class ConflictsViewModelShould
         while (!condition() && DateTime.UtcNow < deadline) await Task.Delay(5, Token);
 
         condition().ShouldBeTrue();
+    }
+
+    [Fact]
+    public async Task load_the_next_page_of_each_job_after_the_conflicts_shown()
+    {
+        var first = View(path: "a.txt", age: TimeSpan.FromDays(2));
+        var second = View(path: "b.txt", age: TimeSpan.FromDays(1));
+        var (host, screen, connection, client) = Create();
+        using var lifetime = host;
+        connection.ReplaceConflicts(new Dictionary<Guid, ConflictsView> { [Job] = new(2, [first]) });
+        var asked = new List<GetConflicts>();
+        client.ConflictsReply = query => { asked.Add(query); return new Ok<ConflictsView>(new ConflictsView(2, [second])); };
+        screen.CanLoadMore.ShouldBeTrue();
+
+        await screen.LoadMoreCommand.ExecuteAsync(null);
+
+        asked.ShouldHaveSingleItem().Skip.ShouldBe(1);
+        screen.Rows.Select(row => row.Name).ShouldBe(["a.txt", "b.txt"]);
+        screen.CanLoadMore.ShouldBeFalse();
+    }
+
+    [Fact]
+    public async Task honour_cancellation_when_loading_more()
+    {
+        var (host, screen, _, _) = Create(View());
+        using var lifetime = host;
+        using var cancelled = new CancellationTokenSource();
+        await cancelled.CancelAsync();
+
+        await Should.ThrowAsync<OperationCanceledException>(() => screen.LoadMoreAsync(cancelled.Token));
     }
 }

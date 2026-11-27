@@ -39,6 +39,8 @@ internal static class ApplicationConstants
 
     public static string LoadingFoldersText => "Loading...";
 
+    public static string MoreFoldersText => "Show more folders";
+
     public static string ConnectAccountFirstText => "Connect an account first.";
 
     public static string JobNotFoundText => "The sync job was created but the daemon did not list it. Restart the app and try again.";

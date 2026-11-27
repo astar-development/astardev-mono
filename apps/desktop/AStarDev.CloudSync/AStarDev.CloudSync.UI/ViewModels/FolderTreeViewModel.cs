@@ -26,7 +26,7 @@ public sealed partial class FolderTreeViewModel(Func<IIpcClient> createClient, S
         var generation = Interlocked.Increment(ref refreshes);
         Roots.Clear();
         Roots.Add(FolderNodeViewModel.Loading());
-        var rows = await ListAsync(null, cancellationToken);
+        var rows = await ListAsync(null, 0, Roots, cancellationToken);
         if (generation != Volatile.Read(ref refreshes)) return;
 
         Roots.Clear();
@@ -36,7 +36,7 @@ public sealed partial class FolderTreeViewModel(Func<IIpcClient> createClient, S
     [RelayCommand(AllowConcurrentExecutions = true)]
     private Task Refresh() => RefreshAsync(CancellationToken.None);
 
-    internal async Task<IReadOnlyList<FolderNodeViewModel>> ListAsync(string? parentId, CancellationToken cancellationToken)
+    internal async Task<IReadOnlyList<FolderNodeViewModel>> ListAsync(string? parentId, int skip, ObservableCollection<FolderNodeViewModel> level, CancellationToken cancellationToken)
     {
         if (selection?.AccountId is not { } accountId) return [FolderNodeViewModel.Failure(ApplicationConstants.ConnectAccountFirstText)];
 
@@ -44,15 +44,23 @@ public sealed partial class FolderTreeViewModel(Func<IIpcClient> createClient, S
 
         return await client.ConnectAsync(cancellationToken) switch
         {
-            Ok<Unit> => await QueryAsync(client, accountId, parentId, cancellationToken),
+            Ok<Unit> => await QueryAsync(client, accountId, parentId, skip, level, cancellationToken),
             Fail<IpcError> fail => [FolderNodeViewModel.Failure(ConnectFailure.From(fail.Error).Message)]
         };
     }
 
-    private async Task<IReadOnlyList<FolderNodeViewModel>> QueryAsync(IIpcClient client, Guid accountId, string? parentId, CancellationToken cancellationToken)
-        => await client.QueryAsync(new GetRemoteFolders(accountId, parentId), cancellationToken) switch
+    private async Task<IReadOnlyList<FolderNodeViewModel>> QueryAsync(IIpcClient client, Guid accountId, string? parentId, int skip, ObservableCollection<FolderNodeViewModel> level, CancellationToken cancellationToken)
+        => await client.QueryAsync(new GetRemoteFolders(accountId, parentId, skip), cancellationToken) switch
         {
-            Ok<RemoteFoldersView> ok => ok.Value.Folders.Select(folder => new FolderNodeViewModel(FolderRowKind.Folder, folder.Id, folder.Name, this)).ToList(),
+            Ok<RemoteFoldersView> ok => Rows(ok.Value, parentId, skip, level),
             Fail<IpcError> fail => [FolderNodeViewModel.Failure(ConnectFailure.From(fail.Error).Message)]
         };
+
+    private List<FolderNodeViewModel> Rows(RemoteFoldersView page, string? parentId, int skip, ObservableCollection<FolderNodeViewModel> level)
+    {
+        var rows = page.Folders.Select(folder => new FolderNodeViewModel(FolderRowKind.Folder, folder.Id, folder.Name, this)).ToList();
+        if (skip + rows.Count < page.Total) rows.Add(FolderNodeViewModel.More(parentId ?? string.Empty, this, level));
+
+        return rows;
+    }
 }

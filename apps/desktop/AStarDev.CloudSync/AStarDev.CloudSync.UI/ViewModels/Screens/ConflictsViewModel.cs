@@ -40,7 +40,12 @@ internal sealed class ConflictsViewModel : ViewModelBase, IScreen
         this.time = time;
         Actions = Choices.Select(choice => new ConflictActionViewModel(choice, localisation.Get($"Conflicts.Action.{choice}"))).ToList();
         ConfirmCommand = new AsyncRelayCommand(ConfirmAsync);
+        LoadMoreCommand = new AsyncRelayCommand(LoadMoreAsync);
         connection.Conflicts.CollectionChanged += (_, _) => Rebuild();
+        connection.PropertyChanged += (_, args) =>
+        {
+            if (args.PropertyName == nameof(ConnectionViewModel.ConflictsTotal)) OnPropertyChanged(nameof(CanLoadMore));
+        };
         Rebuild();
     }
 
@@ -53,8 +58,14 @@ internal sealed class ConflictsViewModel : ViewModelBase, IScreen
     /// <inheritdoc/>
     public string Glyph => localisation.Get("Conflicts.Glyph");
 
-    /// <summary>The conflicts that wait for the user, oldest first, deferred ones included.</summary>
+    /// <summary>The conflicts that wait for the user loaded so far, oldest first, deferred ones included.</summary>
     public ObservableCollection<ConflictRowViewModel> Rows { get; } = [];
+
+    /// <summary>Reads the next page of each job's conflicts and adds them to those shown.</summary>
+    public IAsyncRelayCommand LoadMoreCommand { get; }
+
+    /// <summary>True while more conflicts wait than those shown, so the view offers <see cref="LoadMoreCommand"/>.</summary>
+    public bool CanLoadMore => connection.Conflicts.Count < connection.ConflictsTotal;
 
     /// <summary>True when there are no conflicts, so the screen shows the "nothing needs you" text.</summary>
     public bool IsEmpty => Rows.Count == 0;
@@ -168,6 +179,35 @@ internal sealed class ConflictsViewModel : ViewModelBase, IScreen
         });
     }
 
+    /// <summary>Reads the page after those shown of each job's conflicts and adds them to the list. A failure keeps the conflicts shown and lands in <see cref="ErrorMessage"/>.</summary>
+    /// <param name="cancellationToken">Cancelling abandons the wait and surfaces as <see cref="OperationCanceledException"/>.</param>
+    public async Task LoadMoreAsync(CancellationToken cancellationToken)
+    {
+        await using var client = createClient();
+
+        switch (await ConnectAsync(client, cancellationToken) switch
+        {
+            Ok<Unit> => await ListMoreAsync(client, cancellationToken),
+            Fail<ConnectFailure> fail => fail
+        })
+        {
+            case Ok<IReadOnlyDictionary<Guid, ConflictsView>> ok:
+                connection.AddConflicts(ok.Value);
+                ErrorMessage = null;
+                break;
+            case Fail<ConnectFailure> fail:
+                ErrorMessage = fail.Error.Message;
+                break;
+        }
+    }
+
+    private async Task<Result<IReadOnlyDictionary<Guid, ConflictsView>, ConnectFailure>> ListMoreAsync(IIpcClient client, CancellationToken cancellationToken)
+        => await ConflictListing.ListAsync(client, connection.LoadedConflicts, cancellationToken) switch
+        {
+            Ok<IReadOnlyDictionary<Guid, ConflictsView>> ok => ok,
+            Fail<IpcError> fail => new Fail<ConnectFailure>(ConnectFailure.From(fail.Error))
+        };
+
     private static async Task<Result<Unit, ConnectFailure>> ConnectAsync(IIpcClient client, CancellationToken cancellationToken)
         => await client.ConnectAsync(cancellationToken) switch
         {
@@ -185,7 +225,7 @@ internal sealed class ConflictsViewModel : ViewModelBase, IScreen
     private static async Task<Result<Decision, ConnectFailure>> ListAsync(IIpcClient client, CommandResult sent, CancellationToken cancellationToken)
         => await ConflictListing.ListAsync(client, cancellationToken) switch
         {
-            Ok<IReadOnlyList<ConflictView>> ok => new Ok<Decision>(new Decision(ok.Value, sent.Outcome == CommandOutcome.Accepted ? null : sent.Message ?? ApplicationConstants.RequestRejectedText)),
+            Ok<IReadOnlyDictionary<Guid, ConflictsView>> ok => new Ok<Decision>(new Decision(ok.Value, sent.Outcome == CommandOutcome.Accepted ? null : sent.Message ?? ApplicationConstants.RequestRejectedText)),
             Fail<IpcError> fail => new Fail<ConnectFailure>(ConnectFailure.From(fail.Error))
         };
 
@@ -227,6 +267,7 @@ internal sealed class ConflictsViewModel : ViewModelBase, IScreen
 
         SelectedConflict = Rows.FirstOrDefault(row => row.Id == focused);
         OnPropertyChanged(nameof(IsEmpty));
+        OnPropertyChanged(nameof(CanLoadMore));
         OnRowChanged(nameof(ConflictRowViewModel.IsSelected));
     }
 
@@ -253,5 +294,5 @@ internal sealed class ConflictsViewModel : ViewModelBase, IScreen
         OnPropertyChanged(nameof(ConfirmationText));
     }
 
-    private sealed record Decision(IReadOnlyList<ConflictView> Remaining, string? Problem);
+    private sealed record Decision(IReadOnlyDictionary<Guid, ConflictsView> Remaining, string? Problem);
 }

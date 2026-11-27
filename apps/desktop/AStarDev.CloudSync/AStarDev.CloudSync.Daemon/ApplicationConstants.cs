@@ -61,6 +61,10 @@ internal static class ApplicationConstants
 
     public static int HistoryListLimit => 500;
 
+    public static int ListLimit => 500;
+
+    public static int LogMessageLimit => 2000;
+
     public static TimeSpan StopReplyGrace => TimeSpan.FromMilliseconds(200);
 
     public static int RestartExitCode => 75;

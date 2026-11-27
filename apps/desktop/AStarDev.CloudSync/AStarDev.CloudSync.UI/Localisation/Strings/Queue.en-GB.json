@@ -3,6 +3,7 @@
   "Queue.Glyph": "⏳",
   "Queue.ConflictsNote": "Conflicts are resolved on the Conflicts screen, never from the queue.",
   "Queue.DeadLetters.Heading": "Needs your decision",
+  "Queue.DeadLetters.More": "Show more",
   "Queue.DeadLetters.Retry": "Retry",
   "Queue.DeadLetters.Ignore": "Ignore",
   "Queue.DeadLetters.Item": "Item: {id}",

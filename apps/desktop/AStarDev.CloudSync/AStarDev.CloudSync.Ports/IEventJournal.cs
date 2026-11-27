@@ -28,6 +28,16 @@ public interface IEventJournal
     /// <returns>The entries oldest first; empty when none match; or <see cref="StorageFailed"/>.</returns>
     Task<Result<IReadOnlyList<JournalEntry>, StoreError>> ListAsync(DateTimeOffset fromUtc, DateTimeOffset toUtc, IReadOnlyList<string> eventTypes, CancellationToken cancellationToken);
 
+    /// <summary>Reads one page of the entries <see cref="ListAsync(DateTimeOffset, DateTimeOffset, IReadOnlyList{string}, CancellationToken)"/> would list, newest first, so a long trail can be shown a page at a time.</summary>
+    /// <param name="fromUtc">The start of the range, inclusive.</param>
+    /// <param name="toUtc">The end of the range, inclusive.</param>
+    /// <param name="eventTypes">The kinds of occurrence to keep; empty keeps every kind.</param>
+    /// <param name="skip">How many of the newest matching entries to pass over. Zero or more.</param>
+    /// <param name="take">The most entries to return. At least one.</param>
+    /// <param name="cancellationToken">Cancelling abandons the read.</param>
+    /// <returns>The page, newest first, with the number of matching entries; or <see cref="StorageFailed"/>.</returns>
+    Task<Result<Page<JournalEntry>, StoreError>> PageAsync(DateTimeOffset fromUtc, DateTimeOffset toUtc, IReadOnlyList<string> eventTypes, int skip, int take, CancellationToken cancellationToken);
+
     /// <summary>Removes the entries that occurred before a moment, which is how the audit retention is enforced. Safe to call twice: the second call removes nothing.</summary>
     /// <param name="olderThanUtc">Entries that occurred strictly before this moment are removed.</param>
     /// <param name="cancellationToken">Cancelling before the delete completes removes nothing.</param>

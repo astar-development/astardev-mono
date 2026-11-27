@@ -10,5 +10,8 @@ public enum FolderRowKind
     Loading,
 
     /// <summary>The reason listing failed, worded for the user. Collapse and expand the parent node to try again.</summary>
-    Error
+    Error,
+
+    /// <summary>The last row of a level that holds more folders than were listed. Choosing it lists the next page of that level in its place.</summary>
+    More
 }

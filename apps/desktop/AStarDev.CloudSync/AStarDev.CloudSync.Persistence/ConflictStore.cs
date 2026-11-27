@@ -48,6 +48,22 @@ internal sealed class ConflictStore(IDbContextFactory<CloudSyncDbContext> contex
     }
 
     /// <inheritdoc/>
+    public async Task<Result<Page<Conflict>, StoreError>> PageOpenAsync(SyncJobId jobId, int skip, int take, CancellationToken cancellationToken)
+    {
+        var outcome = await Try.RunAsync<Page<Conflict>>(async token =>
+        {
+            await using var context = await contextFactory.CreateDbContextAsync(token).ConfigureAwait(false);
+            var waiting = context.Conflicts.AsNoTracking().Where(row => row.SyncJobId == jobId && (row.Status == ConflictStatus.Open || row.Status == ConflictStatus.Deferred));
+            var total = await waiting.CountAsync(token).ConfigureAwait(false);
+            var rows = await waiting.OrderBy(row => row.CreatedUtc).ThenBy(row => row.Id).Skip(skip).Take(take).ToListAsync(token).ConfigureAwait(false);
+
+            return new Page<Conflict>(total, [.. rows.Select(row => row.ToConflict())]);
+        }, cancellationToken).ConfigureAwait(false);
+
+        return outcome.ToResult(ToStorageFailure);
+    }
+
+    /// <inheritdoc/>
     public async Task<Result<Conflict, StoreError>> GetAsync(ConflictId id, CancellationToken cancellationToken)
     {
         var outcome = await Try.RunAsync<Result<Conflict, StoreError>>(async token =>

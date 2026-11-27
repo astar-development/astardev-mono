@@ -6,10 +6,12 @@ namespace AStarDev.CloudSync.IPC;
 /// </summary>
 /// <param name="AccountId">The <see cref="AccountView.Id"/> of the account whose drive is listed. Fails with <see cref="HandlerFailed"/> when the account is unknown.</param>
 /// <param name="ParentId">Id of the folder to list, as an earlier <see cref="RemoteFolderView.Id"/> reported it. <see langword="null"/> lists the top of the drive.</param>
+/// <param name="Skip">How many subfolders to pass over, in name order. Zero or more; a negative value counts as zero.</param>
+/// <param name="Take">The most subfolders to return. The daemon returns between 1 and 500.</param>
 /// <example>
 /// <code>
 /// var top = await client.QueryAsync(new GetRemoteFolders(account.Id), cancellationToken);
 /// var below = await client.QueryAsync(new GetRemoteFolders(account.Id, folder.Id), cancellationToken);
 /// </code>
 /// </example>
-public sealed record GetRemoteFolders(Guid AccountId, string? ParentId = null) : IQuery<RemoteFoldersView>;
+public sealed record GetRemoteFolders(Guid AccountId, string? ParentId = null, int Skip = 0, int Take = 200) : IQuery<RemoteFoldersView>;

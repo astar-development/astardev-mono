@@ -126,7 +126,7 @@ public sealed class DesktopNotificationShould
         using var disposable = host;
         _ = host.Services.GetRequiredService<TrayConflictBadge>();
 
-        host.Services.GetRequiredService<ConnectionViewModel>().Conflicts.Add(new IPC.ConflictView(Guid.NewGuid(), Guid.NewGuid(), Guid.NewGuid(), "ModifyModify", DateTimeOffset.UnixEpoch, "Open", "a.txt", null, null));
+        host.Services.GetRequiredService<ConnectionViewModel>().ReplaceConflicts(ConflictPages.Of(new IPC.ConflictView(Guid.NewGuid(), Guid.NewGuid(), Guid.NewGuid(), "ModifyModify", DateTimeOffset.UnixEpoch, "Open", "a.txt", null, null)));
 
         host.Services.GetRequiredService<TrayLifecycle>().ConflictCount.ShouldBe(1);
     }

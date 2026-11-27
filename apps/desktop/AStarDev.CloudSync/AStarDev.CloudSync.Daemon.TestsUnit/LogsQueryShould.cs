@@ -40,6 +40,18 @@ public sealed class LogsQueryShould
     }
 
     [Fact]
+    public async Task cut_a_long_message_so_the_answer_fits_an_ipc_frame()
+    {
+        await using var host = DaemonTestHost.CreateWith(new StubCloudProvider());
+        await host.InitialiseDatabaseAsync(Token);
+        await host.Services.GetRequiredService<ITelemetryStore>().AppendAsync([new TelemetryEntry(TelemetryKind.Log, Noon, 2, "Sync", new string('x', ApplicationConstants.LogMessageLimit + 50))], Token);
+
+        var result = await host.Services.GetRequiredService<LogsQuery>().HandleAsync(new GetLogs(), Token);
+
+        result.Value.ShouldBeOfType<Ok<LogsView>>().Value.Entries.Single().Message.Length.ShouldBe(ApplicationConstants.LogMessageLimit);
+    }
+
+    [Fact]
     public async Task fail_with_a_message_when_the_store_fails()
     {
         await using var host = DaemonTestHost.Create(configureServices: services => services.RemoveAll<ITelemetryStore>().AddSingleton<ITelemetryStore, FailingTelemetryStore>());
