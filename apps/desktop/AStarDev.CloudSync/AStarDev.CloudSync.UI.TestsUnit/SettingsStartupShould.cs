@@ -23,7 +23,7 @@ public sealed class SettingsStartupShould
         var theme = new FakeThemeService();
         var notifications = new FakeNotificationService();
         var selection = new ScopeSelectionViewModel(() => client, new FakeFolderPicker(null));
-        var settings = new SettingsViewModel(RealLocalisation(), () => new FakeNavigationService(), new FolderTreeViewModel(() => client, selection), selection, () => client, theme, () => notifications);
+        var settings = new SettingsViewModel(RealLocalisation(), () => new FakeNavigationService(), new FolderTreeViewModel(() => client, selection), selection, new AccountsViewModel(() => client), () => client, theme, () => notifications);
         var connection = new ConnectionViewModel(() => client, TimeSpan.FromSeconds(1), TimeSpan.FromSeconds(1));
         _ = new SettingsStartup(connection, [settings]);
 

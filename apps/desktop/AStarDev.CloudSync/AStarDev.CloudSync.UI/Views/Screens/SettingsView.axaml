@@ -38,6 +38,7 @@
                 </StackPanel>
                 <StackPanel Spacing="8" IsVisible="{Binding IsSynchronisation}">
                     <TextBlock Text="{loc:Loc Settings.Synchronisation.Heading}" FontSize="18" FontWeight="SemiBold" />
+                    <TextBlock Text="{Binding AccountName}" FontWeight="SemiBold" />
                     <TextBlock Text="{loc:Loc Settings.Synchronisation.Description}" TextWrapping="Wrap" />
                     <TextBlock Text="{loc:Loc Common.RemoteFolders}" FontWeight="SemiBold" />
                     <views:FolderTreeView DataContext="{Binding Folders}" />

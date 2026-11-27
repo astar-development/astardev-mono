@@ -24,7 +24,75 @@ public sealed class SettingsViewModelShould
         var selection = new ScopeSelectionViewModel(() => client, new FakeFolderPicker(null));
         var navigation = new FakeNavigationService();
 
-        return (new SettingsViewModel(RealLocalisation(), () => navigation, new FolderTreeViewModel(() => client, selection), selection, () => client, theme, () => notifications), navigation);
+        return (new SettingsViewModel(RealLocalisation(), () => navigation, new FolderTreeViewModel(() => client, selection), selection, new AccountsViewModel(() => client), () => client, theme, () => notifications), navigation);
+    }
+
+    private static readonly Guid OtherAccount = new("22222222-2222-2222-2222-222222222222");
+
+    private static FakeIpcClient TwoAccounts() => new([], available: true)
+    {
+        AccountsReply = new Ok<AccountsView>(new AccountsView([new AccountView(FakeIpcClient.KnownAccount, "First", "OneDrive", AccountState.Connected), new AccountView(OtherAccount, "Second", "OneDrive", AccountState.Connected)])),
+        JobsReply = new Ok<SyncJobsView>(new SyncJobsView([new SyncJobView(Guid.NewGuid(), FakeIpcClient.KnownAccount, "First", "/home/first", SyncBootstrapMode.Merge), new SyncJobView(Guid.NewGuid(), OtherAccount, "Second", "/home/second", SyncBootstrapMode.Download)]))
+    };
+
+    private static async Task<SettingsViewModel> OpenedForAsync(FakeIpcClient client, string? targetId)
+    {
+        var selection = new ScopeSelectionViewModel(() => client, new FakeFolderPicker(null));
+        var accounts = new AccountsViewModel(() => client);
+        await accounts.RefreshAsync(TestContext.Current.CancellationToken);
+        var navigation = new FakeNavigationService();
+        var settings = new SettingsViewModel(RealLocalisation(), () => navigation, new FolderTreeViewModel(() => client, selection), selection, accounts, () => client, new FakeThemeService(), () => new FakeNotificationService());
+        settings.OnNavigatedTo(targetId);
+        await (selection.RefreshCommand.ExecutionTask ?? Task.CompletedTask);
+
+        return settings;
+    }
+
+    [Fact]
+    public async Task show_the_job_of_the_account_it_was_opened_for()
+    {
+        var settings = await OpenedForAsync(TwoAccounts(), OtherAccount.ToString());
+
+        settings.Selection.AccountId.ShouldBe(OtherAccount);
+        settings.Selection.LocalRoot.ShouldBe("/home/second");
+        settings.Selection.BootstrapMode.ShouldBe(SyncBootstrapMode.Download);
+    }
+
+    [Fact]
+    public async Task open_the_synchronisation_section_when_opened_for_an_account()
+    {
+        var settings = await OpenedForAsync(TwoAccounts(), OtherAccount.ToString());
+
+        settings.IsSynchronisation.ShouldBeTrue();
+    }
+
+    [Fact]
+    public async Task name_the_account_it_was_opened_for()
+    {
+        var settings = await OpenedForAsync(TwoAccounts(), OtherAccount.ToString());
+
+        settings.AccountName.ShouldBe("Second");
+    }
+
+    [Fact]
+    public async Task keep_the_chosen_account_when_opened_again_without_one()
+    {
+        var settings = await OpenedForAsync(TwoAccounts(), OtherAccount.ToString());
+
+        settings.OnNavigatedTo(null);
+        await (settings.Selection.RefreshCommand.ExecutionTask ?? Task.CompletedTask);
+
+        settings.Selection.AccountId.ShouldBe(OtherAccount);
+        settings.Selection.LocalRoot.ShouldBe("/home/second");
+    }
+
+    [Fact]
+    public async Task show_the_first_account_when_opened_without_one_and_none_was_chosen()
+    {
+        var settings = await OpenedForAsync(TwoAccounts(), null);
+
+        settings.Selection.AccountId.ShouldBe(FakeIpcClient.KnownAccount);
+        settings.AccountName.ShouldBe("First");
     }
 
     private static FakeIpcClient WithSettings(params (string Name, string Value)[] values) => new([], available: true) { SettingsReply = new Ok<SettingsView>(new SettingsView(values.ToDictionary(value => value.Name, value => value.Value))) };
