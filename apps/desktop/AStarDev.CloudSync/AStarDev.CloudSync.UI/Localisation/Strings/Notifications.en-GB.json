@@ -32,6 +32,7 @@
   "Notifications.UserActionRequired.Title": "Action needed",
   "Notifications.UserActionRequired.Message": "A sync job stopped on an error and needs to be started again.",
   "Notifications.UserActionRequired.NextStep": "Open Activity to see which job.",
+  "Notifications.OpenAction": "Open",
   "Notifications.Body": "{message} {nextStep}",
   "Notifications.Repeated": "{message} ({count} times)"
 }

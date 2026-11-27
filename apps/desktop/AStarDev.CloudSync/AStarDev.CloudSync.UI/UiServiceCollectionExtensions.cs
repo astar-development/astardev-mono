@@ -13,6 +13,7 @@ using AStarDev.FunctionalParadigm;
 using AStarDev.SingleInstance;
 using Avalonia.Threading;
 using Microsoft.Extensions.DependencyInjection;
+using Microsoft.Extensions.Hosting;
 
 namespace AStarDev.CloudSync.UI;
 
@@ -82,7 +83,7 @@ internal static class UiServiceCollectionExtensions
         services.AddSingleton<TrayLifecycle>();
         services.AddSingleton<InAppNotificationPresenter>();
         services.AddSingleton<IDesktopNotifier, NotifySendNotifier>();
-        services.AddSingleton<INotificationPresenter, DesktopNotificationPresenter>();
+        services.AddSingleton<INotificationPresenter>(provider => new DesktopNotificationPresenter(provider.GetRequiredService<InAppNotificationPresenter>(), provider.GetRequiredService<IDesktopNotifier>(), provider.GetRequiredService<IHostApplicationLifetime>(), provider.GetRequiredService<Func<INotificationService>>(), action => Dispatcher.UIThread.Post(action)));
         services.AddSingleton<INotificationService>(provider => new NotificationService(provider.GetRequiredService<INotificationPresenter>(), provider.GetRequiredService<TrayLifecycle>(), provider.GetRequiredService<ILocalisationService>(), TimeProvider.System, NotificationAggregationWindow));
         services.AddSingleton<DaemonNotificationBridge>();
         services.AddSingleton<TrayConflictBadge>();

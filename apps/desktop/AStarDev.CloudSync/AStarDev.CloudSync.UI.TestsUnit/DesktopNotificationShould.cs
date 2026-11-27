@@ -20,12 +20,14 @@ public sealed class DesktopNotificationShould
 
         public List<CancellationToken> Tokens { get; } = [];
 
-        public Task<Result<Unit, DesktopNotifierError>> ShowAsync(Notification notification, CancellationToken cancellationToken)
+        public bool Activated { get; set; }
+
+        public Task<Result<bool, DesktopNotifierError>> ShowAsync(Notification notification, CancellationToken cancellationToken)
         {
             Shown.Add(notification);
             Tokens.Add(cancellationToken);
 
-            return Task.FromResult<Result<Unit, DesktopNotifierError>>(new Ok<Unit>(default));
+            return Task.FromResult<Result<bool, DesktopNotifierError>>(new Ok<bool>(Activated));
         }
     }
 
@@ -73,6 +75,47 @@ public sealed class DesktopNotificationShould
         host.Services.GetRequiredService<INotificationPresenter>().Present(Sample());
 
         notifier.Tokens.Single().ShouldBe(host.Services.GetRequiredService<IHostApplicationLifetime>().ApplicationStopping);
+    }
+
+    [Fact]
+    public async Task open_the_target_when_the_desktop_notification_is_clicked()
+    {
+        var (host, notifier) = CreateHost();
+        using var disposable = host;
+        notifier.Activated = true;
+        var service = new FakeNotificationService();
+        var posted = new List<Action>();
+        var presenter = new DesktopNotificationPresenter(host.Services.GetRequiredService<InAppNotificationPresenter>(), notifier, host.Services.GetRequiredService<IHostApplicationLifetime>(), () => service, posted.Add);
+
+        presenter.Present(Sample());
+        await Task.Delay(50, Token);
+        posted.Single()();
+
+        service.Opened.Single().Key.ShouldBe("k");
+    }
+
+    [Fact]
+    public async Task not_open_anything_when_the_desktop_notification_closes_unclicked()
+    {
+        var (host, notifier) = CreateHost();
+        using var disposable = host;
+        var posted = new List<Action>();
+        var presenter = new DesktopNotificationPresenter(host.Services.GetRequiredService<InAppNotificationPresenter>(), notifier, host.Services.GetRequiredService<IHostApplicationLifetime>(), () => new FakeNotificationService(), posted.Add);
+
+        presenter.Present(Sample());
+        await Task.Delay(50, Token);
+
+        posted.ShouldBeEmpty();
+    }
+
+    [Fact]
+    public void offer_a_default_open_action_on_the_notify_send_command()
+    {
+        var (host, _) = CreateHost();
+        using var disposable = host;
+        var notifier = new NotifySendNotifier(host.Services.GetRequiredService<ILocalisationService>());
+
+        notifier.StartInfo(Sample()).ArgumentList.ShouldContain("--action=default=Open");
     }
 
     [Fact]
