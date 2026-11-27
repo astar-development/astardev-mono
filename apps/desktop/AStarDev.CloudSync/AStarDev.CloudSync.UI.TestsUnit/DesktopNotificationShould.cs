@@ -1,3 +1,4 @@
+using System.Diagnostics;
 using AStarDev.CloudSync.UI.Localisation;
 using AStarDev.CloudSync.UI.Navigation;
 using AStarDev.CloudSync.UI.Notifications;
@@ -149,6 +150,33 @@ public sealed class DesktopNotificationShould
         await source.CancelAsync();
 
         await Should.ThrowAsync<OperationCanceledException>(() => notifier.ShowAsync(Sample(), source.Token));
+    }
+
+    [Fact]
+    public async Task stop_a_notify_send_that_outlives_its_timeout_and_report_it_unclicked()
+    {
+        var start = new ProcessStartInfo("sleep") { UseShellExecute = false, RedirectStandardOutput = true, RedirectStandardError = true };
+        start.ArgumentList.Add("60");
+        var clock = Stopwatch.StartNew();
+
+        var result = await NotifySendNotifier.RunAsync(start, TimeSpan.FromMilliseconds(200), Token);
+
+        result.ShouldBe((0, string.Empty));
+        clock.Elapsed.ShouldBeLessThan(TimeSpan.FromSeconds(30));
+    }
+
+    [Fact]
+    public async Task throw_cancellation_and_stop_the_process_when_cancelled_while_notify_send_runs()
+    {
+        var start = new ProcessStartInfo("sleep") { UseShellExecute = false, RedirectStandardOutput = true, RedirectStandardError = true };
+        start.ArgumentList.Add("60");
+        using var source = CancellationTokenSource.CreateLinkedTokenSource(Token);
+        source.CancelAfter(TimeSpan.FromMilliseconds(200));
+        var clock = Stopwatch.StartNew();
+
+        await Should.ThrowAsync<OperationCanceledException>(() => NotifySendNotifier.RunAsync(start, TimeSpan.FromSeconds(30), source.Token));
+
+        clock.Elapsed.ShouldBeLessThan(TimeSpan.FromSeconds(30));
     }
 
     [Fact]
