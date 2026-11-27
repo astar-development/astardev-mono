@@ -1,5 +1,6 @@
 using AStarDev.CloudSync.Ports;
 using Microsoft.Extensions.DependencyInjection;
+using Microsoft.Extensions.DependencyInjection.Extensions;
 
 namespace AStarDev.CloudSync.OneDrive;
 
@@ -23,6 +24,7 @@ public static class OneDriveServiceCollectionExtensions
     public static IServiceCollection AddOneDriveProvider(this IServiceCollection services)
     {
         services.AddOptions<OneDriveSettings>().BindConfiguration(OneDriveSettings.ConfigurationSection);
+        services.TryAddSingleton(TimeProvider.System);
         services.AddSingleton<OneDriveTelemetry>();
         services.AddSingleton<ITokenCacheStore>(_ => new SecretToolTokenCacheStore());
         services.AddSingleton(provider => CreateAccounts(provider.GetRequiredService<OneDriveTelemetry>()));

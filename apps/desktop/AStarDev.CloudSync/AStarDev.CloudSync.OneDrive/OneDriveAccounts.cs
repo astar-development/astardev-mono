@@ -13,6 +13,9 @@ internal sealed class OneDriveAccounts(Func<AccessTokenHolder, AccountClients> c
     /// <summary>Holds the token for the account's later requests, replacing its earlier one. Other accounts keep theirs.</summary>
     public void Set(string accountIdentifier, string token) => For(accountIdentifier).Holder.Set(token);
 
+    /// <summary>Holds the token and the time it expires for the account's later requests, replacing its earlier one. Other accounts keep theirs.</summary>
+    public void Set(string accountIdentifier, string token, DateTimeOffset expiresOn) => For(accountIdentifier).Holder.Set(token, expiresOn);
+
     /// <summary>Forgets the account's token. Safe to call for an account that never signed in.</summary>
     public void Clear(string accountIdentifier)
     {
