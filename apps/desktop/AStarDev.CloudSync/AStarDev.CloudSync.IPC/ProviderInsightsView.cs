@@ -8,4 +8,5 @@ namespace AStarDev.CloudSync.IPC;
 /// <param name="Pending">Operations of this account waiting to start.</param>
 /// <param name="Running">Operations of this account executing now.</param>
 /// <param name="Failed">Operations of this account that failed, retried ones and dead-lettered ones alike.</param>
-public sealed record ProviderInsightsView(Guid AccountId, DateTimeOffset? LastSyncUtc, long? StorageUsedBytes, long? StorageTotalBytes, int Pending, int Running, int Failed);
+/// <param name="Completed">Operations of this account that finished; with the other three it adds up to the dashboard's item total.</param>
+public sealed record ProviderInsightsView(Guid AccountId, DateTimeOffset? LastSyncUtc, long? StorageUsedBytes, long? StorageTotalBytes, int Pending, int Running, int Failed, int Completed = 0);

@@ -60,7 +60,8 @@ internal sealed class ProvidersQuery(ICloudProvider provider, IAccountStore acco
             drive.Value is Some<ProviderDriveInfo> total ? total.Value.TotalBytes : null,
             own.Count(operation => operation.Status == OperationStatus.Pending),
             own.Count(operation => operation.Status == OperationStatus.Running),
-            own.Count(operation => operation.Status is OperationStatus.Failed or OperationStatus.DeadLetter));
+            own.Count(operation => operation.Status is OperationStatus.Failed or OperationStatus.DeadLetter),
+            own.Count(operation => operation.Status == OperationStatus.Completed));
     }
 
     private static IEnumerable<ProviderCapability> CapabilitiesOf(ProviderFeature feature) => Enum.TryParse<ProviderCapability>(feature.ToString(), out var capability) ? [capability] : [];

@@ -44,5 +44,5 @@ internal sealed class IpcProviderInsightsSource(IpcProvidersSource source, ILoca
     private string Gigabytes(long bytes) => culture.FormatValue(Math.Round(bytes / BytesPerGigabyte, 1));
 
     private string Activity(ProviderInsightsView figures)
-        => localisation.Format("Providers.Card.Activity", ("pending", figures.Pending), ("running", figures.Running), ("failed", figures.Failed));
+        => localisation.Format("Providers.Card.Activity", ("pending", figures.Pending), ("running", figures.Running), ("failed", figures.Failed), ("completed", figures.Completed));
 }
