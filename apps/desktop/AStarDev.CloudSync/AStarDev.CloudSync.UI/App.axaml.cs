@@ -30,12 +30,17 @@ public partial class App : Application
     /// Claims the single running instance first. The running instance starts the <see cref="ConnectionViewModel"/> retry loop against the daemon socket and opens the <see cref="MainWindow"/> bound to it;
     /// a second launch asks it to show its window and exits, and a launch that cannot enforce a single instance exits with a failure code.
     /// The loop is cancelled when the desktop lifetime exits. Other lifetimes get no window and no connection.
+    /// A cancellation that reaches the UI thread unhandled is dropped instead of ending the process; any other exception is left as it was.
     /// Telemetry starts before the first connection attempt and is flushed on exit; when it cannot start the UI still connects, just without exporting.
     /// </summary>
     public override void OnFrameworkInitializationCompleted()
     {
         if (ApplicationLifetime is IClassicDesktopStyleApplicationLifetime desktop)
         {
+            Dispatcher.UIThread.UnhandledException += (_, args) =>
+            {
+                if (CancellationGuard.Swallows(args.Exception)) args.Handled = true;
+            };
             var builder = Host.CreateApplicationBuilder();
             builder.Services.AddCloudSyncUi();
             var host = builder.Build();
