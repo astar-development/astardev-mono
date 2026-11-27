@@ -51,7 +51,7 @@ internal sealed class ClassificationsViewModel : ViewModelBase, IScreen
         LoadReclassifyStatusCommand = new AsyncRelayCommand(cancellationToken => Reclassify.LoadStatusAsync(cancellationToken));
         ShowTermsCommand = new RelayCommand(() => Tab = ClassificationTab.Terms);
         ShowSuggestionsCommand = new RelayCommand(() => Tab = ClassificationTab.Suggestions);
-        RefreshCommand = new AsyncRelayCommand(RefreshAsync, AsyncRelayCommandOptions.AllowConcurrentExecutions);
+        RefreshCommand = new AsyncRelayCommand(() => RefreshAsync(CancellationToken.None), AsyncRelayCommandOptions.AllowConcurrentExecutions);
         LoadMoreTermsCommand = new AsyncRelayCommand(cancellationToken => LoadTermsAsync(false, cancellationToken));
         LoadMoreFilesCommand = new AsyncRelayCommand(cancellationToken => LoadFilesAsync(false, cancellationToken));
         ReloadFilesCommand = new AsyncRelayCommand(cancellationToken => LoadFilesAsync(true, cancellationToken));

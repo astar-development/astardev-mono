@@ -51,6 +51,23 @@ public sealed class ClassificationsViewModelShould
     };
 
     [Fact]
+    public async Task let_overlapping_refreshes_both_finish_without_cancelling_each_other()
+    {
+        var gate = new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously);
+        var client = new FakeIpcClient([], available: true) { HoldQuery = gate, ClassificationTermsReply = _ => new Ok<ClassificationTermsView>(Vocabulary()) };
+        var (host, screen) = Create(client);
+        using var lifetime = host;
+
+        var first = screen.RefreshCommand.ExecuteAsync(null);
+        var second = screen.RefreshCommand.ExecuteAsync(null);
+        gate.SetResult();
+        await Task.WhenAll(first, second).WaitAsync(Token);
+
+        first.IsCompletedSuccessfully.ShouldBeTrue();
+        second.IsCompletedSuccessfully.ShouldBeTrue();
+    }
+
+    [Fact]
     public void be_the_classifications_screen()
     {
         var (host, screen) = Create(Client());
