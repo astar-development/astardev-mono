@@ -47,7 +47,7 @@ internal sealed class SyncStatusQuery(IOperationStore operations, HealthCheckSer
     }
 
     private SyncStatusView ViewOf(HealthStatus health, IReadOnlyDictionary<OperationStatus, int> counts)
-        => new(ProviderHealthOf(health), counts.GetValueOrDefault(OperationStatus.Pending) + counts.GetValueOrDefault(OperationStatus.Running) + counts.GetValueOrDefault(OperationStatus.Failed), counts.GetValueOrDefault(OperationStatus.DeadLetter), tracker.Current().Activities.Select(activity => (DateTimeOffset?)activity.UpdatedUtc).Max());
+        => new(ProviderHealthOf(health), counts.GetValueOrDefault(OperationStatus.Pending) + counts.GetValueOrDefault(OperationStatus.Running) + counts.GetValueOrDefault(OperationStatus.Failed), counts.GetValueOrDefault(OperationStatus.DeadLetter) + tracker.StoppedJobs(), tracker.Current().Activities.Select(activity => (DateTimeOffset?)activity.UpdatedUtc).Max());
 
     private static ProviderHealthState ProviderHealthOf(HealthStatus health) => health switch
     {
