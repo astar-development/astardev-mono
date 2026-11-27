@@ -9,9 +9,6 @@ internal sealed class AccessTokenHolder
     /// <summary>The token to send, or <see langword="null"/> until a sign-in has succeeded.</summary>
     public string? Current => current;
 
-    /// <summary>Serialises renewals, so concurrent calls for one account renew its token once.</summary>
-    public SemaphoreSlim RenewalGate { get; } = new(1, 1);
-
     /// <summary>Replaces the held token and records no expiry, so <see cref="IsDue"/> stays false. Requests already in flight keep the token they started with.</summary>
     public void Set(string token) => Set(token, default);
 
