@@ -45,6 +45,44 @@ public sealed class PhysicalLocalFileStoreShould : IDisposable
     }
 
     [Fact]
+    public async Task report_a_transient_failure_without_leaving_a_temporary_file_when_the_source_stream_breaks()
+    {
+        await using var content = new BrokenStream();
+
+        var result = await store.WriteAsync(root, new RelativePath("a.txt"), content, DateTimeOffset.UnixEpoch, Token);
+
+        result.Value.ShouldBeOfType<Fail<ProviderError>>().Error.Value.ShouldBeOfType<Transient>().Message.ShouldBe("Connection reset by peer");
+        Directory.GetFileSystemEntries(root).ShouldBeEmpty();
+    }
+
+    private sealed class BrokenStream : Stream
+    {
+        public override bool CanRead => true;
+
+        public override bool CanSeek => false;
+
+        public override bool CanWrite => false;
+
+        public override long Length => throw new NotSupportedException();
+
+        public override long Position { get => throw new NotSupportedException(); set => throw new NotSupportedException(); }
+
+        public override void Flush()
+        {
+        }
+
+        public override int Read(byte[] buffer, int offset, int count) => throw new IOException("Connection reset by peer");
+
+        public override ValueTask<int> ReadAsync(Memory<byte> buffer, CancellationToken cancellationToken = default) => throw new IOException("Connection reset by peer");
+
+        public override long Seek(long offset, SeekOrigin origin) => throw new NotSupportedException();
+
+        public override void SetLength(long value) => throw new NotSupportedException();
+
+        public override void Write(byte[] buffer, int offset, int count) => throw new NotSupportedException();
+    }
+
+    [Fact]
     public async Task refuse_a_path_that_leaves_the_root()
     {
         await using var content = new MemoryStream();
