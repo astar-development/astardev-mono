@@ -28,7 +28,7 @@ public sealed class OnboardingViewModelShould
     {
         client ??= new FakeIpcClient([], available: true) { AccountsReply = new Ok<AccountsView>(new AccountsView([Account])), JobsReply = new Ok<SyncJobsView>(new SyncJobsView([Job])) };
         var navigation = new FakeNavigationService();
-        var selection = new ScopeSelectionViewModel(() => client, new FakeFolderPicker(null));
+        var selection = new ScopeSelectionViewModel(() => client, new FakeFolderPicker(null)) { AccountId = Account.Id };
         var connect = new ConnectViewModel(() => connectClient ?? client);
         var accounts = new AccountsViewModel(() => client);
         var folders = new FolderTreeViewModel(() => client, selection);

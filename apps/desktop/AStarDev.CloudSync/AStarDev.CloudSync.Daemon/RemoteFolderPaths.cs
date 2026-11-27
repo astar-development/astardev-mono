@@ -14,7 +14,7 @@ internal static class RemoteFolderPaths
     /// <param name="folder">The provider's id for the folder; the drive root alias <c>root</c> is the drive root and needs no listing.</param>
     /// <param name="cancellationToken">Cancelling abandons the walk and surfaces as <see cref="OperationCanceledException"/>.</param>
     /// <returns>The folder's path from the drive root, empty text for the drive root; <see cref="Permanent"/> when no folder has the id; or the <see cref="ProviderError"/> of the listing that failed.</returns>
-    public static async Task<Result<RelativePath, ProviderError>> FindAsync(ICloudProvider provider, RemoteItemId folder, CancellationToken cancellationToken)
+    public static async Task<Result<RelativePath, ProviderError>> FindAsync(ICloudProvider provider, string account, RemoteItemId folder, CancellationToken cancellationToken)
     {
         if (folder.Value == DriveRootAlias) return new Ok<RelativePath>(new RelativePath(string.Empty));
 
@@ -25,7 +25,7 @@ internal static class RemoteFolderPaths
         {
             if (!visited.Add(parent)) continue;
 
-            if (await provider.ListChildrenAsync(parent, cancellationToken) is not Ok<IReadOnlyList<ProviderItem>> listed) return new Fail<ProviderError>(new Permanent("The folder could not be listed."));
+            if (await provider.ListChildrenAsync(account, parent, cancellationToken) is not Ok<IReadOnlyList<ProviderItem>> listed) return new Fail<ProviderError>(new Permanent("The folder could not be listed."));
 
             var folders = listed.Value.Where(item => item.ItemType == ItemType.Folder).ToList();
             if (folders.FirstOrDefault(item => item.RemoteItemId == folder) is { } found) return new Ok<RelativePath>(found.Path);

@@ -47,8 +47,8 @@ public sealed record SyncJobNotFound(SyncJobId Id) : IErrorInfo
     public string HelpLink => ErrorLinks.For(Code);
 }
 
-/// <summary>A sync job is already stored and the MVP allows a single job, so nothing was written.</summary>
-/// <param name="ExistingId">The identity of the job that is already stored.</param>
+/// <summary>The account already has a sync job and each account has one, so nothing was written.</summary>
+/// <param name="ExistingId">The identity of the account's stored job.</param>
 public sealed record SyncJobAlreadyExists(SyncJobId ExistingId) : IErrorInfo
 {
     /// <inheritdoc/>

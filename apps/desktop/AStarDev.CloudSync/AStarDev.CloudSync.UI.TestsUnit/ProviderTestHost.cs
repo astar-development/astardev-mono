@@ -22,7 +22,7 @@ internal sealed class ProviderTestHost : IDisposable
         var localisation = host.Services.GetRequiredService<ILocalisationService>();
         Connect = new ConnectViewModel(() => client);
         Accounts = new AccountsViewModel(() => client);
-        var selection = new ScopeSelectionViewModel(() => client, new FakeFolderPicker(null));
+        var selection = new ScopeSelectionViewModel(() => client, new FakeFolderPicker(null)) { AccountId = FakeIpcClient.KnownAccount };
         Folders = new FolderTreeViewModel(() => client, selection);
         Providers = new ProvidersViewModel(localisation, Connect, Accounts, host.Services.GetRequiredService<Func<INavigationService>>(), catalogue ?? OneDrive, new IpcProviderInsightsSource(new IpcProvidersSource(() => client), localisation, host.Services.GetRequiredService<ICultureService>()), launcher, Folders, selection);
     }

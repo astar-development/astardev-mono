@@ -5,7 +5,7 @@ using Microsoft.EntityFrameworkCore;
 
 namespace AStarDev.CloudSync.Persistence;
 
-/// <summary>SQLite implementation of <see cref="ISyncJobStore"/>. Each call uses its own short-lived context; adding is serialised so two requests cannot both create the single job.</summary>
+/// <summary>SQLite implementation of <see cref="ISyncJobStore"/>. Each call uses its own short-lived context; adding is serialised so two requests cannot both create the job of one account.</summary>
 internal sealed class SyncJobStore(IDbContextFactory<CloudSyncDbContext> contextFactory) : ISyncJobStore
 {
     private readonly SemaphoreSlim addGate = new(1, 1);
@@ -70,7 +70,7 @@ internal sealed class SyncJobStore(IDbContextFactory<CloudSyncDbContext> context
         await using var context = await contextFactory.CreateDbContextAsync(cancellationToken).ConfigureAwait(false);
         if (!await context.Accounts.AnyAsync(account => account.Id == job.AccountId, cancellationToken).ConfigureAwait(false)) return new Fail<StoreError>(new AccountNotFound(job.AccountId));
 
-        var existing = await context.SyncJobs.AsNoTracking().Select(entity => entity.Id).Cast<SyncJobId?>().FirstOrDefaultAsync(cancellationToken).ConfigureAwait(false);
+        var existing = await context.SyncJobs.AsNoTracking().Where(entity => entity.AccountId == job.AccountId).Select(entity => entity.Id).Cast<SyncJobId?>().FirstOrDefaultAsync(cancellationToken).ConfigureAwait(false);
         if (existing is { } existingId) return new Fail<StoreError>(new SyncJobAlreadyExists(existingId));
 
         context.SyncJobs.Add(SyncJobEntity.From(job));

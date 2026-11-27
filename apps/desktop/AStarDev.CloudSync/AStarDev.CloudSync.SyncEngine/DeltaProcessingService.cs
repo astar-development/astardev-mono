@@ -11,7 +11,7 @@ namespace AStarDev.CloudSync.SyncEngine;
 /// Brings the stored items and remote snapshots of a crawled scope up to date with the provider's delta pages. It only records remote state; no operation is created or run.
 /// Each page is stored together with the token that follows it, so a failure leaves the old token and the next run asks again from there.
 /// </summary>
-internal sealed class DeltaProcessingService(ICloudProvider provider, IItemIndexStore index, ISyncScopeStore scopes, InitialCrawler crawler, ICrawlProgressSink progress, TimeProvider timeProvider, ILogger<DeltaProcessingService> logger)
+internal sealed class DeltaProcessingService(ICloudProvider provider, IJobAccounts accounts, IItemIndexStore index, ISyncScopeStore scopes, InitialCrawler crawler, ICrawlProgressSink progress, TimeProvider timeProvider, ILogger<DeltaProcessingService> logger)
 {
     /// <summary>Processes every scope of the job in order. A scope that fails keeps its old token and the others still run.</summary>
     /// <param name="syncJobId">The job whose scopes to process.</param>
@@ -114,15 +114,22 @@ internal sealed class DeltaProcessingService(ICloudProvider provider, IItemIndex
     private async Task<Result<(int Applied, string? Resume), DeltaError>> ApplyPageAsync(SyncScope scope, DeltaToken token, string? resume, CancellationToken cancellationToken)
     {
         using var span = WorkflowTelemetry.StartDeltaPage(scope.SyncJobId);
-        var outcome = await provider.GetDeltasAsync(scope.RemoteRootId, token, resume, cancellationToken) switch
+        var outcome = await accounts.AccountIdentifierAsync(scope.SyncJobId, cancellationToken) switch
         {
-            Ok<ProviderDeltaPage> ok => await StorePageAsync(scope, ok.Value, cancellationToken),
-            Fail<ProviderError> fail => new Fail<DeltaError>(new DeltaProviderFailed(fail.Error))
+            Ok<string> account => await FetchPageAsync(account.Value, scope, token, resume, cancellationToken),
+            Fail<StoreError> fail => new Fail<DeltaError>(new DeltaStoreFailed(fail.Error))
         };
         if (outcome is Fail<DeltaError> failed) WorkflowTelemetry.Fail(span, failed.Error.Value?.GetType().Name ?? "unknown", "The delta page could not be fetched or stored.");
 
         return outcome;
     }
+
+    private async Task<Result<(int Applied, string? Resume), DeltaError>> FetchPageAsync(string account, SyncScope scope, DeltaToken token, string? resume, CancellationToken cancellationToken)
+        => await provider.GetDeltasAsync(account, scope.RemoteRootId, token, resume, cancellationToken) switch
+        {
+            Ok<ProviderDeltaPage> ok => await StorePageAsync(scope, ok.Value, cancellationToken),
+            Fail<ProviderError> fail => new Fail<DeltaError>(new DeltaProviderFailed(fail.Error))
+        };
 
     private async Task<Result<(int Applied, string? Resume), DeltaError>> StorePageAsync(SyncScope scope, ProviderDeltaPage page, CancellationToken cancellationToken)
         => await index.ApplyDeltaPageAsync(scope, page.Changes, page.DeltaToken, timeProvider.GetUtcNow(), cancellationToken) switch

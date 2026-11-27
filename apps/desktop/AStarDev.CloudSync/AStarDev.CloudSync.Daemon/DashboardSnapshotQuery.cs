@@ -154,7 +154,7 @@ internal sealed class DashboardSnapshotQuery(IOperationStore operations, IConfli
             .ToList();
 
     private static IReadOnlyList<DashboardProviderView> ProvidersOf(IReadOnlyList<Account> accountList)
-        => accountList.GroupBy(account => account.ProviderType).Select(group => new DashboardProviderView(group.Key, group.Any(account => account.Status == AccountStatus.ReauthenticationRequired) ? ProviderHealthState.Degraded : ProviderHealthState.Healthy)).ToList();
+        => accountList.Select(account => new DashboardProviderView(account.DisplayName, account.Status == AccountStatus.ReauthenticationRequired ? ProviderHealthState.Degraded : ProviderHealthState.Healthy)).ToList();
 
     private async Task<Result<DashboardSetup, StoreError>> SetupAsync(IReadOnlyList<Account> accountList, CancellationToken cancellationToken)
     {

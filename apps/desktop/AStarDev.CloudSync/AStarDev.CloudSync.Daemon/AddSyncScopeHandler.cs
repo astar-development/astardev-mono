@@ -9,7 +9,7 @@ using Microsoft.Extensions.Logging;
 namespace AStarDev.CloudSync.Daemon;
 
 /// <summary>Answers <see cref="AddSyncScope"/> by storing the folder as a scope of the job in the <see cref="ISyncScopeStore"/>, then starting the job's crawl and local observation, or waking the crawl when it already runs, so the folder syncs at once.</summary>
-internal sealed class AddSyncScopeHandler(ISyncScopeStore store, ICloudProvider provider, SyncRunner runner, LocalObservationRunner observation, AuditJournal audit, ILogger<AddSyncScopeHandler> logger)
+internal sealed class AddSyncScopeHandler(ISyncScopeStore store, IJobAccounts jobAccounts, ICloudProvider provider, SyncRunner runner, LocalObservationRunner observation, AuditJournal audit, ILogger<AddSyncScopeHandler> logger)
 {
     /// <summary>Stores the folder as a scope of the job.</summary>
     /// <returns>
@@ -17,7 +17,14 @@ internal sealed class AddSyncScopeHandler(ISyncScopeStore store, ICloudProvider 
     /// Cancellation propagates as <see cref="OperationCanceledException"/>.
     /// </returns>
     public async Task<Result<CommandResult, IpcError>> HandleAsync(AddSyncScope command, CancellationToken cancellationToken)
-        => await RemoteFolderPaths.FindAsync(provider, new RemoteItemId(command.RemoteRootId), cancellationToken) switch
+        => await jobAccounts.AccountIdentifierAsync(new SyncJobId(command.SyncJobId), cancellationToken) switch
+        {
+            Ok<string> account => await FindPathAsync(account.Value, command, cancellationToken),
+            Fail<StoreError> fail => Reject(StoreErrorMessages.Describe(fail.Error, "read", "sync job"), ErrorInfo.CodeOf(fail.Error.Value))
+        };
+
+    private async Task<Result<CommandResult, IpcError>> FindPathAsync(string account, AddSyncScope command, CancellationToken cancellationToken)
+        => await RemoteFolderPaths.FindAsync(provider, account, new RemoteItemId(command.RemoteRootId), cancellationToken) switch
         {
             Ok<RelativePath> path => await StoreAsync(command, path.Value, cancellationToken),
             Fail<ProviderError> fail => Reject(ProviderErrorMessages.Describe(fail.Error), ErrorInfo.CodeOf(fail.Error.Value))

@@ -8,7 +8,7 @@ namespace AStarDev.CloudSync.SyncEngine;
 /// Carries out one claimed operation against the provider or the local disk. It only does the work the reconciler already decided on: it reads the item through the stores,
 /// never writes sync state, and never replaces or deletes content the operation does not name. Baselines are committed by <see cref="KnownSnapshotCommitter"/> after success.
 /// </summary>
-internal sealed class OperationExecutor(ISyncJobStore jobStore, IItemStateStore itemStore, IKnownSnapshotStore knownStore, ICloudProvider provider, ILocalFileStore files) : IOperationExecutor
+internal sealed class OperationExecutor(ISyncJobStore jobStore, IJobAccounts jobAccounts, IItemStateStore itemStore, IKnownSnapshotStore knownStore, ICloudProvider provider, ILocalFileStore files) : IOperationExecutor
 {
     /// <inheritdoc/>
     /// <remarks>
@@ -23,10 +23,17 @@ internal sealed class OperationExecutor(ISyncJobStore jobStore, IItemStateStore 
 
         return await jobStore.GetAsync(operation.SyncJobId, cancellationToken).ConfigureAwait(false) switch
         {
-            Ok<SyncJob> job => await ReadItemsAsync(operation, job.Value.LocalRootPath, cancellationToken).ConfigureAwait(false),
+            Ok<SyncJob> job => await FindAccountAsync(operation, job.Value.LocalRootPath, cancellationToken).ConfigureAwait(false),
             Fail<StoreError> fail => Unreadable(fail.Error)
         };
     }
+
+    private async Task<Result<Unit, ProviderError>> FindAccountAsync(Operation operation, string root, CancellationToken cancellationToken)
+        => await jobAccounts.AccountIdentifierAsync(operation.SyncJobId, cancellationToken).ConfigureAwait(false) switch
+        {
+            Ok<string> account => await ReadItemsAsync(operation, new JobTarget(root, account.Value), cancellationToken).ConfigureAwait(false),
+            Fail<StoreError> fail => Unreadable(fail.Error)
+        };
 
     private static Fail<ProviderError> Unreadable(StoreError error) => new(new Transient($"The state of the operation could not be read: {error.Value}"));
 
@@ -34,49 +41,49 @@ internal sealed class OperationExecutor(ISyncJobStore jobStore, IItemStateStore 
 
     private static Result<Unit, ProviderError> Done() => new Ok<Unit>(default);
 
-    private async Task<Result<Unit, ProviderError>> ReadItemsAsync(Operation operation, string root, CancellationToken cancellationToken)
+    private async Task<Result<Unit, ProviderError>> ReadItemsAsync(Operation operation, JobTarget target, CancellationToken cancellationToken)
         => await itemStore.ListAsync(operation.SyncJobId, cancellationToken).ConfigureAwait(false) switch
         {
-            Ok<IReadOnlyList<StoredItem>> rows => await ReadKnownAsync(operation, root, rows.Value, cancellationToken).ConfigureAwait(false),
+            Ok<IReadOnlyList<StoredItem>> rows => await ReadKnownAsync(operation, target, rows.Value, cancellationToken).ConfigureAwait(false),
             Fail<StoreError> fail => Unreadable(fail.Error)
         };
 
-    private async Task<Result<Unit, ProviderError>> ReadKnownAsync(Operation operation, string root, IReadOnlyList<StoredItem> rows, CancellationToken cancellationToken)
+    private async Task<Result<Unit, ProviderError>> ReadKnownAsync(Operation operation, JobTarget target, IReadOnlyList<StoredItem> rows, CancellationToken cancellationToken)
         => await knownStore.ListAsync(operation.SyncJobId, cancellationToken).ConfigureAwait(false) switch
         {
-            Ok<IReadOnlyList<KnownEntry>> known => await RunAsync(operation, root, CanonicalStateBuilder.Build(rows, known.Value).FirstOrDefault(state => state.ItemId == operation.ItemId), cancellationToken).ConfigureAwait(false),
+            Ok<IReadOnlyList<KnownEntry>> known => await RunAsync(operation, target, CanonicalStateBuilder.Build(rows, known.Value).FirstOrDefault(state => state.ItemId == operation.ItemId), cancellationToken).ConfigureAwait(false),
             Fail<StoreError> fail => Unreadable(fail.Error)
         };
 
-    private async Task<Result<Unit, ProviderError>> RunAsync(Operation operation, string root, CanonicalItemState? state, CancellationToken cancellationToken)
+    private async Task<Result<Unit, ProviderError>> RunAsync(Operation operation, JobTarget target, CanonicalItemState? state, CancellationToken cancellationToken)
     {
         using var span = operation.Type is OperationType.DownloadFile or OperationType.UploadFile or OperationType.RenameRemote or OperationType.DeleteRemote ? WorkflowTelemetry.StartProviderRequest(operation) : null;
-        var outcome = await DispatchAsync(operation.Type, root, state, cancellationToken).ConfigureAwait(false);
+        var outcome = await DispatchAsync(operation.Type, target, state, cancellationToken).ConfigureAwait(false);
         if (outcome is Fail<ProviderError> fail) WorkflowTelemetry.Fail(span, fail.Error.Value?.GetType().Name ?? "unknown", fail.Error.Value?.ToString() ?? string.Empty);
 
         return outcome;
     }
 
-    private Task<Result<Unit, ProviderError>> DispatchAsync(OperationType type, string root, CanonicalItemState? state, CancellationToken cancellationToken)
+    private Task<Result<Unit, ProviderError>> DispatchAsync(OperationType type, JobTarget target, CanonicalItemState? state, CancellationToken cancellationToken)
     {
-        if (type == OperationType.DownloadFile) return DownloadAsync(root, state, cancellationToken);
-        if (type == OperationType.UploadFile) return UploadAsync(root, state, cancellationToken);
-        if (type == OperationType.RenameRemote) return RenameRemoteAsync(state, cancellationToken);
-        if (type == OperationType.RenameLocal) return Task.FromResult(RenameLocal(root, state));
-        if (type == OperationType.DeleteRemote) return DeleteRemoteAsync(root, state, cancellationToken);
+        if (type == OperationType.DownloadFile) return DownloadAsync(target, state, cancellationToken);
+        if (type == OperationType.UploadFile) return UploadAsync(target, state, cancellationToken);
+        if (type == OperationType.RenameRemote) return RenameRemoteAsync(target.AccountIdentifier, state, cancellationToken);
+        if (type == OperationType.RenameLocal) return Task.FromResult(RenameLocal(target.Root, state));
+        if (type == OperationType.DeleteRemote) return DeleteRemoteAsync(target, state, cancellationToken);
 
-        return Task.FromResult(DeleteLocal(root, state));
+        return Task.FromResult(DeleteLocal(target.Root, state));
     }
 
-    private async Task<Result<Unit, ProviderError>> DownloadAsync(string root, CanonicalItemState? state, CancellationToken cancellationToken)
+    private async Task<Result<Unit, ProviderError>> DownloadAsync(JobTarget target, CanonicalItemState? state, CancellationToken cancellationToken)
     {
         if (state?.Remote is not { } remote) return Missing("remote item");
 
-        var target = state.Local?.Path ?? remote.Path;
+        var path = state.Local?.Path ?? remote.Path;
 
-        return await provider.DownloadAsync(remote.ItemId, cancellationToken).ConfigureAwait(false) switch
+        return await provider.DownloadAsync(target.AccountIdentifier, remote.ItemId, cancellationToken).ConfigureAwait(false) switch
         {
-            Ok<Stream> content => await SaveAsync(root, target, content.Value, remote.ModifiedUtc, cancellationToken).ConfigureAwait(false),
+            Ok<Stream> content => await SaveAsync(target.Root, path, content.Value, remote.ModifiedUtc, cancellationToken).ConfigureAwait(false),
             Fail<ProviderError> fail => fail
         };
     }
@@ -86,28 +93,28 @@ internal sealed class OperationExecutor(ISyncJobStore jobStore, IItemStateStore 
         await using (content.ConfigureAwait(false)) return await files.WriteAsync(root, target, content, modifiedUtc, cancellationToken).ConfigureAwait(false);
     }
 
-    private async Task<Result<Unit, ProviderError>> UploadAsync(string root, CanonicalItemState? state, CancellationToken cancellationToken)
+    private async Task<Result<Unit, ProviderError>> UploadAsync(JobTarget target, CanonicalItemState? state, CancellationToken cancellationToken)
     {
         if (state?.Local is not { } local) return Missing("local file");
 
-        var source = files.Exists(root, local.Path) || state.Remote is null ? local.Path : state.Remote.Path;
+        var source = files.Exists(target.Root, local.Path) || state.Remote is null ? local.Path : state.Remote.Path;
         var request = state.Remote?.Path ?? local.Path;
 
-        return files.OpenRead(root, source) switch
+        return files.OpenRead(target.Root, source) switch
         {
-            Ok<Stream> content => await SendAsync(new UploadRequest(request, content.Value, local.ModifiedUtc), cancellationToken).ConfigureAwait(false),
+            Ok<Stream> content => await SendAsync(target.AccountIdentifier, new UploadRequest(request, content.Value, local.ModifiedUtc), cancellationToken).ConfigureAwait(false),
             Fail<ProviderError> fail => fail
         };
     }
 
-    private async Task<Result<Unit, ProviderError>> SendAsync(UploadRequest request, CancellationToken cancellationToken)
+    private async Task<Result<Unit, ProviderError>> SendAsync(string accountIdentifier, UploadRequest request, CancellationToken cancellationToken)
     {
-        await using (request.Content.ConfigureAwait(false)) return await provider.UploadAsync(request, cancellationToken).ConfigureAwait(false);
+        await using (request.Content.ConfigureAwait(false)) return await provider.UploadAsync(accountIdentifier, request, cancellationToken).ConfigureAwait(false);
     }
 
-    private Task<Result<Unit, ProviderError>> RenameRemoteAsync(CanonicalItemState? state, CancellationToken cancellationToken)
+    private Task<Result<Unit, ProviderError>> RenameRemoteAsync(string accountIdentifier, CanonicalItemState? state, CancellationToken cancellationToken)
         => state is { Remote: { } remote, Local: { } local }
-            ? provider.RenameAsync(remote.ItemId, local.Path, cancellationToken)
+            ? provider.RenameAsync(accountIdentifier, remote.ItemId, local.Path, cancellationToken)
             : Task.FromResult<Result<Unit, ProviderError>>(Missing("local or remote item"));
 
     private Result<Unit, ProviderError> RenameLocal(string root, CanonicalItemState? state)
@@ -115,13 +122,13 @@ internal sealed class OperationExecutor(ISyncJobStore jobStore, IItemStateStore 
             ? files.Move(root, local.Path, remote.Path)
             : Missing("local or remote item");
 
-    private Task<Result<Unit, ProviderError>> DeleteRemoteAsync(string root, CanonicalItemState? state, CancellationToken cancellationToken)
-        => state is { Remote: { } remote } ? DeleteUnlessOnDiskAsync(root, state, remote, cancellationToken) : Task.FromResult(Done());
+    private Task<Result<Unit, ProviderError>> DeleteRemoteAsync(JobTarget target, CanonicalItemState? state, CancellationToken cancellationToken)
+        => state is { Remote: { } remote } ? DeleteUnlessOnDiskAsync(target, state, remote, cancellationToken) : Task.FromResult(Done());
 
-    private Task<Result<Unit, ProviderError>> DeleteUnlessOnDiskAsync(string root, CanonicalItemState state, RemoteSnapshot remote, CancellationToken cancellationToken)
-        => IsOnDisk(root, state, remote)
+    private Task<Result<Unit, ProviderError>> DeleteUnlessOnDiskAsync(JobTarget target, CanonicalItemState state, RemoteSnapshot remote, CancellationToken cancellationToken)
+        => IsOnDisk(target.Root, state, remote)
             ? Task.FromResult<Result<Unit, ProviderError>>(new Fail<ProviderError>(new Permanent("The remote item was not deleted because the file still exists on disk.")))
-            : provider.DeleteAsync(remote.ItemId, cancellationToken);
+            : provider.DeleteAsync(target.AccountIdentifier, remote.ItemId, cancellationToken);
 
     private bool IsOnDisk(string root, CanonicalItemState state, RemoteSnapshot remote)
         => files.Exists(root, remote.Path) || (state.Known is { } known && files.Exists(root, known.Path)) || (state.Local is { } local && files.Exists(root, local.Path));

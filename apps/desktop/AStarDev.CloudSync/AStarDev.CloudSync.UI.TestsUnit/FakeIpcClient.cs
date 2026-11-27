@@ -7,7 +7,9 @@ internal sealed class FakeIpcClient(List<string> calls, bool available) : IIpcCl
 {
     private readonly TaskCompletionSource disconnected = new(TaskCreationOptions.RunContinuationsAsynchronously);
 
-    public Result<CommandResult, IpcError> CommandReply { get; set; } = new Ok<CommandResult>(new CommandResult(CommandOutcome.Accepted));
+    public static readonly Guid KnownAccount = new("11111111-1111-1111-1111-111111111111");
+
+    public Result<CommandResult, IpcError> CommandReply { get; set; } = new Ok<CommandResult>(new CommandResult(CommandOutcome.Accepted, AccountId: KnownAccount));
 
     public Result<RemoteRootSummaryView, IpcError> SummaryReply { get; init; } = new Ok<RemoteRootSummaryView>(new RemoteRootSummaryView(0));
 
@@ -65,6 +67,8 @@ internal sealed class FakeIpcClient(List<string> calls, bool available) : IIpcCl
 
     public TaskCompletionSource? HoldCommand { get; init; }
 
+    public TaskCompletionSource? HoldQuery { get; init; }
+
     public static DaemonStatusView Status { get; } = new(DaemonState.Running, "1.0.0", new DateTimeOffset(2026, 1, 2, 3, 4, 5, TimeSpan.Zero));
 
     public Task Disconnected => disconnected.Task;
@@ -91,12 +95,13 @@ internal sealed class FakeIpcClient(List<string> calls, bool available) : IIpcCl
         return CommandReply;
     }
 
-    public Task<Result<TResult, IpcError>> QueryAsync<TResult>(IQuery<TResult> query, CancellationToken cancellationToken)
+    public async Task<Result<TResult, IpcError>> QueryAsync<TResult>(IQuery<TResult> query, CancellationToken cancellationToken)
     {
         cancellationToken.ThrowIfCancellationRequested();
         calls.Add("query");
+        if (HoldQuery is not null) await HoldQuery.Task.WaitAsync(cancellationToken);
 
-        return Task.FromResult(query switch
+        return query switch
         {
             GetRemoteRootSummary => (Result<TResult, IpcError>)(object)SummaryReply,
             GetAccounts => (Result<TResult, IpcError>)(object)AccountsReply,
@@ -123,7 +128,7 @@ internal sealed class FakeIpcClient(List<string> calls, bool available) : IIpcCl
             GetSyncScopes scopes => (Result<TResult, IpcError>)(object)ScopesReply(scopes),
             GetRemoteFolders folders => (Result<TResult, IpcError>)(object)Record(folders),
             _ => new Ok<TResult>((TResult)(object)Status)
-        });
+        };
     }
 
     private Result<RemoteFoldersView, IpcError> Record(GetRemoteFolders query)

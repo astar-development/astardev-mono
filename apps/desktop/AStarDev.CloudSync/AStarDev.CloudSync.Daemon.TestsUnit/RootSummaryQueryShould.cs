@@ -1,3 +1,4 @@
+using AStarDev.CloudSync.Domain;
 using AStarDev.CloudSync.IPC;
 using AStarDev.CloudSync.Ports;
 using AStarDev.FunctionalParadigm;
@@ -14,11 +15,12 @@ public sealed class RootSummaryQueryShould
     {
         var provider = new StubCloudProvider { SnapshotResult = new Ok<ProviderSnapshotPage>(new ProviderSnapshotPage([StubCloudProvider.Item("a"), StubCloudProvider.Item("b"), StubCloudProvider.Item("c")])) };
         await using var host = DaemonTestHost.CreateWith(provider);
+        var account = await host.AddAccountAsync("id", AccountStatus.Connected, Token);
         await using var client = UnixSocketIpc.CreateClient(host.SocketPath);
         await host.StartAsync(Token);
         (await client.ConnectAsync(Token)).Value.ShouldBeOfType<Ok<Unit>>();
 
-        var result = await client.QueryAsync(new GetRemoteRootSummary(), Token);
+        var result = await client.QueryAsync(new GetRemoteRootSummary(account.Id.Value), Token);
         await host.StopAsync(Token);
 
         result.Value.ShouldBeOfType<Ok<RemoteRootSummaryView>>().Value.ItemCount.ShouldBe(3);
@@ -30,11 +32,12 @@ public sealed class RootSummaryQueryShould
     {
         var provider = new StubCloudProvider { SnapshotResult = new Fail<ProviderError>(new AuthenticationFailed("Sign in first.")) };
         await using var host = DaemonTestHost.CreateWith(provider);
+        var account = await host.AddAccountAsync("id", AccountStatus.Connected, Token);
         await using var client = UnixSocketIpc.CreateClient(host.SocketPath);
         await host.StartAsync(Token);
         (await client.ConnectAsync(Token)).Value.ShouldBeOfType<Ok<Unit>>();
 
-        var result = await client.QueryAsync(new GetRemoteRootSummary(), Token);
+        var result = await client.QueryAsync(new GetRemoteRootSummary(account.Id.Value), Token);
         await host.StopAsync(Token);
 
         result.Value.ShouldBeOfType<Fail<IpcError>>().Error.Value.ShouldBeOfType<HandlerFailed>().Message.ShouldBe("Sign in first.");
@@ -44,10 +47,11 @@ public sealed class RootSummaryQueryShould
     public async Task honour_cancellation()
     {
         await using var host = DaemonTestHost.CreateWith(new StubCloudProvider());
+        var account = await host.AddAccountAsync("id", AccountStatus.Connected, Token);
         var query = host.Services.GetRequiredService<RootSummaryQuery>();
         using var cancelled = new CancellationTokenSource();
         await cancelled.CancelAsync();
 
-        await Should.ThrowAsync<OperationCanceledException>(() => query.HandleAsync(new GetRemoteRootSummary(), cancelled.Token));
+        await Should.ThrowAsync<OperationCanceledException>(() => query.HandleAsync(new GetRemoteRootSummary(account.Id.Value), cancelled.Token));
     }
 }

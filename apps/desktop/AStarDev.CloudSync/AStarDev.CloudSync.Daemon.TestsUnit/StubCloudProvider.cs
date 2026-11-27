@@ -24,6 +24,8 @@ internal sealed class StubCloudProvider : ICloudProvider
 
     public int DeltaCalls { get; private set; }
 
+    public List<string> AccountsCalled { get; } = [];
+
     public List<RemoteItemId> Roots { get; } = [];
 
     public List<RemoteItemId> Parents { get; } = [];
@@ -55,59 +57,63 @@ internal sealed class StubCloudProvider : ICloudProvider
         return Task.FromResult(DisconnectResult);
     }
 
-    public Task<Result<ProviderSnapshotPage, ProviderError>> GetSnapshotAsync(RemoteItemId root, string? resumeToken, CancellationToken cancellationToken)
+    public Task<Result<ProviderSnapshotPage, ProviderError>> GetSnapshotAsync(string accountIdentifier, RemoteItemId root, string? resumeToken, CancellationToken cancellationToken)
     {
         cancellationToken.ThrowIfCancellationRequested();
+        AccountsCalled.Add(accountIdentifier);
         Roots.Add(root);
 
         return Task.FromResult(SnapshotResult);
     }
 
-    public Task<Result<ProviderDeltaPage, ProviderError>> GetDeltasAsync(RemoteItemId root, DeltaToken token, string? resumeToken, CancellationToken cancellationToken)
+    public Task<Result<ProviderDeltaPage, ProviderError>> GetDeltasAsync(string accountIdentifier, RemoteItemId root, DeltaToken token, string? resumeToken, CancellationToken cancellationToken)
     {
         cancellationToken.ThrowIfCancellationRequested();
+        AccountsCalled.Add(accountIdentifier);
         DeltaCalls++;
 
         return Task.FromResult(DeltaResult);
     }
 
-    public Task<Result<IReadOnlyList<ProviderItem>, ProviderError>> ListChildrenAsync(RemoteItemId parent, CancellationToken cancellationToken)
+    public Task<Result<IReadOnlyList<ProviderItem>, ProviderError>> ListChildrenAsync(string accountIdentifier, RemoteItemId parent, CancellationToken cancellationToken)
     {
         cancellationToken.ThrowIfCancellationRequested();
+        AccountsCalled.Add(accountIdentifier);
         Parents.Add(parent);
 
         return Task.FromResult(ChildrenResult);
     }
 
-    public Task<Result<Stream, ProviderError>> DownloadAsync(RemoteItemId itemId, CancellationToken cancellationToken)
+    public Task<Result<Stream, ProviderError>> DownloadAsync(string accountIdentifier, RemoteItemId itemId, CancellationToken cancellationToken)
     {
         cancellationToken.ThrowIfCancellationRequested();
 
         return Task.FromResult<Result<Stream, ProviderError>>(new Ok<Stream>(new MemoryStream()));
     }
 
-    public Task<Result<Unit, ProviderError>> UploadAsync(UploadRequest request, CancellationToken cancellationToken)
+    public Task<Result<Unit, ProviderError>> UploadAsync(string accountIdentifier, UploadRequest request, CancellationToken cancellationToken)
     {
         cancellationToken.ThrowIfCancellationRequested();
 
         return Task.FromResult<Result<Unit, ProviderError>>(new Ok<Unit>(default));
     }
 
-    public Task<Result<Unit, ProviderError>> RenameAsync(RemoteItemId itemId, RelativePath path, CancellationToken cancellationToken)
+    public Task<Result<Unit, ProviderError>> RenameAsync(string accountIdentifier, RemoteItemId itemId, RelativePath path, CancellationToken cancellationToken)
     {
         cancellationToken.ThrowIfCancellationRequested();
 
         return Task.FromResult<Result<Unit, ProviderError>>(new Ok<Unit>(default));
     }
 
-    public Task<Result<ProviderDriveInfo, ProviderError>> GetDriveInfoAsync(CancellationToken cancellationToken)
+    public Task<Result<ProviderDriveInfo, ProviderError>> GetDriveInfoAsync(string accountIdentifier, CancellationToken cancellationToken)
     {
         cancellationToken.ThrowIfCancellationRequested();
+        AccountsCalled.Add(accountIdentifier);
 
         return Task.FromResult(DriveInfoResult);
     }
 
-    public Task<Result<Unit, ProviderError>> DeleteAsync(RemoteItemId itemId, CancellationToken cancellationToken)
+    public Task<Result<Unit, ProviderError>> DeleteAsync(string accountIdentifier, RemoteItemId itemId, CancellationToken cancellationToken)
     {
         cancellationToken.ThrowIfCancellationRequested();
 

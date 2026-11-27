@@ -6,15 +6,19 @@ using AStarDev.FunctionalParadigm;
 namespace AStarDev.CloudSync.Daemon;
 
 /// <summary>Answers <see cref="GetRemoteFolders"/> by listing one folder through <see cref="ICloudProvider"/>.</summary>
-internal sealed class RemoteFoldersQuery(ICloudProvider provider)
+internal sealed class RemoteFoldersQuery(ICloudProvider provider, IAccountStore accounts)
 {
     /// <summary>Lists the requested folder and keeps its subfolders.</summary>
     /// <returns>The subfolders sorted by name, or <see cref="HandlerFailed"/> carrying the provider's failure worded for the user. Cancellation propagates as <see cref="OperationCanceledException"/>.</returns>
-    public Task<Result<RemoteFoldersView, IpcError>> HandleAsync(GetRemoteFolders query, CancellationToken cancellationToken)
-        => ListAsync(new RemoteItemId(query.ParentId ?? ApplicationConstants.DriveRootItemId), cancellationToken);
+    public async Task<Result<RemoteFoldersView, IpcError>> HandleAsync(GetRemoteFolders query, CancellationToken cancellationToken)
+        => await AccountIdentifiers.FindAsync(accounts, query.AccountId, cancellationToken) switch
+        {
+            Ok<string> account => await ListAsync(account.Value, new RemoteItemId(query.ParentId ?? ApplicationConstants.DriveRootItemId), cancellationToken),
+            Fail<IpcError> fail => fail
+        };
 
-    private async Task<Result<RemoteFoldersView, IpcError>> ListAsync(RemoteItemId parent, CancellationToken cancellationToken)
-        => await provider.ListChildrenAsync(parent, cancellationToken) switch
+    private async Task<Result<RemoteFoldersView, IpcError>> ListAsync(string account, RemoteItemId parent, CancellationToken cancellationToken)
+        => await provider.ListChildrenAsync(account, parent, cancellationToken) switch
         {
             Ok<IReadOnlyList<ProviderItem>> ok => new Ok<RemoteFoldersView>(new RemoteFoldersView(FoldersOf(ok.Value))),
             Fail<ProviderError> fail => new Fail<IpcError>(new HandlerFailed(ProviderErrorMessages.Describe(fail.Error)))

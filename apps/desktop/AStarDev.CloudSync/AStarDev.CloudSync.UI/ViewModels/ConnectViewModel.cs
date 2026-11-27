@@ -19,6 +19,10 @@ public sealed partial class ConnectViewModel(Func<IIpcClient> createClient) : Vi
     [NotifyPropertyChangedFor(nameof(ItemCountText))]
     public partial int? ItemCount { get; set; }
 
+    /// <summary>The account the last successful connect signed in. <see langword="null"/> until then, and again after a failed attempt.</summary>
+    [ObservableProperty]
+    public partial Guid? AccountId { get; set; }
+
     /// <summary>Why the last attempt failed, worded for the user. <see langword="null"/> while an attempt runs and after a successful one.</summary>
     [ObservableProperty]
     public partial string? ErrorMessage { get; set; }
@@ -51,13 +55,15 @@ public sealed partial class ConnectViewModel(Func<IIpcClient> createClient) : Vi
         ErrorTraceId = null;
         ErrorCode = default;
         ItemCount = null;
+        AccountId = null;
 
         try
         {
             switch (await ConnectAndCountAsync(cancellationToken))
             {
-                case Ok<RemoteRootSummaryView> ok:
-                    ItemCount = ok.Value.ItemCount;
+                case Ok<ConnectedAccount> ok:
+                    AccountId = ok.Value.AccountId;
+                    ItemCount = ok.Value.Summary.ItemCount;
                     break;
                 case Fail<ConnectFailure> fail:
                     ErrorTraceId = fail.Error.TraceId.Match(id => (string?)id, () => null);
@@ -72,7 +78,7 @@ public sealed partial class ConnectViewModel(Func<IIpcClient> createClient) : Vi
         }
     }
 
-    private async Task<Result<RemoteRootSummaryView, ConnectFailure>> ConnectAndCountAsync(CancellationToken cancellationToken)
+    private async Task<Result<ConnectedAccount, ConnectFailure>> ConnectAndCountAsync(CancellationToken cancellationToken)
     {
         await using var client = createClient();
 
@@ -83,18 +89,21 @@ public sealed partial class ConnectViewModel(Func<IIpcClient> createClient) : Vi
         };
     }
 
-    private static async Task<Result<RemoteRootSummaryView, ConnectFailure>> ConnectAccountAsync(IIpcClient client, CancellationToken cancellationToken)
+    private static async Task<Result<ConnectedAccount, ConnectFailure>> ConnectAccountAsync(IIpcClient client, CancellationToken cancellationToken)
         => await client.SendAsync(new ConnectAccount(), cancellationToken) switch
         {
-            Ok<CommandResult> { Value.Outcome: CommandOutcome.Accepted } => await CountAsync(client, cancellationToken),
+            Ok<CommandResult> { Value: { Outcome: CommandOutcome.Accepted, AccountId: { } accountId } } => await CountAsync(client, accountId, cancellationToken),
+            Ok<CommandResult> { Value.Outcome: CommandOutcome.Accepted } => new Fail<ConnectFailure>(new ConnectFailure(ApplicationConstants.ConnectAccountFirstText)),
             Ok<CommandResult> rejected => new Fail<ConnectFailure>(ConnectFailure.Rejected(rejected.Value, ApplicationConstants.ConnectRejectedText)),
             Fail<IpcError> fail => new Fail<ConnectFailure>(ConnectFailure.From(fail.Error))
         };
 
-    private static async Task<Result<RemoteRootSummaryView, ConnectFailure>> CountAsync(IIpcClient client, CancellationToken cancellationToken)
-        => await client.QueryAsync(new GetRemoteRootSummary(), cancellationToken) switch
+    private static async Task<Result<ConnectedAccount, ConnectFailure>> CountAsync(IIpcClient client, Guid accountId, CancellationToken cancellationToken)
+        => await client.QueryAsync(new GetRemoteRootSummary(accountId), cancellationToken) switch
         {
-            Ok<RemoteRootSummaryView> ok => ok,
+            Ok<RemoteRootSummaryView> ok => new Ok<ConnectedAccount>(new ConnectedAccount(accountId, ok.Value)),
             Fail<IpcError> fail => new Fail<ConnectFailure>(ConnectFailure.From(fail.Error))
         };
+
+    private sealed record ConnectedAccount(Guid AccountId, RemoteRootSummaryView Summary);
 }

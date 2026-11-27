@@ -5,7 +5,7 @@ internal sealed class RefreshCoordinator
 {
     /// <summary>Starts listening to the connection, the connect attempt and the scope selection.</summary>
     /// <param name="connection">Account list and stored selection are refreshed whenever the daemon link comes up.</param>
-    /// <param name="connect">Accounts are refreshed whenever a connect attempt finishes, and the folder tree too when it succeeded.</param>
+    /// <param name="connect">The selection switches to the account a connect signed in, so its folders and job are shown, never another account's. Accounts are refreshed whenever a connect attempt finishes, and the folder tree too when it succeeded.</param>
     /// <param name="accounts">The account cards.</param>
     /// <param name="folders">The remote folder tree. Listed afresh whenever the stored selection has been read.</param>
     /// <param name="selection">The ticked folders, local folder and job.</param>
@@ -17,6 +17,7 @@ internal sealed class RefreshCoordinator
         };
         connect.PropertyChanged += (_, args) =>
         {
+            if (args.PropertyName == nameof(ConnectViewModel.AccountId) && connect.AccountId is { } connected) selection.AccountId = connected;
             if (args.PropertyName != nameof(ConnectViewModel.IsBusy) || connect.IsBusy) return;
 
             accounts.RefreshCommand.Execute(null);

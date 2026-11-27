@@ -13,12 +13,40 @@ namespace AStarDev.CloudSync.UI.ViewModels;
 /// <param name="picker">Asks the user for a local folder when Browse is pressed.</param>
 public sealed partial class ScopeSelectionViewModel(Func<IIpcClient> createClient, IFolderPicker picker) : ViewModelBase
 {
+    private Guid? accountId;
     private string localRoot = string.Empty;
     private SyncBootstrapMode bootstrapMode = SyncBootstrapMode.Merge;
     private SyncJobView? job;
     private string? statusMessage;
     private bool isLoading;
     private bool isBusy;
+
+    /// <summary>
+    /// The account whose job and folders this selection shows. Setting a different account forgets the current job, ticks and local folder, so one account's choices never appear under another.
+    /// <see langword="null"/> until an account is chosen; a read then adopts the account of the first stored job.
+    /// </summary>
+    public Guid? AccountId
+    {
+        get => accountId;
+        set
+        {
+            if (accountId == value) return;
+
+            accountId = value;
+            job = null;
+            localRoot = string.Empty;
+            bootstrapMode = SyncBootstrapMode.Merge;
+            SelectedFolderIds.Clear();
+            UnsyncedFolders.Clear();
+            OnPropertyChanged();
+            OnPropertyChanged(nameof(LocalRoot));
+            OnPropertyChanged(nameof(BootstrapMode));
+            OnPropertyChanged(nameof(HasJob));
+            OnPropertyChanged(nameof(JobSummary));
+            OnPropertyChanged(nameof(HasUnsyncedFolders));
+            OnPropertyChanged(nameof(CanCreateJob));
+        }
+    }
 
     /// <summary>The ticked folders, as the provider's ids, in the order they were ticked or listed. Empty until the user ticks something or a stored job is loaded.</summary>
     public ObservableCollection<string> SelectedFolderIds { get; } = [];
@@ -32,7 +60,7 @@ public sealed partial class ScopeSelectionViewModel(Func<IIpcClient> createClien
     /// <summary>The bootstrap modes the user can pick from.</summary>
     public IReadOnlyList<SyncBootstrapMode> BootstrapModes { get; } = [SyncBootstrapMode.Download, SyncBootstrapMode.Upload, SyncBootstrapMode.Merge];
 
-    /// <summary>True once the daemon holds a sync job. The MVP allows one, so the form is then read-only.</summary>
+    /// <summary>True once the daemon holds a sync job for <see cref="AccountId"/>. An account has one, so the form is then read-only.</summary>
     public bool HasJob => job is not null;
 
     /// <summary>The local folder the job syncs to, typed or picked. After a job exists it shows the job's folder.</summary>
@@ -111,10 +139,9 @@ public sealed partial class ScopeSelectionViewModel(Func<IIpcClient> createClien
 
     /// <summary>
     /// Reads the stored job and its folders. With a job, shows its folder and mode and replaces the ticks with the stored ones; without one, leaves the ticks as they are.
-    /// Failures land in <see cref="StatusMessage"/>; cancellation surfaces as <see cref="OperationCanceledException"/>. Also exposed to the view as <c>RefreshCommand</c>.
+    /// Failures land in <see cref="StatusMessage"/>; cancellation surfaces as <see cref="OperationCanceledException"/>. Exposed to the view as <c>RefreshCommand</c>, which has no cancellation of its own, so overlapping refreshes never cancel each other.
     /// </summary>
     /// <param name="cancellationToken">Cancelling abandons the read.</param>
-    [RelayCommand]
     public async Task RefreshAsync(CancellationToken cancellationToken)
     {
         IsLoading = true;
@@ -143,8 +170,11 @@ public sealed partial class ScopeSelectionViewModel(Func<IIpcClient> createClien
         }
     }
 
+    [RelayCommand(AllowConcurrentExecutions = true)]
+    private Task Refresh() => RefreshAsync(CancellationToken.None);
+
     /// <summary>
-    /// Creates the sync job for the first account with <see cref="LocalRoot"/> and <see cref="BootstrapMode"/>, then adds every ticked folder to it. The daemon checks the local folder.
+    /// Creates the sync job for <see cref="AccountId"/> (the first account when none is chosen) with <see cref="LocalRoot"/> and <see cref="BootstrapMode"/>, then adds every ticked folder to it. The daemon checks the local folder.
     /// Failures land in <see cref="StatusMessage"/>; a failure while adding folders leaves the job in place. Cancellation surfaces as <see cref="OperationCanceledException"/>.
     /// Also exposed to the view as <c>CreateJobCommand</c>.
     /// </summary>
@@ -213,10 +243,10 @@ public sealed partial class ScopeSelectionViewModel(Func<IIpcClient> createClien
             Fail<IpcError> fail => new Fail<ConnectFailure>(ConnectFailure.From(fail.Error))
         };
 
-    private static async Task<Result<StoredSelection, ConnectFailure>> LoadAsync(IIpcClient client, CancellationToken cancellationToken)
+    private async Task<Result<StoredSelection, ConnectFailure>> LoadAsync(IIpcClient client, CancellationToken cancellationToken)
         => await client.QueryAsync(new GetSyncJobs(), cancellationToken) switch
         {
-            Ok<SyncJobsView> { Value.Jobs: [var stored, ..] } => await LoadScopesAsync(client, stored, cancellationToken),
+            Ok<SyncJobsView> ok when JobOfAccount(ok.Value) is { } stored => await LoadScopesAsync(client, stored, cancellationToken),
             Ok<SyncJobsView> => new Ok<StoredSelection>(new StoredSelection(null, [], [])),
             Fail<IpcError> fail => new Fail<ConnectFailure>(ConnectFailure.From(fail.Error))
         };
@@ -228,10 +258,12 @@ public sealed partial class ScopeSelectionViewModel(Func<IIpcClient> createClien
             Fail<IpcError> fail => new Fail<ConnectFailure>(ConnectFailure.From(fail.Error))
         };
 
+    private SyncJobView? JobOfAccount(SyncJobsView view) => accountId is { } chosen ? view.Jobs.FirstOrDefault(stored => stored.AccountId == chosen) : view.Jobs.FirstOrDefault();
+
     private async Task<Result<CreatedJob, ConnectFailure>> CreateAsync(IIpcClient client, CancellationToken cancellationToken)
         => await client.QueryAsync(new GetAccounts(), cancellationToken) switch
         {
-            Ok<AccountsView> { Value.Accounts: [var account, ..] } => await SendCreateAsync(client, account, cancellationToken),
+            Ok<AccountsView> ok when (accountId is { } chosen ? ok.Value.Accounts.FirstOrDefault(account => account.Id == chosen) : ok.Value.Accounts.FirstOrDefault()) is { } account => await SendCreateAsync(client, account, cancellationToken),
             Ok<AccountsView> => new Fail<ConnectFailure>(new ConnectFailure(ApplicationConstants.ConnectAccountFirstText)),
             Fail<IpcError> fail => new Fail<ConnectFailure>(ConnectFailure.From(fail.Error))
         };
@@ -239,15 +271,15 @@ public sealed partial class ScopeSelectionViewModel(Func<IIpcClient> createClien
     private async Task<Result<CreatedJob, ConnectFailure>> SendCreateAsync(IIpcClient client, AccountView account, CancellationToken cancellationToken)
         => await client.SendAsync(new CreateSyncJob(account.Id, localRoot.Trim(), bootstrapMode), cancellationToken) switch
         {
-            Ok<CommandResult> { Value.Outcome: CommandOutcome.Accepted } => await FindJobAsync(client, cancellationToken),
+            Ok<CommandResult> { Value.Outcome: CommandOutcome.Accepted } => await FindJobAsync(client, account, cancellationToken),
             Ok<CommandResult> rejected => new Fail<ConnectFailure>(new ConnectFailure(rejected.Value.Message ?? ApplicationConstants.RequestRejectedText)),
             Fail<IpcError> fail => new Fail<ConnectFailure>(ConnectFailure.From(fail.Error))
         };
 
-    private async Task<Result<CreatedJob, ConnectFailure>> FindJobAsync(IIpcClient client, CancellationToken cancellationToken)
+    private async Task<Result<CreatedJob, ConnectFailure>> FindJobAsync(IIpcClient client, AccountView account, CancellationToken cancellationToken)
         => await client.QueryAsync(new GetSyncJobs(), cancellationToken) switch
         {
-            Ok<SyncJobsView> { Value.Jobs: [var created, ..] } => await AddScopesAsync(client, created, cancellationToken),
+            Ok<SyncJobsView> ok when ok.Value.Jobs.FirstOrDefault(stored => stored.AccountId == account.Id) is { } created => await AddScopesAsync(client, created, cancellationToken),
             Ok<SyncJobsView> => new Fail<ConnectFailure>(new ConnectFailure(ApplicationConstants.JobNotFoundText)),
             Fail<IpcError> fail => new Fail<ConnectFailure>(ConnectFailure.From(fail.Error))
         };
@@ -275,6 +307,8 @@ public sealed partial class ScopeSelectionViewModel(Func<IIpcClient> createClien
         job = stored.Job;
         if (stored.Job is not null)
         {
+            accountId = stored.Job.AccountId;
+            OnPropertyChanged(nameof(AccountId));
             LocalRoot = stored.Job.LocalRootPath;
             BootstrapMode = stored.Job.BootstrapMode;
             SelectedFolderIds.Clear();

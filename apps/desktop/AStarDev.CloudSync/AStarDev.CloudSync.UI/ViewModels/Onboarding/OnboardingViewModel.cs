@@ -179,8 +179,7 @@ internal sealed partial class OnboardingViewModel : ViewModelBase
     [RelayCommand]
     public async Task LoadDriveInfoAsync(CancellationToken cancellationToken)
     {
-        var result = await client().QueryAsync(new GetDriveInfo(), cancellationToken);
-        driveInfo = result is Ok<DriveInfoView> ok ? Option.Some(ok.Value) : Option.None<DriveInfoView>();
+        driveInfo = selection.AccountId is { } accountId && await client().QueryAsync(new GetDriveInfo(accountId), cancellationToken) is Ok<DriveInfoView> ok ? Option.Some(ok.Value) : Option.None<DriveInfoView>();
         OnPropertyChanged(nameof(EstimatedItemsText));
         OnPropertyChanged(nameof(AvailableStorageText));
     }

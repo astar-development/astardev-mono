@@ -1,3 +1,4 @@
+using AStarDev.CloudSync.Domain;
 using AStarDev.CloudSync.IPC;
 using AStarDev.CloudSync.Ports;
 using AStarDev.FunctionalParadigm;
@@ -17,15 +18,17 @@ public sealed class RemoteFoldersQueryShould
             ChildrenResult = new Ok<IReadOnlyList<ProviderItem>>([StubCloudProvider.Folder("f2", "Docs/zeta"), StubCloudProvider.Item("a1"), StubCloudProvider.Folder("f1", "Docs/Alpha")])
         };
         await using var host = DaemonTestHost.CreateWith(provider);
+        var account = await host.AddAccountAsync("id", AccountStatus.Connected, Token);
         await using var client = UnixSocketIpc.CreateClient(host.SocketPath);
         await host.StartAsync(Token);
         (await client.ConnectAsync(Token)).Value.ShouldBeOfType<Ok<Unit>>();
 
-        var result = await client.QueryAsync(new GetRemoteFolders("docs-id"), Token);
+        var result = await client.QueryAsync(new GetRemoteFolders(account.Id.Value, "docs-id"), Token);
         await host.StopAsync(Token);
 
         result.Value.ShouldBeOfType<Ok<RemoteFoldersView>>().Value.Folders.ShouldBe([new RemoteFolderView("f1", "Alpha"), new RemoteFolderView("f2", "zeta")]);
         provider.Parents.Single().Value.ShouldBe("docs-id");
+        provider.AccountsCalled.ShouldBe(["id"]);
     }
 
     [Fact]
@@ -33,11 +36,12 @@ public sealed class RemoteFoldersQueryShould
     {
         var provider = new StubCloudProvider();
         await using var host = DaemonTestHost.CreateWith(provider);
+        var account = await host.AddAccountAsync("id", AccountStatus.Connected, Token);
         await using var client = UnixSocketIpc.CreateClient(host.SocketPath);
         await host.StartAsync(Token);
         (await client.ConnectAsync(Token)).Value.ShouldBeOfType<Ok<Unit>>();
 
-        var result = await client.QueryAsync(new GetRemoteFolders(), Token);
+        var result = await client.QueryAsync(new GetRemoteFolders(account.Id.Value), Token);
         await host.StopAsync(Token);
 
         result.Value.ShouldBeOfType<Ok<RemoteFoldersView>>().Value.Folders.ShouldBeEmpty();
@@ -49,11 +53,12 @@ public sealed class RemoteFoldersQueryShould
     {
         var provider = new StubCloudProvider { ChildrenResult = new Fail<ProviderError>(new AuthenticationFailed("Sign in first.")) };
         await using var host = DaemonTestHost.CreateWith(provider);
+        var account = await host.AddAccountAsync("id", AccountStatus.Connected, Token);
         await using var client = UnixSocketIpc.CreateClient(host.SocketPath);
         await host.StartAsync(Token);
         (await client.ConnectAsync(Token)).Value.ShouldBeOfType<Ok<Unit>>();
 
-        var result = await client.QueryAsync(new GetRemoteFolders("docs-id"), Token);
+        var result = await client.QueryAsync(new GetRemoteFolders(account.Id.Value, "docs-id"), Token);
         await host.StopAsync(Token);
 
         result.Value.ShouldBeOfType<Fail<IpcError>>().Error.Value.ShouldBeOfType<HandlerFailed>().Message.ShouldBe("Sign in first.");
@@ -63,10 +68,38 @@ public sealed class RemoteFoldersQueryShould
     public async Task honour_cancellation()
     {
         await using var host = DaemonTestHost.CreateWith(new StubCloudProvider());
+        var account = await host.AddAccountAsync("id", AccountStatus.Connected, Token);
         var query = host.Services.GetRequiredService<RemoteFoldersQuery>();
         using var cancelled = new CancellationTokenSource();
         await cancelled.CancelAsync();
 
-        await Should.ThrowAsync<OperationCanceledException>(() => query.HandleAsync(new GetRemoteFolders(), cancelled.Token));
+        await Should.ThrowAsync<OperationCanceledException>(() => query.HandleAsync(new GetRemoteFolders(account.Id.Value), cancelled.Token));
+    }
+
+    [Fact]
+    public async Task list_the_drive_of_the_account_asked_for()
+    {
+        var provider = new StubCloudProvider();
+        await using var host = DaemonTestHost.CreateWith(provider);
+        await host.AddAccountAsync("first", AccountStatus.Connected, Token);
+        var second = await host.AddAccountAsync("second", AccountStatus.Connected, Token);
+        var query = host.Services.GetRequiredService<RemoteFoldersQuery>();
+
+        await query.HandleAsync(new GetRemoteFolders(second.Id.Value), Token);
+
+        provider.AccountsCalled.ShouldBe(["second"]);
+    }
+
+    [Fact]
+    public async Task fail_for_an_unknown_account()
+    {
+        var provider = new StubCloudProvider();
+        await using var host = DaemonTestHost.CreateWith(provider);
+        var query = host.Services.GetRequiredService<RemoteFoldersQuery>();
+
+        var result = await query.HandleAsync(new GetRemoteFolders(Guid.NewGuid()), Token);
+
+        result.Value.ShouldBeOfType<Fail<IpcError>>().Error.Value.ShouldBeOfType<HandlerFailed>();
+        provider.AccountsCalled.ShouldBeEmpty();
     }
 }

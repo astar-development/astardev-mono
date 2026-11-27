@@ -13,7 +13,7 @@ internal sealed class CreateSyncJobHandler(IAccountStore accounts, ISyncJobStore
     /// <summary>Validates the local folder first, so a bad path is reported before anything is looked up or written, then stores the job.</summary>
     /// <returns>
     /// <see cref="CommandOutcome.Accepted"/> once the job is stored, <see cref="CommandOutcome.ValidationError"/> when the local folder is not an absolute path to an existing folder, or
-    /// <see cref="CommandOutcome.Rejected"/> with a message for the user when the account is unknown, a job already exists (the MVP allows one) or the store fails.
+    /// <see cref="CommandOutcome.Rejected"/> with a message for the user when the account is unknown, the account already has a job or the store fails.
     /// Cancellation propagates as <see cref="OperationCanceledException"/>.
     /// </returns>
     public async Task<Result<CommandResult, IpcError>> HandleAsync(CreateSyncJob command, CancellationToken cancellationToken)

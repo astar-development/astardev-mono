@@ -25,7 +25,7 @@ remaining roadmap phases.
 - Files On-Demand (doc 06).
 - Providers other than OneDrive. Provider boundary stays clean (doc 09).
 - Windows support, named-pipe transport.
-- Multiple accounts or multiple sync jobs. One account, one job, many scopes.
+- Several jobs per account. Each account has one job with many scopes; accounts are independent (see `cloudsync-multi-account.md`).
 - Performance tuning beyond the 700k item scale target in doc 11.
 - Release automation, upgrade strategy.
 
@@ -141,7 +141,7 @@ Interview 2026-11-19:
   2026-11-19 081417).xlsx`; date-only would collide when one file conflicts
   twice in a day.
 - MVP includes all three bootstrap modes, tray and notifications, and the full
-  Conflict Centre with bulk actions. Multiple accounts are out.
+  Conflict Centre with bulk actions.
 
 From the docs, fixed: Domain depends on nothing; UI reaches state only via IPC;
 only SyncEngine mutates state; providers do not reconcile; Aspire is not a

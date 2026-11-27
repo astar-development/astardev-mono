@@ -227,6 +227,7 @@ SetSetting
 
 ```text
 Accounts and sync:   GetAccounts, GetSyncJobs, GetSyncScopes, GetRemoteRootSummary, GetRemoteFolders, GetDriveInfo
+                     (the last three carry the AccountId whose drive they read; a ConnectAccount answer carries the connected AccountId)
 Status and activity: GetDaemonStatus, GetSyncStatus, GetDashboardSnapshot, GetActivities, GetQueue
 Conflicts:           GetConflicts, GetDeadLetters
 History and audit:   GetHistory, GetAudit, ExportHistory, ExportAudit
