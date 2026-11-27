@@ -8,7 +8,7 @@ namespace AStarDev.CloudSync.Daemon;
 /// <summary>Answers <see cref="GetConflicts"/> from the <see cref="IConflictStore"/> and the item state.</summary>
 internal sealed class ConflictsQuery(IConflictStore store, ConflictViewFactory views)
 {
-    /// <summary>Lists the conflicts of one job that still wait for the user, deferred ones included.</summary>
+    /// <summary>Lists the conflicts of one job that still wait for the user, deferred ones included, at most <see cref="ApplicationConstants.ListLimit"/>, so one answer fits an IPC frame.</summary>
     /// <returns>The conflicts oldest first with their path and sides, empty for an unknown job, or <see cref="HandlerFailed"/> carrying the store's failure worded for the user. Cancellation propagates as <see cref="OperationCanceledException"/>.</returns>
     public async Task<Result<ConflictsView, IpcError>> HandleAsync(GetConflicts query, CancellationToken cancellationToken)
     {
@@ -24,7 +24,7 @@ internal sealed class ConflictsQuery(IConflictStore store, ConflictViewFactory v
     private async Task<Result<ConflictsView, IpcError>> DescribeAsync(SyncJobId jobId, IReadOnlyList<Conflict> conflicts, CancellationToken cancellationToken)
         => await views.CreateAsync(jobId, conflicts, cancellationToken) switch
         {
-            Ok<IReadOnlyList<ConflictView>> ok => new Ok<ConflictsView>(new ConflictsView(ok.Value)),
+            Ok<IReadOnlyList<ConflictView>> ok => new Ok<ConflictsView>(new ConflictsView([.. ok.Value.Take(ApplicationConstants.ListLimit)])),
             Fail<StoreError> fail => Failed(fail.Error)
         };
 

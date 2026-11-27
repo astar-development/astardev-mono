@@ -20,6 +20,30 @@ public sealed class AuditQueryShould
     }
 
     [Fact]
+    public async Task list_only_the_newest_entries_oldest_first()
+    {
+        var total = ApplicationConstants.ListLimit + 5;
+        await using var host = await SeededHostAsync([.. Enumerable.Range(0, total).Select(index => ("ConflictResolved", -1 - (index % 80)))]);
+
+        var result = await host.Services.GetRequiredService<AuditQuery>().HandleAsync(Everything([]), Token);
+
+        var entries = result.Value.ShouldBeOfType<Ok<AuditView>>().Value.Entries;
+        entries.Count.ShouldBe(ApplicationConstants.ListLimit);
+        entries.Select(entry => entry.OccurredUtc).ShouldBeInOrder();
+    }
+
+    [Fact]
+    public async Task export_every_entry_without_the_screen_limit()
+    {
+        var total = ApplicationConstants.ListLimit + 5;
+        await using var host = await SeededHostAsync([.. Enumerable.Range(0, total).Select(index => ("ConflictResolved", -1 - (index % 80)))]);
+
+        var result = await host.Services.GetRequiredService<ExportQuery>().HandleAsync(new ExportAudit(Everything([])), Token);
+
+        result.Value.ShouldBeOfType<Ok<ExportView>>().Value.Csv.Split("\r\n", StringSplitOptions.RemoveEmptyEntries).Length.ShouldBe(total + 1);
+    }
+
+    [Fact]
     public async Task filter_by_type()
     {
         await using var host = await SeededHostAsync(("ConflictResolved", -1), ("SyncScopeAdded", -2));

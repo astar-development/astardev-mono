@@ -9,7 +9,7 @@ namespace AStarDev.CloudSync.Daemon;
 internal sealed class RemoteFoldersQuery(ICloudProvider provider, IAccountStore accounts)
 {
     /// <summary>Lists the requested folder and keeps its subfolders.</summary>
-    /// <returns>The subfolders sorted by name, or <see cref="HandlerFailed"/> carrying the provider's failure worded for the user. Cancellation propagates as <see cref="OperationCanceledException"/>.</returns>
+    /// <returns>The first subfolders sorted by name, at most <see cref="ApplicationConstants.RemoteFolderListLimit"/>, or <see cref="HandlerFailed"/> carrying the provider's failure worded for the user. Cancellation propagates as <see cref="OperationCanceledException"/>.</returns>
     public async Task<Result<RemoteFoldersView, IpcError>> HandleAsync(GetRemoteFolders query, CancellationToken cancellationToken)
         => await AccountIdentifiers.FindAsync(accounts, query.AccountId, cancellationToken) switch
         {
@@ -29,5 +29,6 @@ internal sealed class RemoteFoldersQuery(ICloudProvider provider, IAccountStore 
             .Where(item => item.ItemType == ItemType.Folder)
             .Select(item => new RemoteFolderView(item.RemoteItemId.Value, item.Path.Value[(item.Path.Value.LastIndexOf('/') + 1)..]))
             .OrderBy(folder => folder.Name, StringComparer.OrdinalIgnoreCase)
+            .Take(ApplicationConstants.RemoteFolderListLimit)
             .ToList();
 }
