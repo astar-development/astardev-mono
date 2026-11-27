@@ -16,7 +16,7 @@ public sealed class OneDriveProviderShould
         using var telemetry = new OneDriveTelemetry();
         using var client = new HttpClient(new FakeGraphHandler(_ => FakeGraphHandler.Json("{}")));
         var accounts = TestAccounts.For(client, telemetry);
-        var provider = new OneDriveProvider(Options.Create(new OneDriveSettings()), new UnusedStore(), accounts, NullLogger<OneDriveProvider>.Instance);
+        var provider = new OneDriveProvider(Options.Create(new OneDriveSettings()), new UnusedStore(), accounts, TimeProvider.System, NullLogger<OneDriveProvider>.Instance);
 
         var result = await provider.ConnectAsync(Token);
 
@@ -31,7 +31,7 @@ public sealed class OneDriveProviderShould
         using var telemetry = new OneDriveTelemetry();
         var handler = new FakeGraphHandler(_ => FakeGraphHandler.Json("""{ "value": [ { "id": "a", "name": "a.txt", "size": 1, "lastModifiedDateTime": "2026-01-01T00:00:00Z", "file": {}, "parentReference": { "path": "/drive/root:" } } ] }"""));
         using var client = new HttpClient(handler) { BaseAddress = new Uri("https://graph.test/v1.0/") };
-        var provider = new OneDriveProvider(Options.Create(new OneDriveSettings()), new UnusedStore(), TestAccounts.For(client, telemetry), NullLogger<OneDriveProvider>.Instance);
+        var provider = new OneDriveProvider(Options.Create(new OneDriveSettings()), new UnusedStore(), TestAccounts.For(client, telemetry), TimeProvider.System, NullLogger<OneDriveProvider>.Instance);
 
         var result = await provider.GetSnapshotAsync("id", new RemoteItemId("root"), null, Token);
 
@@ -43,7 +43,7 @@ public sealed class OneDriveProviderShould
     {
         using var telemetry = new OneDriveTelemetry();
         using var client = new HttpClient(new FakeGraphHandler(_ => FakeGraphHandler.Json("{}")));
-        var provider = new OneDriveProvider(Options.Create(new OneDriveSettings { ClientId = "id" }), new UnusedStore(), TestAccounts.For(client, telemetry), NullLogger<OneDriveProvider>.Instance);
+        var provider = new OneDriveProvider(Options.Create(new OneDriveSettings { ClientId = "id" }), new UnusedStore(), TestAccounts.For(client, telemetry), TimeProvider.System, NullLogger<OneDriveProvider>.Instance);
         using var cancelled = new CancellationTokenSource();
         await cancelled.CancelAsync();
 
@@ -55,7 +55,7 @@ public sealed class OneDriveProviderShould
     {
         using var telemetry = new OneDriveTelemetry();
         using var client = new HttpClient(new FakeGraphHandler(_ => FakeGraphHandler.Json("{}")));
-        var provider = new OneDriveProvider(Options.Create(new OneDriveSettings()), new UnusedStore(), TestAccounts.For(client, telemetry), NullLogger<OneDriveProvider>.Instance);
+        var provider = new OneDriveProvider(Options.Create(new OneDriveSettings()), new UnusedStore(), TestAccounts.For(client, telemetry), TimeProvider.System, NullLogger<OneDriveProvider>.Instance);
 
         var result = await provider.ReconnectAsync("id", Token);
 
@@ -69,7 +69,7 @@ public sealed class OneDriveProviderShould
         using var client = new HttpClient(new FakeGraphHandler(_ => FakeGraphHandler.Json("{}")));
         var accounts = TestAccounts.For(client, telemetry);
         accounts.Set("id", "token");
-        var provider = new OneDriveProvider(Options.Create(new OneDriveSettings()), new UnusedStore(), accounts, NullLogger<OneDriveProvider>.Instance);
+        var provider = new OneDriveProvider(Options.Create(new OneDriveSettings()), new UnusedStore(), accounts, TimeProvider.System, NullLogger<OneDriveProvider>.Instance);
 
         var result = await provider.DisconnectAsync("id", Token);
 
@@ -82,7 +82,7 @@ public sealed class OneDriveProviderShould
     {
         using var telemetry = new OneDriveTelemetry();
         using var client = new HttpClient(new FakeGraphHandler(_ => FakeGraphHandler.Json("{}")));
-        var provider = new OneDriveProvider(Options.Create(new OneDriveSettings { ClientId = "id" }), new UnusedStore(), TestAccounts.For(client, telemetry), NullLogger<OneDriveProvider>.Instance);
+        var provider = new OneDriveProvider(Options.Create(new OneDriveSettings { ClientId = "id" }), new UnusedStore(), TestAccounts.For(client, telemetry), TimeProvider.System, NullLogger<OneDriveProvider>.Instance);
         using var cancelled = new CancellationTokenSource();
         await cancelled.CancelAsync();
 

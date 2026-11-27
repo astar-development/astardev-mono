@@ -14,6 +14,14 @@ public sealed class AuthenticationErrorsShould
     }
 
     [Fact]
+    public void map_an_unavailable_identity_service_to_transient()
+    {
+        var error = AuthenticationErrors.From(new MsalServiceException(MsalError.ServiceNotAvailable, "unavailable"));
+
+        error.Value.ShouldBeOfType<Transient>();
+    }
+
+    [Fact]
     public void map_network_failures_to_transient()
     {
         var error = AuthenticationErrors.From(new HttpRequestException("down"));

@@ -43,7 +43,7 @@ internal sealed class OneDriveConnector(ITokenCacheStore store, OneDriveAccounts
 
     private Ok<ProviderAccount> Authorised(SignInOutcome outcome)
     {
-        accounts.Set(outcome.Account.AccountIdentifier, outcome.AccessToken);
+        accounts.Set(outcome.Account.AccountIdentifier, outcome.AccessToken, outcome.ExpiresOn);
 
         return new Ok<ProviderAccount>(outcome.Account);
     }

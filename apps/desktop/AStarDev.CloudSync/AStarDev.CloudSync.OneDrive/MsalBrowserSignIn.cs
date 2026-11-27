@@ -14,6 +14,6 @@ internal sealed class MsalBrowserSignIn(OneDriveOptions options) : IBrowserSignI
         var application = MsalApplication.Create(options, cache);
         var result = await application.Client.AcquireTokenInteractive(Scopes).ExecuteAsync(cancellationToken).ConfigureAwait(false);
 
-        return new SignInOutcome(new ProviderAccount(result.Account.HomeAccountId.Identifier, result.Account.Username), application.Cache, result.AccessToken);
+        return new SignInOutcome(new ProviderAccount(result.Account.HomeAccountId.Identifier, result.Account.Username), application.Cache, result.AccessToken, result.ExpiresOn);
     }
 }

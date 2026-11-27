@@ -8,8 +8,10 @@ using Microsoft.Extensions.Options;
 namespace AStarDev.CloudSync.OneDrive;
 
 /// <summary>OneDrive behind the <see cref="ICloudProvider"/> port: browser sign-in with a keyring token cache, root enumeration and item transfer through Graph.</summary>
-internal sealed class OneDriveProvider(IOptions<OneDriveSettings> settings, ITokenCacheStore store, OneDriveAccounts accounts, ILogger<OneDriveProvider> logger) : ICloudProvider
+internal sealed class OneDriveProvider(IOptions<OneDriveSettings> settings, ITokenCacheStore store, OneDriveAccounts accounts, TimeProvider time, ILogger<OneDriveProvider> logger) : ICloudProvider
 {
+    private readonly TokenRefresher refresher = new(accounts, time);
+
     /// <inheritdoc/>
     public IReadOnlyList<ProviderFeature> Features { get; } = [ProviderFeature.SelectiveSync, ProviderFeature.DeltaSync];
 
@@ -56,7 +58,7 @@ internal sealed class OneDriveProvider(IOptions<OneDriveSettings> settings, ITok
     /// Paths are built from parent ids and names, so they are relative to the drive root, keeping the scope folder, and correct where OneDrive Personal omits parent paths. A parent not yet seen is read from Graph, costing one request per unknown folder after a restart; an item whose parent Graph no longer has, or that lies outside <paramref name="root"/>, is left out, as is <paramref name="root"/> itself.
     /// </remarks>
     public Task<Result<ProviderSnapshotPage, ProviderError>> GetSnapshotAsync(string accountIdentifier, RemoteItemId root, string? resumeToken, CancellationToken cancellationToken)
-        => ObserveAsync("GetSnapshot", accountIdentifier, root.Value, token => accounts.For(accountIdentifier).Enumerator.GetSnapshotAsync(root, resumeToken, token), cancellationToken);
+        => ObserveAuthorisedAsync("GetSnapshot", accountIdentifier, root.Value, token => accounts.For(accountIdentifier).Enumerator.GetSnapshotAsync(root, resumeToken, token), cancellationToken);
 
     /// <inheritdoc/>
     /// <remarks>
@@ -64,37 +66,47 @@ internal sealed class OneDriveProvider(IOptions<OneDriveSettings> settings, ITok
     /// Graph does not report renames, so a renamed or moved item arrives as <see cref="ChangeKind.Modified"/> with its new path. Paths are resolved as for <see cref="GetSnapshotAsync"/>.
     /// </remarks>
     public Task<Result<ProviderDeltaPage, ProviderError>> GetDeltasAsync(string accountIdentifier, RemoteItemId root, DeltaToken token, string? resumeToken, CancellationToken cancellationToken)
-        => ObserveAsync("GetDeltas", accountIdentifier, root.Value, call => accounts.For(accountIdentifier).Enumerator.GetDeltasAsync(root, token, resumeToken, call), cancellationToken);
+        => ObserveAuthorisedAsync("GetDeltas", accountIdentifier, root.Value, call => accounts.For(accountIdentifier).Enumerator.GetDeltasAsync(root, token, resumeToken, call), cancellationToken);
 
     /// <inheritdoc/>
     /// <remarks>Without a successful <see cref="ConnectAsync"/> first, Graph refuses the request and the result is <see cref="AuthenticationFailed"/>.</remarks>
     public Task<Result<IReadOnlyList<ProviderItem>, ProviderError>> ListChildrenAsync(string accountIdentifier, RemoteItemId parent, CancellationToken cancellationToken)
-        => ObserveAsync("ListChildren", accountIdentifier, parent.Value, token => accounts.For(accountIdentifier).Enumerator.ListChildrenAsync(parent, token), cancellationToken);
+        => ObserveAuthorisedAsync("ListChildren", accountIdentifier, parent.Value, token => accounts.For(accountIdentifier).Enumerator.ListChildrenAsync(parent, token), cancellationToken);
 
     /// <inheritdoc/>
     /// <remarks>Reads through Graph's content endpoint, which redirects to a pre-authenticated URL. A missing or forbidden item is <see cref="Permanent"/>.</remarks>
     public Task<Result<Stream, ProviderError>> DownloadAsync(string accountIdentifier, RemoteItemId itemId, CancellationToken cancellationToken)
-        => ObserveAsync("Download", accountIdentifier, itemId.Value, token => accounts.For(accountIdentifier).Transfer.DownloadAsync(itemId, token), cancellationToken);
+        => ObserveAuthorisedAsync("Download", accountIdentifier, itemId.Value, token => accounts.For(accountIdentifier).Transfer.DownloadAsync(itemId, token), cancellationToken);
 
     /// <inheritdoc/>
     /// <remarks>Files up to 4 MiB go in one request followed by a request that sets the modified time; larger ones use an upload session with 10 MiB chunks, which sets it when the session opens. A failed chunk abandons the session, so repeating starts again from the beginning.</remarks>
     public Task<Result<Unit, ProviderError>> UploadAsync(string accountIdentifier, UploadRequest request, CancellationToken cancellationToken)
-        => ObserveAsync("Upload", accountIdentifier, null, token => accounts.For(accountIdentifier).Transfer.UploadAsync(request, token), cancellationToken);
+        => ObserveAuthorisedAsync("Upload", accountIdentifier, null, token => accounts.For(accountIdentifier).Transfer.UploadAsync(request, token), cancellationToken);
 
     /// <inheritdoc/>
     /// <remarks>Sends the new name and the new parent folder path in one request. Graph answers 404, so <see cref="Permanent"/>, when the parent folder does not exist.</remarks>
     public Task<Result<Unit, ProviderError>> RenameAsync(string accountIdentifier, RemoteItemId itemId, RelativePath path, CancellationToken cancellationToken)
-        => ObserveAsync("Rename", accountIdentifier, itemId.Value, token => accounts.For(accountIdentifier).Transfer.RenameAsync(itemId, path, token), cancellationToken);
+        => ObserveAuthorisedAsync("Rename", accountIdentifier, itemId.Value, token => accounts.For(accountIdentifier).Transfer.RenameAsync(itemId, path, token), cancellationToken);
 
     /// <inheritdoc/>
     /// <remarks>A 404 from Graph counts as success. Graph moves the item to the OneDrive recycle bin.</remarks>
     public Task<Result<Unit, ProviderError>> DeleteAsync(string accountIdentifier, RemoteItemId itemId, CancellationToken cancellationToken)
-        => ObserveAsync("Delete", accountIdentifier, itemId.Value, token => accounts.For(accountIdentifier).Transfer.DeleteAsync(itemId, token), cancellationToken);
+        => ObserveAuthorisedAsync("Delete", accountIdentifier, itemId.Value, token => accounts.For(accountIdentifier).Transfer.DeleteAsync(itemId, token), cancellationToken);
 
     /// <inheritdoc/>
     /// <remarks>Reads the quota of the account's drive from Graph. Graph has no item count, so <see cref="ProviderDriveInfo.ItemCountEstimate"/> is always none. Without a successful <see cref="ConnectAsync"/> first the result is <see cref="AuthenticationFailed"/>.</remarks>
     public Task<Result<ProviderDriveInfo, ProviderError>> GetDriveInfoAsync(string accountIdentifier, CancellationToken cancellationToken)
-        => ObserveAsync("GetDriveInfo", accountIdentifier, null, accounts.For(accountIdentifier).Enumerator.GetDriveInfoAsync, cancellationToken);
+        => ObserveAuthorisedAsync("GetDriveInfo", accountIdentifier, null, accounts.For(accountIdentifier).Enumerator.GetDriveInfoAsync, cancellationToken);
+
+    private Task<Result<T, ProviderError>> ObserveAuthorisedAsync<T>(string call, string accountId, string? remoteItemId, Func<CancellationToken, Task<Result<T, ProviderError>>> invoke, CancellationToken cancellationToken)
+        => ObserveAsync(call, accountId, remoteItemId, token => AuthorisedAsync(accountId, invoke, token), cancellationToken);
+
+    private async Task<Result<T, ProviderError>> AuthorisedAsync<T>(string accountId, Func<CancellationToken, Task<Result<T, ProviderError>>> invoke, CancellationToken cancellationToken)
+        => await refresher.EnsureFreshAsync(accountId, ReconnectCoreAsync, cancellationToken).ConfigureAwait(false) switch
+        {
+            Ok<Unit> => await invoke(cancellationToken).ConfigureAwait(false),
+            Fail<ProviderError> fail => fail
+        };
 
     private async Task<Result<T, ProviderError>> ObserveAsync<T>(string call, string? accountId, string? remoteItemId, Func<CancellationToken, Task<Result<T, ProviderError>>> invoke, CancellationToken cancellationToken)
     {

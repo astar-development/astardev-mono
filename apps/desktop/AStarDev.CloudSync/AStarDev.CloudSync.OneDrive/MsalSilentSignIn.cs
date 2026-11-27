@@ -19,6 +19,6 @@ internal sealed class MsalSilentSignIn(OneDriveOptions options) : ISilentSignIn
         var account = await application.Client.GetAccountAsync(accountIdentifier).ConfigureAwait(false) ?? throw new MsalUiRequiredException(MsalError.UserNullError, AccountMissingMessage).WithHelpLink(OneDriveErrorCodes.AccountNotSignedIn);
         var result = await application.Client.AcquireTokenSilent(Scopes, account).ExecuteAsync(cancellationToken).ConfigureAwait(false);
 
-        return new SignInOutcome(new ProviderAccount(result.Account.HomeAccountId.Identifier, result.Account.Username), application.Cache, result.AccessToken);
+        return new SignInOutcome(new ProviderAccount(result.Account.HomeAccountId.Identifier, result.Account.Username), application.Cache, result.AccessToken, result.ExpiresOn);
     }
 }
