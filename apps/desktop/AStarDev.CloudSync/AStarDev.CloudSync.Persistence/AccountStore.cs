@@ -74,6 +74,21 @@ internal sealed class AccountStore(IDbContextFactory<CloudSyncDbContext> context
     }
 
     /// <inheritdoc/>
+    public async Task<Result<Unit, StoreError>> UpdateConcurrencyAsync(AccountId id, int maxConcurrentOperations, CancellationToken cancellationToken)
+    {
+        var outcome = await Try.RunAsync(async token =>
+        {
+            await using var context = await contextFactory.CreateDbContextAsync(token).ConfigureAwait(false);
+            var changed = await context.Accounts.Where(account => account.Id == id)
+                .ExecuteUpdateAsync(setters => setters.SetProperty(account => account.MaxConcurrentOperations, maxConcurrentOperations), token).ConfigureAwait(false);
+
+            return changed > 0;
+        }, cancellationToken).ConfigureAwait(false);
+
+        return ToUnitResult(outcome, id);
+    }
+
+    /// <inheritdoc/>
     public async Task<Result<Unit, StoreError>> RemoveAsync(AccountId id, CancellationToken cancellationToken)
     {
         var outcome = await Try.RunAsync(async token =>

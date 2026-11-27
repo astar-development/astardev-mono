@@ -15,7 +15,7 @@ partial class CloudSyncDbContextModelSnapshot : ModelSnapshot
     // If you encounter a merge conflict in the line below, it means you need to
     // discard one of the migration branches and recreate its migrations on top of
     // the other branch. See https://aka.ms/efcore-docs-migrations-conflicts for more info.
-    public override string LastMigrationId => "20261124105845_AddClassificationState";
+    public override string LastMigrationId => "20261127213912_AddAccountConcurrency";
 
     protected override void BuildModel(ModelBuilder modelBuilder)
     {
@@ -37,6 +37,11 @@ partial class CloudSyncDbContextModelSnapshot : ModelSnapshot
                 b.Property<string>("DisplayName")
                     .IsRequired()
                     .HasColumnType("TEXT");
+
+                b.Property<int>("MaxConcurrentOperations")
+                    .ValueGeneratedOnAdd()
+                    .HasColumnType("INTEGER")
+                    .HasDefaultValue(4);
 
                 b.Property<string>("ProviderType")
                     .IsRequired()
@@ -358,11 +363,11 @@ partial class CloudSyncDbContextModelSnapshot : ModelSnapshot
 
                 b.HasKey("Id");
 
-                b.HasIndex("SyncJobId");
-
                 b.HasIndex("ItemId", "Status");
 
                 b.HasIndex("Status", "Priority", "CreatedUtc");
+
+                b.HasIndex("SyncJobId", "Status", "Priority", "CreatedUtc");
 
                 b.ToTable("Operations");
             });

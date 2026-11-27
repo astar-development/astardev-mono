@@ -55,6 +55,12 @@
                         <Button Content="{loc:Loc Common.CreateSyncJob}" Command="{Binding Selection.CreateJobCommand}" IsEnabled="{Binding Selection.CanCreateJob}" />
                     </StackPanel>
                     <TextBlock Text="{Binding Selection.JobSummary}" />
+                    <TextBlock Text="{loc:Loc Settings.Synchronisation.Concurrency}" FontWeight="SemiBold" Margin="0,8,0,0" />
+                    <TextBlock Text="{loc:Loc Settings.Synchronisation.ConcurrencyNote}" Foreground="{DynamicResource Text.Secondary.Brush}" TextWrapping="Wrap" />
+                    <StackPanel Orientation="Horizontal" Spacing="12">
+                        <Slider Value="{Binding ConcurrencyPosition, Mode=TwoWay}" Minimum="0" Maximum="4" TickFrequency="1" IsSnapToTickEnabled="True" TickPlacement="BottomRight" IsEnabled="{Binding HasAccount}" Width="240" />
+                        <TextBlock Text="{Binding ConcurrencyText}" VerticalAlignment="Center" />
+                    </StackPanel>
                     <TextBlock Text="{Binding Selection.StatusMessage}" Foreground="{DynamicResource Trust.Critical.Brush}" TextWrapping="Wrap" />
                 </StackPanel>
                 <StackPanel Spacing="8" IsVisible="{Binding IsAppearance}">

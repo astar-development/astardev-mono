@@ -6,8 +6,11 @@ public sealed class OperationSchedulerOptions
     /// <summary>Name of the configuration section these options bind to.</summary>
     public const string ConfigurationSection = "OperationScheduler";
 
-    /// <summary>How many workers claim operations at once. Operations for one item never overlap whatever this is. Less than one is treated as one.</summary>
-    public int WorkerCount { get; set; } = 4;
+    /// <summary>
+    /// How many workers claim operations at once, across all accounts. Each account's own limit caps it further, so this only needs to reach the largest limit an account may choose.
+    /// Operations for one item never overlap whatever this is. Less than one is treated as one.
+    /// </summary>
+    public int WorkerCount { get; set; } = 8;
 
     /// <summary>How many attempts an operation gets, the first included, before it is dead-lettered. Less than one is treated as one.</summary>
     public int MaxAttempts { get; set; } = 5;

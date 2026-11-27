@@ -6,7 +6,7 @@ using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 
 namespace AStarDev.CloudSync.Persistence;
 
-/// <summary>SQLite implementation of <see cref="IOperationStore"/>. Each call uses its own short-lived context. A claim is one SQL statement, so SQLite serialises concurrent claims and the per-item lock cannot be raced.</summary>
+/// <summary>SQLite implementation of <see cref="IOperationStore"/>. Each call uses its own short-lived context. A claim is one SQL statement, so SQLite serialises concurrent claims and neither the per-item lock nor the per-account limit can be raced. Each job's best candidate is found through its own index range, so an account at its limit costs no scan of its backlog.</summary>
 internal sealed class OperationStore(IDbContextFactory<CloudSyncDbContext> contextFactory) : IOperationStore
 {
     private static readonly DateTimeOffsetToBinaryConverter TimeConverter = new();
@@ -41,10 +41,19 @@ internal sealed class OperationStore(IDbContextFactory<CloudSyncDbContext> conte
                 var rows = await context.Operations.FromSql($"""
                     UPDATE Operations SET Status = 'Running', Attempts = Attempts + 1
                     WHERE Id = (
-                        SELECT candidate.Id FROM Operations AS candidate
-                        WHERE candidate.Status = 'Pending' AND candidate.NextAttemptUtc <= {due}
-                          AND NOT EXISTS (SELECT 1 FROM Operations AS running WHERE running.ItemId = candidate.ItemId AND running.Status = 'Running')
-                        ORDER BY candidate.Priority, candidate.CreatedUtc
+                        SELECT chosen.Id FROM (
+                            SELECT (
+                                SELECT candidate.Id FROM Operations AS candidate
+                                WHERE candidate.SyncJobId = job.Id AND candidate.Status = 'Pending' AND candidate.NextAttemptUtc <= {due}
+                                  AND NOT EXISTS (SELECT 1 FROM Operations AS running WHERE running.ItemId = candidate.ItemId AND running.Status = 'Running')
+                                ORDER BY candidate.Priority, candidate.CreatedUtc
+                                LIMIT 1) AS Id
+                            FROM SyncJobs AS job
+                            JOIN Accounts AS account ON account.Id = job.AccountId
+                            WHERE (SELECT COUNT(*) FROM Operations AS busy JOIN SyncJobs AS busyJob ON busyJob.Id = busy.SyncJobId
+                                   WHERE busy.Status = 'Running' AND busyJob.AccountId = job.AccountId) < account.MaxConcurrentOperations) AS best
+                        JOIN Operations AS chosen ON chosen.Id = best.Id
+                        ORDER BY chosen.Priority, chosen.CreatedUtc
                         LIMIT 1)
                     RETURNING *
                     """).AsNoTracking().ToListAsync(token).ConfigureAwait(false);

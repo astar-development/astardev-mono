@@ -20,7 +20,8 @@ public interface IOperationStore
     /// <param name="limit">The most operations to claim. Zero or less claims none.</param>
     /// <param name="cancellationToken">Cancelling stops claiming; operations already claimed stay running.</param>
     /// <returns>
-    /// The claimed operations in claim order: priority first, then age. An item that already has a running operation is skipped, so the list holds at most one operation per item.
+    /// The claimed operations in claim order: priority first, then age. An item that already has a running operation is skipped, so the list holds at most one operation per item,
+    /// and an account already running its <c>MaxConcurrentOperations</c> is skipped, so its limit holds however many workers claim at once.
     /// Empty when nothing is due. <see cref="StorageFailed"/> on a database failure.
     /// </returns>
     Task<Result<IReadOnlyList<Operation>, StoreError>> ClaimNextAsync(DateTimeOffset nowUtc, int limit, CancellationToken cancellationToken);

@@ -86,6 +86,7 @@ internal sealed class CloudSyncDbContext(DbContextOptions<CloudSyncDbContext> op
         {
             account.ToTable("Accounts").HasKey(entity => entity.Id);
             account.Property(entity => entity.Status).HasConversion<string>().HasDefaultValue(AccountStatus.Connected);
+            account.Property(entity => entity.MaxConcurrentOperations).HasDefaultValue(4);
             account.HasIndex(entity => new { entity.ProviderType, entity.AccountIdentifier }).IsUnique();
         });
 
@@ -122,6 +123,7 @@ internal sealed class CloudSyncDbContext(DbContextOptions<CloudSyncDbContext> op
             operation.HasOne<SyncJobEntity>().WithMany().HasForeignKey(entity => entity.SyncJobId).OnDelete(DeleteBehavior.Cascade);
             operation.HasIndex(entity => new { entity.Status, entity.Priority, entity.CreatedUtc });
             operation.HasIndex(entity => new { entity.ItemId, entity.Status });
+            operation.HasIndex(entity => new { entity.SyncJobId, entity.Status, entity.Priority, entity.CreatedUtc });
         });
 
         modelBuilder.Entity<KnownSnapshotEntity>(known =>

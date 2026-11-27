@@ -1,3 +1,4 @@
+using System.ComponentModel;
 using System.Globalization;
 using AStarDev.CloudSync.IPC;
 using AStarDev.CloudSync.UI.Localisation;
@@ -30,8 +31,13 @@ internal sealed partial class SettingsViewModel(ILocalisationService localisatio
         [SettingKeys.TelemetryRetentionDays] = "7"
     };
 
+    private readonly SemaphoreSlim sendingConcurrency = new(1, 1);
     private SettingsCategoryViewModel? selectedCategory;
     private bool restartRequested;
+    private const int DefaultConcurrency = 4;
+
+    private int storedConcurrency = DefaultConcurrency;
+    private double concurrencyPosition = PositionOf(DefaultConcurrency);
 
     /// <summary>The theme chosen, one of <see cref="Themes"/>. Dark until the daemon's value is loaded; applied by <see cref="SaveAsync"/>.</summary>
     [ObservableProperty]
@@ -131,7 +137,34 @@ internal sealed partial class SettingsViewModel(ILocalisationService localisatio
     public ScopeSelectionViewModel Selection => selection;
 
     /// <summary>The name of the account whose folders and job the Synchronisation section shows. Empty until that account and the account list are known.</summary>
-    public string AccountName => accounts.Accounts.FirstOrDefault(card => card.Account.Id == selection.AccountId)?.DisplayName ?? string.Empty;
+    public string AccountName => ShownAccount()?.DisplayName ?? string.Empty;
+
+    /// <summary>The limits the concurrency slider offers, smallest first.</summary>
+    public IReadOnlyList<int> ConcurrencyChoices => SetAccountConcurrency.AllowedValues;
+
+    /// <summary>
+    /// The concurrency slider's position: an index into <see cref="ConcurrencyChoices"/>, rounded and clamped to one of them. Moving it sends the shown account's new limit at once;
+    /// a refusal lands in <see cref="ErrorMessage"/> and the slider goes back to the stored limit. Showing an account moves it without sending anything.
+    /// </summary>
+    public double ConcurrencyPosition
+    {
+        get => concurrencyPosition;
+        set
+        {
+            if (!MoveConcurrency(value)) return;
+
+            SendConcurrencyCommand.Execute(null);
+        }
+    }
+
+    /// <summary>How many of the shown account's operations run at once, as chosen on the slider. 4 until an account is shown.</summary>
+    public int MaxConcurrentOperations => ConcurrencyChoices[(int)concurrencyPosition];
+
+    /// <summary>The slider's value in words, such as "6 at once".</summary>
+    public string ConcurrencyText => localisation.Format("Settings.Synchronisation.ConcurrencyValue", ("count", MaxConcurrentOperations));
+
+    /// <summary>True once the shown account is known, so the slider can be moved.</summary>
+    public bool HasAccount => ShownAccount() is not null;
 
     /// <summary>Reads every setting from the daemon, shows it and applies the theme and notification preferences. A failure keeps what is shown and lands in <see cref="ErrorMessage"/>.</summary>
     /// <param name="cancellationToken">Cancelling abandons the wait and surfaces as <see cref="OperationCanceledException"/>.</param>
@@ -171,7 +204,7 @@ internal sealed partial class SettingsViewModel(ILocalisationService localisatio
     /// </remarks>
     public void OnNavigatedTo(string? targetId)
     {
-        WatchAccountName();
+        WatchShownAccount();
         if (Guid.TryParse(targetId, out var accountId)) ShowAccount(accountId);
 
         LoadCommand.Execute(null);
@@ -184,16 +217,109 @@ internal sealed partial class SettingsViewModel(ILocalisationService localisatio
         SelectedCategory = Categories.Single(category => category.Category == SettingsCategory.Synchronisation);
     }
 
-    private void WatchAccountName()
+    /// <summary>
+    /// Sends the limit on the slider for the shown account, unless the daemon already holds it. Sends run one at a time and each sends the slider's latest value, so a quick drag ends on the value it stopped at.
+    /// A refusal or an unreachable daemon lands in <see cref="ErrorMessage"/> and moves the slider back to the stored limit. Exposed to the view as <c>SendConcurrencyCommand</c>, whose sends may overlap.
+    /// </summary>
+    /// <param name="cancellationToken">Cancelling abandons the wait and surfaces as <see cref="OperationCanceledException"/>; the daemon may still store the limit.</param>
+    public async Task SendConcurrencyAsync(CancellationToken cancellationToken)
     {
-        selection.PropertyChanged -= RaiseAccountName;
-        selection.PropertyChanged += RaiseAccountName;
-        accounts.Accounts.CollectionChanged -= RaiseAccountName;
-        accounts.Accounts.CollectionChanged += RaiseAccountName;
-        OnPropertyChanged(nameof(AccountName));
+        await sendingConcurrency.WaitAsync(cancellationToken);
+
+        try
+        {
+            if (ShownAccount() is not { } account || MaxConcurrentOperations == storedConcurrency) return;
+
+            var wanted = MaxConcurrentOperations;
+            await using var client = createClient();
+
+            ErrorMessage = await SendLimitAsync(client, account, wanted, cancellationToken) switch
+            {
+                Ok<Unit> => Stored(wanted),
+                Fail<ConnectFailure> fail => Refused(fail.Error.Message)
+            };
+        }
+        finally
+        {
+            sendingConcurrency.Release();
+        }
     }
 
-    private void RaiseAccountName(object? sender, EventArgs args) => OnPropertyChanged(nameof(AccountName));
+    [RelayCommand(AllowConcurrentExecutions = true)]
+    private Task SendConcurrency() => SendConcurrencyAsync(CancellationToken.None);
+
+    private async Task<Result<Unit, ConnectFailure>> SendLimitAsync(IIpcClient client, AccountView account, int wanted, CancellationToken cancellationToken)
+        => await client.ConnectAsync(cancellationToken) switch
+        {
+            Ok<Unit> => await SendLimitCommandAsync(client, account, wanted, cancellationToken),
+            Fail<IpcError> fail => new Fail<ConnectFailure>(ConnectFailure.From(fail.Error))
+        };
+
+    private async Task<Result<Unit, ConnectFailure>> SendLimitCommandAsync(IIpcClient client, AccountView account, int wanted, CancellationToken cancellationToken)
+        => await client.SendAsync(new SetAccountConcurrency(account.Id, wanted), cancellationToken) switch
+        {
+            Ok<CommandResult> { Value.Outcome: CommandOutcome.Accepted } => new Ok<Unit>(default),
+            Ok<CommandResult> rejected => new Fail<ConnectFailure>(ConnectFailure.Rejected(rejected.Value, localisation.Get("Settings.Synchronisation.ConcurrencyRejected"))),
+            Fail<IpcError> fail => new Fail<ConnectFailure>(ConnectFailure.From(fail.Error))
+        };
+
+    private string? Stored(int limit)
+    {
+        storedConcurrency = limit;
+        accounts.RefreshCommand.Execute(null);
+
+        return null;
+    }
+
+    private string Refused(string message)
+    {
+        MoveConcurrency(PositionOf(storedConcurrency));
+
+        return message;
+    }
+
+    private bool MoveConcurrency(double position)
+    {
+        var snapped = Math.Clamp(Math.Round(position), 0, ConcurrencyChoices.Count - 1);
+        if (!SetProperty(ref concurrencyPosition, snapped, nameof(ConcurrencyPosition))) return false;
+
+        OnPropertyChanged(nameof(MaxConcurrentOperations));
+        OnPropertyChanged(nameof(ConcurrencyText));
+
+        return true;
+    }
+
+    private static double PositionOf(int limit) => Math.Max(0, SetAccountConcurrency.AllowedValues.ToList().IndexOf(limit));
+
+    private AccountView? ShownAccount() => accounts.Accounts.FirstOrDefault(card => card.Account.Id == selection.AccountId)?.Account;
+
+    private void WatchShownAccount()
+    {
+        selection.PropertyChanged -= SelectionChanged;
+        selection.PropertyChanged += SelectionChanged;
+        accounts.Accounts.CollectionChanged -= AccountsChanged;
+        accounts.Accounts.CollectionChanged += AccountsChanged;
+        ShowStoredAccount();
+    }
+
+    private void SelectionChanged(object? sender, PropertyChangedEventArgs args)
+    {
+        if (args.PropertyName == nameof(ScopeSelectionViewModel.AccountId)) ShowStoredAccount();
+    }
+
+    private void AccountsChanged(object? sender, EventArgs args) => ShowStoredAccount();
+
+    private void ShowStoredAccount()
+    {
+        if (ShownAccount() is { } account)
+        {
+            storedConcurrency = account.MaxConcurrentOperations;
+            MoveConcurrency(PositionOf(storedConcurrency));
+        }
+
+        OnPropertyChanged(nameof(AccountName));
+        OnPropertyChanged(nameof(HasAccount));
+    }
 
     private (string Name, string Value)[] Current() =>
     [

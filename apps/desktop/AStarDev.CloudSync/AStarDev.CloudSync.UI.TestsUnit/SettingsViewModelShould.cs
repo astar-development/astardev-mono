@@ -31,7 +31,7 @@ public sealed class SettingsViewModelShould
 
     private static FakeIpcClient TwoAccounts() => new([], available: true)
     {
-        AccountsReply = new Ok<AccountsView>(new AccountsView([new AccountView(FakeIpcClient.KnownAccount, "First", "OneDrive", AccountState.Connected), new AccountView(OtherAccount, "Second", "OneDrive", AccountState.Connected)])),
+        AccountsReply = new Ok<AccountsView>(new AccountsView([new AccountView(FakeIpcClient.KnownAccount, "First", "OneDrive", AccountState.Connected), new AccountView(OtherAccount, "Second", "OneDrive", AccountState.Connected, 6)])),
         JobsReply = new Ok<SyncJobsView>(new SyncJobsView([new SyncJobView(Guid.NewGuid(), FakeIpcClient.KnownAccount, "First", "/home/first", SyncBootstrapMode.Merge), new SyncJobView(Guid.NewGuid(), OtherAccount, "Second", "/home/second", SyncBootstrapMode.Download)]))
     };
 
@@ -84,6 +84,76 @@ public sealed class SettingsViewModelShould
 
         settings.Selection.AccountId.ShouldBe(OtherAccount);
         settings.Selection.LocalRoot.ShouldBe("/home/second");
+    }
+
+    [Fact]
+    public async Task show_the_concurrency_of_the_account_it_was_opened_for()
+    {
+        var settings = await OpenedForAsync(TwoAccounts(), OtherAccount.ToString());
+
+        settings.MaxConcurrentOperations.ShouldBe(6);
+        settings.ConcurrencyPosition.ShouldBe(3);
+    }
+
+    [Fact]
+    public async Task send_nothing_when_only_showing_the_concurrency()
+    {
+        var client = TwoAccounts();
+
+        await OpenedForAsync(client, OtherAccount.ToString());
+
+        client.Sent.OfType<SetAccountConcurrency>().ShouldBeEmpty();
+    }
+
+    [Fact]
+    public async Task send_the_new_concurrency_of_the_account_when_the_slider_moves()
+    {
+        var client = TwoAccounts();
+        var settings = await OpenedForAsync(client, OtherAccount.ToString());
+
+        settings.ConcurrencyPosition = 4;
+        await (settings.SendConcurrencyCommand.ExecutionTask ?? Task.CompletedTask);
+
+        client.Sent.OfType<SetAccountConcurrency>().ShouldBe([new SetAccountConcurrency(OtherAccount, 8)]);
+        settings.ErrorMessage.ShouldBeNull();
+    }
+
+    [Theory]
+    [InlineData(-1, 1)]
+    [InlineData(1.4, 2)]
+    [InlineData(2.6, 6)]
+    [InlineData(9, 8)]
+    public async Task snap_the_slider_to_an_allowed_concurrency(double position, int expected)
+    {
+        var settings = await OpenedForAsync(new FakeIpcClient([], available: true), null);
+
+        settings.ConcurrencyPosition = position;
+
+        settings.MaxConcurrentOperations.ShouldBe(expected);
+    }
+
+    [Fact]
+    public async Task go_back_to_the_stored_concurrency_when_the_daemon_refuses_it()
+    {
+        var client = TwoAccounts();
+        var settings = await OpenedForAsync(client, OtherAccount.ToString());
+        client.CommandReply = new Ok<CommandResult>(new CommandResult(CommandOutcome.Rejected, "not allowed"));
+
+        settings.ConcurrencyPosition = 0;
+        await (settings.SendConcurrencyCommand.ExecutionTask ?? Task.CompletedTask);
+
+        settings.ErrorMessage.ShouldBe("not allowed");
+        settings.MaxConcurrentOperations.ShouldBe(6);
+    }
+
+    [Fact]
+    public async Task honour_cancellation_when_sending_the_concurrency()
+    {
+        var settings = await OpenedForAsync(TwoAccounts(), OtherAccount.ToString());
+        using var cancelled = new CancellationTokenSource();
+        await cancelled.CancelAsync();
+
+        await Should.ThrowAsync<OperationCanceledException>(() => settings.SendConcurrencyAsync(cancelled.Token));
     }
 
     [Fact]

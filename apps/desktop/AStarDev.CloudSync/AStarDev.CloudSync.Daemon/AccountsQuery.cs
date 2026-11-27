@@ -17,7 +17,7 @@ internal sealed class AccountsQuery(IAccountStore store)
             Fail<StoreError> fail => new Fail<IpcError>(new HandlerFailed(StoreErrorMessages.Describe(fail.Error, "read")))
         };
 
-    private static AccountView ToView(Account account) => new(account.Id.Value, account.DisplayName, account.ProviderType, ToState(account.Status));
+    private static AccountView ToView(Account account) => new(account.Id.Value, account.DisplayName, account.ProviderType, ToState(account.Status), account.MaxConcurrentOperations);
 
     private static AccountState ToState(AccountStatus status)
         => status == AccountStatus.ReauthenticationRequired ? AccountState.ReauthenticationRequired : AccountState.Connected;
