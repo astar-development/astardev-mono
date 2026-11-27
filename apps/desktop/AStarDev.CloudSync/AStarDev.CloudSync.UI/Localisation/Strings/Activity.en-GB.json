@@ -12,5 +12,6 @@
   "Activity.Daemon.Eta": "Estimated time left: {minutes} minutes",
   "Activity.Daemon.EtaSoon": "Estimated time left: less than a minute",
   "Activity.Daemon.Retry": "Retrying in {seconds} seconds",
+  "Activity.Daemon.SignInRequired": "Needs your attention: this account must sign in again. Open Providers and choose Reconnect.",
   "Activity.Daemon.ActionRequired": "Needs your attention: a folder stopped on an error. Start the sync again."
 }

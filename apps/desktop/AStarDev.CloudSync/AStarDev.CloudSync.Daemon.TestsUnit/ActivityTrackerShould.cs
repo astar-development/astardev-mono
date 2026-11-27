@@ -28,11 +28,59 @@ public sealed class ActivityTrackerShould
         public Task<Result<IReadOnlyList<SyncJob>, StoreError>> ListAsync(CancellationToken cancellationToken) => throw new NotSupportedException();
     }
 
+    private sealed class FakeAccounts(AccountStatus status) : IAccountStore
+    {
+        public Task<Result<Unit, StoreError>> AddAsync(Account account, CancellationToken cancellationToken) => throw new NotSupportedException();
+
+        public Task<Result<Account, StoreError>> GetAsync(AccountId id, CancellationToken cancellationToken)
+            => Task.FromResult<Result<Account, StoreError>>(new Ok<Account>(new Account(id, "OneDrive", "Ada", "ada", Start, status)));
+
+        public Task<Result<IReadOnlyList<Account>, StoreError>> ListAsync(CancellationToken cancellationToken) => throw new NotSupportedException();
+
+        public Task<Result<Unit, StoreError>> UpdateStatusAsync(AccountId id, AccountStatus status, CancellationToken cancellationToken) => throw new NotSupportedException();
+
+        public Task<Result<Unit, StoreError>> RemoveAsync(AccountId id, CancellationToken cancellationToken) => throw new NotSupportedException();
+    }
+
+    [Fact]
+    public async Task require_a_new_sign_in_when_a_failed_job_s_account_was_refused()
+    {
+        var tracker = new ActivityTracker(new FakeJobs(), new FakeAccounts(AccountStatus.ReauthenticationRequired), new ManualTimeProvider(Start));
+
+        var activity = await tracker.ApplyAsync(new CrawlProgress(JobId, Docs, 10, false, Failed: true), Token);
+
+        activity.ActionRequired.ShouldBeTrue();
+        activity.SignInRequired.ShouldBeTrue();
+    }
+
+    [Fact]
+    public async Task not_require_a_new_sign_in_when_a_failed_job_s_account_is_connected()
+    {
+        var tracker = new ActivityTracker(new FakeJobs(), new FakeAccounts(AccountStatus.Connected), new ManualTimeProvider(Start));
+
+        var activity = await tracker.ApplyAsync(new CrawlProgress(JobId, Docs, 10, false, Failed: true), Token);
+
+        activity.ActionRequired.ShouldBeTrue();
+        activity.SignInRequired.ShouldBeFalse();
+    }
+
+    [Fact]
+    public async Task stop_requiring_a_new_sign_in_once_the_job_no_longer_fails()
+    {
+        var tracker = new ActivityTracker(new FakeJobs(), new FakeAccounts(AccountStatus.ReauthenticationRequired), new ManualTimeProvider(Start));
+        await tracker.ApplyAsync(new CrawlProgress(JobId, Docs, 10, false, Failed: true), Token);
+
+        var activity = await tracker.ApplyAsync(new CrawlProgress(JobId, Docs, 20, false), Token);
+
+        activity.ActionRequired.ShouldBeFalse();
+        activity.SignInRequired.ShouldBeFalse();
+    }
+
     [Fact]
     public async Task report_progress_and_eta_for_a_crawl()
     {
         var clock = new ManualTimeProvider(Start);
-        var tracker = new ActivityTracker(new FakeJobs(), clock);
+        var tracker = new ActivityTracker(new FakeJobs(), new FakeAccounts(AccountStatus.Connected), clock);
         await tracker.ApplyAsync(new CrawlProgress(JobId, Docs, 1000, false, 10000), Token);
         clock.Advance(TimeSpan.FromSeconds(10));
 
@@ -44,7 +92,7 @@ public sealed class ActivityTrackerShould
     [Fact]
     public async Task report_working_while_deltas_are_being_applied()
     {
-        var tracker = new ActivityTracker(new FakeJobs(), new ManualTimeProvider(Start));
+        var tracker = new ActivityTracker(new FakeJobs(), new FakeAccounts(AccountStatus.Connected), new ManualTimeProvider(Start));
         await tracker.ApplyAsync(new CrawlProgress(JobId, Docs, 500, true, 500), Token);
 
         var working = await tracker.ApplyAsync(new CrawlProgress(JobId, Docs, 500, false, Delta: true), Token);
@@ -59,7 +107,7 @@ public sealed class ActivityTrackerShould
     public async Task report_healthy_once_every_scope_has_completed()
     {
         var clock = new ManualTimeProvider(Start);
-        var tracker = new ActivityTracker(new FakeJobs(), clock);
+        var tracker = new ActivityTracker(new FakeJobs(), new FakeAccounts(AccountStatus.Connected), clock);
 
         var activity = await tracker.ApplyAsync(new CrawlProgress(JobId, Docs, 500, true, 500), Token);
 
@@ -71,7 +119,7 @@ public sealed class ActivityTrackerShould
     public async Task report_no_percent_or_eta_when_the_total_is_unknown()
     {
         var clock = new ManualTimeProvider(Start);
-        var tracker = new ActivityTracker(new FakeJobs(), clock);
+        var tracker = new ActivityTracker(new FakeJobs(), new FakeAccounts(AccountStatus.Connected), clock);
         await tracker.ApplyAsync(new CrawlProgress(JobId, Docs, 100, false), Token);
         clock.Advance(TimeSpan.FromSeconds(5));
 
@@ -87,7 +135,7 @@ public sealed class ActivityTrackerShould
     public async Task move_the_eta_within_a_minute_of_a_stall_then_a_burst()
     {
         var clock = new ManualTimeProvider(Start);
-        var tracker = new ActivityTracker(new FakeJobs(), clock);
+        var tracker = new ActivityTracker(new FakeJobs(), new FakeAccounts(AccountStatus.Connected), clock);
         await tracker.ApplyAsync(new CrawlProgress(JobId, Docs, 0, false, 10000), Token);
         clock.Advance(TimeSpan.FromSeconds(60));
         await tracker.ApplyAsync(new CrawlProgress(JobId, Docs, 600, false, 10000), Token);
@@ -105,7 +153,7 @@ public sealed class ActivityTrackerShould
     public async Task combine_every_scope_into_one_job_eta()
     {
         var clock = new ManualTimeProvider(Start);
-        var tracker = new ActivityTracker(new FakeJobs(), clock);
+        var tracker = new ActivityTracker(new FakeJobs(), new FakeAccounts(AccountStatus.Connected), clock);
         await tracker.ApplyAsync(new CrawlProgress(JobId, Docs, 0, false, 1000), Token);
         await tracker.ApplyAsync(new CrawlProgress(JobId, new RemoteItemId("pics"), 500, false, 1000), Token);
         clock.Advance(TimeSpan.FromSeconds(10));
@@ -121,7 +169,7 @@ public sealed class ActivityTrackerShould
     public async Task show_no_eta_while_waiting_and_resume_it_after_the_wait()
     {
         var clock = new ManualTimeProvider(Start);
-        var tracker = new ActivityTracker(new FakeJobs(), clock);
+        var tracker = new ActivityTracker(new FakeJobs(), new FakeAccounts(AccountStatus.Connected), clock);
         await tracker.ApplyAsync(new CrawlProgress(JobId, Docs, 0, false, 10000), Token);
         clock.Advance(TimeSpan.FromSeconds(10));
         var before = await tracker.ApplyAsync(new CrawlProgress(JobId, Docs, 1000, false, 10000), Token);
@@ -140,7 +188,7 @@ public sealed class ActivityTrackerShould
     [Fact]
     public async Task report_waiting_with_retry_seconds_when_rate_limited()
     {
-        var tracker = new ActivityTracker(new FakeJobs(), new ManualTimeProvider(Start));
+        var tracker = new ActivityTracker(new FakeJobs(), new FakeAccounts(AccountStatus.Connected), new ManualTimeProvider(Start));
         await tracker.ApplyAsync(new CrawlProgress(JobId, Docs, 1000, false, 10000), Token);
 
         var waiting = await tracker.ApplyAsync(new CrawlProgress(JobId, Docs, 1000, false, RetryIn: TimeSpan.FromSeconds(27)), Token);
@@ -156,7 +204,7 @@ public sealed class ActivityTrackerShould
     [Fact]
     public async Task flag_action_required_when_a_scope_fails()
     {
-        var tracker = new ActivityTracker(new FakeJobs(), new ManualTimeProvider(Start));
+        var tracker = new ActivityTracker(new FakeJobs(), new FakeAccounts(AccountStatus.Connected), new ManualTimeProvider(Start));
         await tracker.ApplyAsync(new CrawlProgress(JobId, Docs, 1000, false, 10000), Token);
 
         var activity = await tracker.ApplyAsync(new CrawlProgress(JobId, Docs, 0, false, Failed: true), Token);
@@ -168,7 +216,7 @@ public sealed class ActivityTrackerShould
     [Fact]
     public async Task list_every_reported_job_and_nothing_before_the_first_report()
     {
-        var tracker = new ActivityTracker(new FakeJobs(), new ManualTimeProvider(Start));
+        var tracker = new ActivityTracker(new FakeJobs(), new FakeAccounts(AccountStatus.Connected), new ManualTimeProvider(Start));
         tracker.Current().Activities.ShouldBeEmpty();
 
         await tracker.ApplyAsync(new CrawlProgress(JobId, Docs, 10, false, 100), Token);
@@ -179,7 +227,7 @@ public sealed class ActivityTrackerShould
     [Fact]
     public async Task honour_cancellation()
     {
-        var tracker = new ActivityTracker(new FakeJobs(), new ManualTimeProvider(Start));
+        var tracker = new ActivityTracker(new FakeJobs(), new FakeAccounts(AccountStatus.Connected), new ManualTimeProvider(Start));
         using var cancelled = new CancellationTokenSource();
         await cancelled.CancelAsync();
 

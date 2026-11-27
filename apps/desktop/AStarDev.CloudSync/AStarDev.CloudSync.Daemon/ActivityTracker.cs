@@ -10,25 +10,27 @@ namespace AStarDev.CloudSync.Daemon;
 /// Turns the crawl's raw progress into the <see cref="ActivityView"/> of each job, working out percentage and time left here so no client has to. Keeps what it knows in memory only:
 /// after a restart it starts empty and fills as the crawl reports again.
 /// </summary>
-internal sealed class ActivityTracker(ISyncJobStore jobs, TimeProvider timeProvider)
+internal sealed class ActivityTracker(ISyncJobStore jobs, IAccountStore accounts, TimeProvider timeProvider)
 {
     private static readonly TimeSpan RateWindow = TimeSpan.FromSeconds(60);
 
     private readonly Dictionary<SyncJobId, JobState> states = [];
 
     /// <summary>Records one progress report and returns the job's activity after it.</summary>
-    /// <param name="progress">The report. A report with <see cref="CrawlProgress.RetryIn"/> makes the job <see cref="ActivityState.Waiting"/>; one with <see cref="CrawlProgress.Failed"/> sets <see cref="ActivityView.ActionRequired"/>.</param>
-    /// <param name="cancellationToken">Cancelling abandons the lookup of the job's name and surfaces as <see cref="OperationCanceledException"/>.</param>
+    /// <param name="progress">The report. A report with <see cref="CrawlProgress.RetryIn"/> makes the job <see cref="ActivityState.Waiting"/>; one with <see cref="CrawlProgress.Failed"/> sets <see cref="ActivityView.ActionRequired"/>, and also <see cref="ActivityView.SignInRequired"/> when the job's account must sign in again.</param>
+    /// <param name="cancellationToken">Cancelling abandons the lookup of the job's name and account and surfaces as <see cref="OperationCanceledException"/>.</param>
     /// <returns>The activity of the job the report belongs to. The job's name is looked up once; if the job cannot be read the name is empty.</returns>
     public async Task<ActivityView> ApplyAsync(CrawlProgress progress, CancellationToken cancellationToken)
     {
         var name = await NameOfAsync(progress.SyncJobId, cancellationToken);
+        var signInRequired = progress.Failed && await MustSignInAgainAsync(progress.SyncJobId, cancellationToken);
         lock (states)
         {
             var now = timeProvider.GetUtcNow();
             if (!states.TryGetValue(progress.SyncJobId, out var job)) states[progress.SyncJobId] = job = new JobState(name, now);
 
             job.Apply(progress, now);
+            job.SignInRequired = signInRequired || (job.SignInRequired && job.AnyFailed);
 
             return job.ToView(progress.SyncJobId);
         }
@@ -44,6 +46,13 @@ internal sealed class ActivityTracker(ISyncJobStore jobs, TimeProvider timeProvi
     /// <summary>How many jobs currently have <see cref="ActivityView.ActionRequired"/> set, that is, stopped on an error and wait to be started again.</summary>
     /// <returns>Zero before the first report and for a job whose failed scopes have since reported without failing.</returns>
     public int StoppedJobs() => Current().Activities.Count(activity => activity.ActionRequired);
+
+    private async Task<bool> MustSignInAgainAsync(SyncJobId id, CancellationToken cancellationToken)
+        => await jobs.GetAsync(id, cancellationToken) switch
+        {
+            Ok<SyncJob> job => await accounts.GetAsync(job.Value.AccountId, cancellationToken) is Ok<Account> { Value.Status: AccountStatus.ReauthenticationRequired },
+            Fail<StoreError> => false
+        };
 
     private async Task<string> NameOfAsync(SyncJobId id, CancellationToken cancellationToken)
     {
@@ -64,6 +73,10 @@ internal sealed class ActivityTracker(ISyncJobStore jobs, TimeProvider timeProvi
         private TimeSpan? retryIn;
 
         public string Name { get; } = name;
+
+        public bool SignInRequired { get; set; }
+
+        public bool AnyFailed => scopes.Values.Any(scope => scope.Failed);
 
         public void Apply(CrawlProgress progress, DateTimeOffset now)
         {
@@ -101,7 +114,7 @@ internal sealed class ActivityTracker(ISyncJobStore jobs, TimeProvider timeProvi
 
             var rate = state is ActivityState.InitialIndexing or ActivityState.Working ? ItemsPerSecond() : null;
 
-            return new ActivityView(id.Value, Name, state, done, total, Percent(done, total), EtaSeconds(done, total, rate), started, updated ?? started, retryIn is { } wait ? (int)Math.Ceiling(wait.TotalSeconds) : null, scopes.Values.Any(scope => scope.Failed), rate);
+            return new ActivityView(id.Value, Name, state, done, total, Percent(done, total), EtaSeconds(done, total, rate), started, updated ?? started, retryIn is { } wait ? (int)Math.Ceiling(wait.TotalSeconds) : null, AnyFailed, rate, SignInRequired && AnyFailed);
         }
 
         private void Sample(DateTimeOffset now)
