@@ -214,7 +214,7 @@ public sealed partial class ScopeSelectionViewModel(Func<IIpcClient> createClien
 
     /// <summary>
     /// Sends one tick or untick to the daemon. Does nothing while no job exists. A refusal lands in <see cref="StatusMessage"/> and the ticks are read back from the daemon, so they never show a state it does not hold.
-    /// Calls may overlap, so quick successive ticks are all sent. <c>ApplyCommand</c> runs this with a token no later tick cancels.
+    /// Calls may overlap, so quick successive ticks are all sent. Exposed to the view as <c>ApplyCommand</c>, which has no cancellation of its own, so overlapping ticks never cancel each other.
     /// </summary>
     /// <param name="change">The folder and whether it was ticked.</param>
     /// <param name="cancellationToken">Cancelling abandons the wait; the daemon may still finish the request.</param>

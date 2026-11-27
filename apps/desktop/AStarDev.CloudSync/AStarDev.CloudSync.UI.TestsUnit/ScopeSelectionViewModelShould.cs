@@ -105,6 +105,22 @@ public sealed class ScopeSelectionViewModelShould
     }
 
     [Fact]
+    public async Task send_overlapping_ticks_without_cancelling_each_other()
+    {
+        var gate = new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously);
+        var client = new FakeIpcClient([], available: true) { JobsReply = new Ok<SyncJobsView>(new SyncJobsView([Job])), HoldCommand = gate };
+        var viewModel = new ScopeSelectionViewModel(() => client, new FakeFolderPicker(null)) { AccountId = Account.Id };
+        await viewModel.RefreshAsync(Token);
+
+        var first = viewModel.ApplyCommand.ExecuteAsync(new ScopeChange("docs", true));
+        var second = viewModel.ApplyCommand.ExecuteAsync(new ScopeChange("notes", true));
+        gate.SetResult();
+        await Task.WhenAll(first, second).WaitAsync(Token);
+
+        client.Sent.OfType<AddSyncScope>().Select(sent => sent.RemoteRootId).Order().ShouldBe(["docs", "notes"]);
+    }
+
+    [Fact]
     public async Task create_the_job_with_the_mode_and_add_each_ticked_folder()
     {
         var client = new FakeIpcClient([], available: true) { AccountsReply = new Ok<AccountsView>(new AccountsView([Account])), JobsReply = new Ok<SyncJobsView>(new SyncJobsView([Job])) };
