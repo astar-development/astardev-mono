@@ -59,6 +59,8 @@ internal static class ApplicationConstants
 
     public static int QueueListLimit => 500;
 
+    public static int HistoryListLimit => 500;
+
     public static TimeSpan StopReplyGrace => TimeSpan.FromMilliseconds(200);
 
     public static int RestartExitCode => 75;
