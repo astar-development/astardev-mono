@@ -16,7 +16,7 @@ namespace AStarDev.CloudSync.UI.ViewModels.Screens;
 /// Values live in the daemon: <see cref="LoadAsync"/> reads and applies them, <see cref="SaveAsync"/> sends what changed and applies it.
 /// The navigation service is requested lazily, as is the notification service, because both are built from the screens, this one included.
 /// </summary>
-internal sealed partial class SettingsViewModel(ILocalisationService localisation, Func<INavigationService> navigation, FolderTreeViewModel folders, ScopeSelectionViewModel selection, Func<IIpcClient> createClient, IThemeService themes, Func<INotificationService> notifications) : ViewModelBase, IScreen
+internal sealed partial class SettingsViewModel(ILocalisationService localisation, Func<INavigationService> navigation, FolderTreeViewModel folders, ScopeSelectionViewModel selection, AccountsViewModel accounts, Func<IIpcClient> createClient, IThemeService themes, Func<INotificationService> notifications) : ViewModelBase, IScreen
 {
     private static readonly ScreenId[] AdvancedScreens = [ScreenId.Metrics, ScreenId.Logs, ScreenId.Traces, ScreenId.Diagnostics];
 
@@ -130,6 +130,9 @@ internal sealed partial class SettingsViewModel(ILocalisationService localisatio
     /// <summary>The ticked folders with the local folder, bootstrap mode and Create job button.</summary>
     public ScopeSelectionViewModel Selection => selection;
 
+    /// <summary>The name of the account whose folders and job the Synchronisation section shows. Empty until that account and the account list are known.</summary>
+    public string AccountName => accounts.Accounts.FirstOrDefault(card => card.Account.Id == selection.AccountId)?.DisplayName ?? string.Empty;
+
     /// <summary>Reads every setting from the daemon, shows it and applies the theme and notification preferences. A failure keeps what is shown and lands in <see cref="ErrorMessage"/>.</summary>
     /// <param name="cancellationToken">Cancelling abandons the wait and surfaces as <see cref="OperationCanceledException"/>.</param>
     [RelayCommand]
@@ -162,7 +165,35 @@ internal sealed partial class SettingsViewModel(ILocalisationService localisatio
     }
 
     /// <inheritdoc/>
-    public void OnNavigatedTo(string? targetId) => LoadCommand.Execute(null);
+    /// <remarks>
+    /// A target that is an account id opens the Synchronisation section on that account, as the Providers screen's Manage does. Without one the account shown last stays, or the first account's job until one is chosen.
+    /// Either way the settings and the account's job are read afresh.
+    /// </remarks>
+    public void OnNavigatedTo(string? targetId)
+    {
+        WatchAccountName();
+        if (Guid.TryParse(targetId, out var accountId)) ShowAccount(accountId);
+
+        LoadCommand.Execute(null);
+        selection.RefreshCommand.Execute(null);
+    }
+
+    private void ShowAccount(Guid accountId)
+    {
+        selection.AccountId = accountId;
+        SelectedCategory = Categories.Single(category => category.Category == SettingsCategory.Synchronisation);
+    }
+
+    private void WatchAccountName()
+    {
+        selection.PropertyChanged -= RaiseAccountName;
+        selection.PropertyChanged += RaiseAccountName;
+        accounts.Accounts.CollectionChanged -= RaiseAccountName;
+        accounts.Accounts.CollectionChanged += RaiseAccountName;
+        OnPropertyChanged(nameof(AccountName));
+    }
+
+    private void RaiseAccountName(object? sender, EventArgs args) => OnPropertyChanged(nameof(AccountName));
 
     private (string Name, string Value)[] Current() =>
     [
