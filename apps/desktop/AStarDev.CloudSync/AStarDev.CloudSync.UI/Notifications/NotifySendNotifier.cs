@@ -5,12 +5,13 @@ using AStarDev.FunctionalParadigm;
 
 namespace AStarDev.CloudSync.UI.Notifications;
 
-/// <summary>Shows notifications on Linux desktops by running <c>notify-send</c>, which talks to the freedesktop notification service. Clicking a notification prints its default action, which the result reports as activated. Other platforms report <see cref="NotifierUnavailable"/>.</summary>
+/// <summary>Shows notifications on Linux desktops by running <c>notify-send</c>, which talks to the freedesktop notification service. Clicking a notification prints its default action, which the result reports as activated. A notification not clicked within ten seconds has its process killed, which reports as not activated and frees the bus connection it holds. Other platforms report <see cref="NotifierUnavailable"/>.</summary>
 /// <param name="localisation">Supplies the application name and body text of each notification.</param>
 internal sealed class NotifySendNotifier(ILocalisationService localisation) : IDesktopNotifier
 {
     private const string Program = "notify-send";
     private const string ActivateAction = "default";
+    private static readonly TimeSpan ClickTimeout = TimeSpan.FromSeconds(10);
 
     /// <inheritdoc/>
     public async Task<Result<bool, DesktopNotifierError>> ShowAsync(Notification notification, CancellationToken cancellationToken)
@@ -18,7 +19,7 @@ internal sealed class NotifySendNotifier(ILocalisationService localisation) : ID
         cancellationToken.ThrowIfCancellationRequested();
         if (!OperatingSystem.IsLinux()) return new Fail<DesktopNotifierError>(new NotifierUnavailable("Desktop notifications are only supported on Linux."));
 
-        var run = await Try.RunAsync(token => RunAsync(StartInfo(notification), token), cancellationToken);
+        var run = await Try.RunAsync(token => RunAsync(StartInfo(notification), ClickTimeout, token), cancellationToken);
 
         return run.ToResult(exception => (DesktopNotifierError)new NotifierUnavailable(exception.Message)) switch
         {
@@ -42,12 +43,32 @@ internal sealed class NotifySendNotifier(ILocalisationService localisation) : ID
 
     private static string UrgencyOf(NotificationCategory category) => category is NotificationCategory.Error or NotificationCategory.Critical ? "critical" : "normal";
 
-    private static async Task<(int ExitCode, string Output)> RunAsync(ProcessStartInfo start, CancellationToken cancellationToken)
+    /// <summary>Runs the process and waits for it to exit, killing it when it outlives <paramref name="timeout"/> or the caller cancels.</summary>
+    /// <param name="start">The process to run, with standard output redirected.</param>
+    /// <param name="timeout">How long the process may run before it is killed. A notification nobody clicks or dismisses never exits on its own.</param>
+    /// <param name="cancellationToken">Cancels the wait and kills the process.</param>
+    /// <returns>The exit code and standard output, or exit code 0 with empty output when the process was killed at the timeout, which reads as not clicked. Cancellation propagates as <see cref="OperationCanceledException"/>.</returns>
+    internal static async Task<(int ExitCode, string Output)> RunAsync(ProcessStartInfo start, TimeSpan timeout, CancellationToken cancellationToken)
     {
         using var process = Process.Start(start) ?? throw new InvalidOperationException($"{Program} did not start.").WithHelpLink(UiErrorCodes.NotifierDidNotStart);
-        var output = await process.StandardOutput.ReadToEndAsync(cancellationToken);
-        await process.WaitForExitAsync(cancellationToken);
+        using var deadline = CancellationTokenSource.CreateLinkedTokenSource(cancellationToken);
+        deadline.CancelAfter(timeout);
+        var output = process.StandardOutput.ReadToEndAsync(cancellationToken);
+        var exited = process.WaitForExitAsync(cancellationToken);
 
-        return (process.ExitCode, output);
+        var finished = await Task.WhenAny(exited, Task.Delay(Timeout.Infinite, deadline.Token));
+        if (finished == exited && exited.IsCompletedSuccessfully) return (process.ExitCode, await output);
+
+        _ = Try.Run(() => KillTree(process));
+        cancellationToken.ThrowIfCancellationRequested();
+
+        return (0, string.Empty);
+    }
+
+    private static bool KillTree(Process process)
+    {
+        process.Kill(true);
+
+        return true;
     }
 }
