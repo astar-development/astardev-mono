@@ -11,7 +11,7 @@ internal sealed class QueueQuery(IOperationStore operations, OperationLookup loo
     private readonly object gate = new();
     private Option<QueueView> published = Option.None<QueueView>();
 
-    /// <summary>Counts the operations in each status and lists the pending and running ones, newest first.</summary>
+    /// <summary>Counts the operations in each status and lists the newest pending and running ones, at most <see cref="ApplicationConstants.QueueListLimit"/>, so one answer always fits an IPC frame however long the queue is.</summary>
     /// <returns>
     /// The queue, with dead-lettered operations counted as failed and an empty list when nothing waits or runs. An operation whose item or account the daemon no longer knows keeps an empty path or provider.
     /// <see cref="HandlerFailed"/> carries a store failure worded for the user. Cancellation propagates as <see cref="OperationCanceledException"/>.
@@ -38,7 +38,7 @@ internal sealed class QueueQuery(IOperationStore operations, OperationLookup loo
 
     private async Task<Result<QueueView, IpcError>> DescribeAsync(IReadOnlyList<Operation> all, CancellationToken cancellationToken)
     {
-        var open = all.Where(operation => operation.Status is OperationStatus.Pending or OperationStatus.Running).OrderByDescending(operation => operation.CreatedUtc).ToList();
+        var open = all.Where(operation => operation.Status is OperationStatus.Pending or OperationStatus.Running).OrderByDescending(operation => operation.CreatedUtc).Take(ApplicationConstants.QueueListLimit).ToList();
         var providers = await lookup.ProvidersAsync(cancellationToken);
         if (providers.Value is Fail<StoreError> providersFailure) return Failure(providersFailure.Error);
 

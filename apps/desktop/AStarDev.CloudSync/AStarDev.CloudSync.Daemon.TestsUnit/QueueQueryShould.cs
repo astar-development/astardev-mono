@@ -47,6 +47,21 @@ public sealed class QueueQueryShould
     }
 
     [Fact]
+    public async Task list_only_the_newest_operations_but_count_them_all()
+    {
+        var (host, job, items) = await SeedAsync();
+        await using var _ = host;
+        var total = ApplicationConstants.QueueListLimit + 5;
+        for (var index = 0; index < total; index++) await AddAsync(host, job, items["Docs/c.md"], OperationType.DownloadFile, OperationStatus.Pending, Stamp.AddSeconds(index));
+
+        var queue = await QueryAsync(host);
+
+        queue.Pending.ShouldBe(total);
+        queue.Operations.Count.ShouldBe(ApplicationConstants.QueueListLimit);
+        queue.Operations[0].QueuedUtc.ShouldBe(Stamp.AddSeconds(total - 1));
+    }
+
+    [Fact]
     public async Task list_pending_and_running_operations_newest_first_with_provider_path_and_size()
     {
         var (host, job, items) = await SeedAsync();
