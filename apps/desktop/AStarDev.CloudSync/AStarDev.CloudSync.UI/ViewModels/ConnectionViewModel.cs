@@ -1,4 +1,5 @@
 using System.Collections.ObjectModel;
+using System.Diagnostics;
 using AStarDev.CloudSync.IPC;
 using AStarDev.FunctionalParadigm;
 using CommunityToolkit.Mvvm.ComponentModel;
@@ -10,14 +11,25 @@ namespace AStarDev.CloudSync.UI.ViewModels;
 /// <param name="initialDelay">Wait before the first retry.</param>
 /// <param name="maxDelay">Upper bound the retry wait doubles towards.</param>
 /// <param name="post">Runs a state change on the UI thread. Omit to run it inline.</param>
-public sealed partial class ConnectionViewModel(Func<IIpcClient> createClient, TimeSpan initialDelay, TimeSpan maxDelay, Action<Action>? post = null) : ViewModelBase, IStatusSource
+/// <param name="startupTimeout">How long the first connect may take before <see cref="StartupTimedOut"/> is set. Omit for 30 seconds. Checked after each failed attempt, so it can be exceeded by up to one retry wait.</param>
+public sealed partial class ConnectionViewModel(Func<IIpcClient> createClient, TimeSpan initialDelay, TimeSpan maxDelay, Action<Action>? post = null, TimeSpan? startupTimeout = null) : ViewModelBase, IStatusSource
 {
+    private static readonly TimeSpan DefaultStartupTimeout = TimeSpan.FromSeconds(30);
+
     private readonly Action<Action> postToUi = post ?? (action => action());
 
     /// <summary>Where the link is in the retry loop. Changes are posted to the UI thread, and every change also raises <see cref="StatusText"/>.</summary>
     [ObservableProperty]
     [NotifyPropertyChangedFor(nameof(StatusText))]
     public partial ConnectionState State { get; set; } = ConnectionState.Disconnected;
+
+    /// <summary>True from the first successful connect and never reset, so a later lost link does not bring back the starting up screen.</summary>
+    [ObservableProperty]
+    public partial bool HasConnected { get; set; }
+
+    /// <summary>True when no connect succeeded within the startup timeout. Cleared by the first successful connect.</summary>
+    [ObservableProperty]
+    public partial bool StartupTimedOut { get; set; }
 
     /// <summary>
     /// The daemon's latest reported status: queried on each connect, then updated by <see cref="DaemonStatusChanged"/> events.
@@ -74,6 +86,7 @@ public sealed partial class ConnectionViewModel(Func<IIpcClient> createClient, T
     {
         var delay = initialDelay;
         var attempted = false;
+        var started = Stopwatch.GetTimestamp();
 
         while (true)
         {
@@ -90,12 +103,18 @@ public sealed partial class ConnectionViewModel(Func<IIpcClient> createClient, T
             if (await ConnectAsync(client, cancellationToken) is Ok<Unit>)
             {
                 delay = initialDelay;
+                postToUi(() =>
+                {
+                    HasConnected = true;
+                    StartupTimedOut = false;
+                });
                 SetState(ConnectionState.Connected);
                 await client.Disconnected.WaitAsync(cancellationToken);
                 continue;
             }
 
             SetState(ConnectionState.Disconnected);
+            if (!HasConnected && Stopwatch.GetElapsedTime(started) >= (startupTimeout ?? DefaultStartupTimeout)) postToUi(() => StartupTimedOut = true);
             await Task.Delay(delay, cancellationToken);
             delay = TimeSpan.FromTicks(Math.Min(delay.Ticks * 2, maxDelay.Ticks));
         }

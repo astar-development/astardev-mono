@@ -1,0 +1,6 @@
+{
+  "Startup.Title": "Starting up",
+  "Startup.Waiting": "Waiting for the CloudSync daemon...",
+  "Startup.Failed.Title": "Cannot reach the daemon",
+  "Startup.Failed": "The CloudSync daemon did not answer within 30 seconds. Start the app with 'aspire run'."
+}

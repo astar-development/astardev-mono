@@ -31,6 +31,31 @@ public sealed class MainViewModelShould
     }
 
     [Fact]
+    public void show_the_starting_up_screen_until_the_daemon_has_connected()
+    {
+        using var host = CreateHost();
+        var main = host.Services.GetRequiredService<MainViewModel>();
+        main.IsStarting.ShouldBeTrue();
+        main.IsStartupFailed.ShouldBeFalse();
+
+        host.Services.GetRequiredService<ConnectionViewModel>().HasConnected = true;
+
+        main.IsStarting.ShouldBeFalse();
+    }
+
+    [Fact]
+    public void say_the_daemon_cannot_be_reached_once_startup_has_timed_out()
+    {
+        using var host = CreateHost();
+        var main = host.Services.GetRequiredService<MainViewModel>();
+
+        host.Services.GetRequiredService<ConnectionViewModel>().StartupTimedOut = true;
+
+        main.IsStartupFailed.ShouldBeTrue();
+        main.IsStartupWaiting.ShouldBeFalse();
+    }
+
+    [Fact]
     public void land_on_the_dashboard_with_its_rail_entry_selected()
     {
         using var host = CreateHost();
