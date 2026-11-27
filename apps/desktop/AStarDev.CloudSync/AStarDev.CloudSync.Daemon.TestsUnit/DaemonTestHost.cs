@@ -63,6 +63,7 @@ internal sealed class DaemonTestHost(IHost host, string socketPath, string datab
 
         await store.ClaimNextAsync(DateTimeOffset.UtcNow, 1, cancellationToken);
         if (status == OperationStatus.DeadLetter) await store.FailAsync(operation.Id, "forbidden", null, cancellationToken);
+        if (status == OperationStatus.Completed) await store.CompleteAsync(operation.Id, cancellationToken);
 
         return operation;
     }

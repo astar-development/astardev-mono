@@ -51,7 +51,7 @@ public sealed class ProvidersViewModelShould
         var client = ProviderTestHost.ClientWith(ada, grace);
         client.ProvidersReply = new Ok<ProvidersView>(new ProvidersView(
             [new ProviderView("OneDrive", [ProviderCapability.SelectiveSync])],
-            [new ProviderInsightsView(ada.Id, Synced, 40_000_000_000, 100_000_000_000, 2, 1, 0), new ProviderInsightsView(grace.Id, null, null, null, 0, 0, 3)]));
+            [new ProviderInsightsView(ada.Id, Synced, 40_000_000_000, 100_000_000_000, 2, 1, 0, 7), new ProviderInsightsView(grace.Id, null, null, null, 0, 0, 3)]));
         var screen = ResolveFromComposition(client, out var host);
         using var _ = host;
 
@@ -64,8 +64,8 @@ public sealed class ProvidersViewModelShould
         cards[1].LastSyncText.ShouldBe("Last sync: never");
         cards[0].StorageText.ShouldBe("Storage: 40 GB of 100 GB used");
         cards[1].StorageText.ShouldBe("Storage: unavailable");
-        cards[0].RecentActivityText.ShouldBe("Recent activity: 2 waiting, 1 running, 0 failed");
-        cards[1].RecentActivityText.ShouldBe("Recent activity: 0 waiting, 0 running, 3 failed");
+        cards[0].RecentActivityText.ShouldBe("Recent activity: 2 waiting, 1 running, 0 failed, 7 synced");
+        cards[1].RecentActivityText.ShouldBe("Recent activity: 0 waiting, 0 running, 3 failed, 0 synced");
         cards.Select(card => card.Health.Health).ShouldBe([ProviderHealth.Syncing, ProviderHealth.Warning]);
         cards[0].Capabilities.ShouldBe([ProviderCapability.SelectiveSync]);
     }
@@ -83,7 +83,7 @@ public sealed class ProvidersViewModelShould
         client.ProvidersReply = new Fail<IpcError>(new HandlerFailed("no"));
         screen.OnNavigatedTo(null);
 
-        screen.Cards.Single().RecentActivityText.ShouldBe("Recent activity: 4 waiting, 0 running, 0 failed");
+        screen.Cards.Single().RecentActivityText.ShouldBe("Recent activity: 4 waiting, 0 running, 0 failed, 0 synced");
     }
 
     [Fact]

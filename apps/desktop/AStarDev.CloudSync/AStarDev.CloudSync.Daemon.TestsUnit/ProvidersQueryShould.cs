@@ -69,13 +69,14 @@ public sealed class ProvidersQueryShould
         var job = await host.AddJobAsync(first, "/tmp/cloudsync-providers", Token);
         await RecordSyncAsync(host, job);
         await host.AddOperationAsync(job, OperationStatus.DeadLetter, Token);
+        await host.AddOperationAsync(job, OperationStatus.Completed, Token);
         await host.AddOperationAsync(job, OperationStatus.Pending, Token);
 
         var view = await AskAsync(host);
 
         view.Accounts.ShouldBe(
         [
-            new ProviderInsightsView(first.Id.Value, Synced, 40, 100, 1, 0, 1),
+            new ProviderInsightsView(first.Id.Value, Synced, 40, 100, 1, 0, 1, 1),
             new ProviderInsightsView(second.Id.Value, null, null, null, 0, 0, 0)
         ]);
     }

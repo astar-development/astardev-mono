@@ -20,7 +20,7 @@
   "Providers.Card.LastSync.Never": "Last sync: never",
   "Providers.Card.Storage": "Storage: {used} GB of {total} GB used",
   "Providers.Card.Storage.Unavailable": "Storage: unavailable",
-  "Providers.Card.Activity": "Recent activity: {pending} waiting, {running} running, {failed} failed",
+  "Providers.Card.Activity": "Recent activity: {pending} waiting, {running} running, {failed} failed, {completed} synced",
   "Providers.Card.Manage": "Manage",
   "Providers.Card.Pause": "Pause",
   "Providers.Card.Resume": "Resume",
