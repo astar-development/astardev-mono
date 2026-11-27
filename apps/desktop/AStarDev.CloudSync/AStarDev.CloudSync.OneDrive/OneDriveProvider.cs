@@ -8,7 +8,7 @@ using Microsoft.Extensions.Options;
 namespace AStarDev.CloudSync.OneDrive;
 
 /// <summary>OneDrive behind the <see cref="ICloudProvider"/> port: browser sign-in with a keyring token cache, root enumeration and item transfer through Graph.</summary>
-internal sealed class OneDriveProvider(IOptions<OneDriveSettings> settings, ITokenCacheStore store, OneDriveAccounts accounts, TimeProvider time, ILogger<OneDriveProvider> logger) : ICloudProvider
+internal sealed class OneDriveProvider(IOptions<OneDriveSettings> settings, ITokenCacheStore store, OneDriveAccounts accounts, TimeProvider time, ReauthenticationMarker marker, ILogger<OneDriveProvider> logger) : ICloudProvider
 {
     private readonly TokenRefresher refresher = new(accounts, time);
 
@@ -102,11 +102,16 @@ internal sealed class OneDriveProvider(IOptions<OneDriveSettings> settings, ITok
         => ObserveAsync(call, accountId, remoteItemId, token => AuthorisedAsync(accountId, invoke, token), cancellationToken);
 
     private async Task<Result<T, ProviderError>> AuthorisedAsync<T>(string accountId, Func<CancellationToken, Task<Result<T, ProviderError>>> invoke, CancellationToken cancellationToken)
-        => await refresher.EnsureFreshAsync(accountId, ReconnectCoreAsync, cancellationToken).ConfigureAwait(false) switch
+    {
+        Result<T, ProviderError> result = await refresher.EnsureFreshAsync(accountId, ReconnectCoreAsync, cancellationToken).ConfigureAwait(false) switch
         {
             Ok<Unit> => await invoke(cancellationToken).ConfigureAwait(false),
             Fail<ProviderError> fail => fail
         };
+        if (result is Fail<ProviderError> { Error: AuthenticationFailed }) await marker.MarkAsync(accountId, cancellationToken).ConfigureAwait(false);
+
+        return result;
+    }
 
     private async Task<Result<T, ProviderError>> ObserveAsync<T>(string call, string? accountId, string? remoteItemId, Func<CancellationToken, Task<Result<T, ProviderError>>> invoke, CancellationToken cancellationToken)
     {
