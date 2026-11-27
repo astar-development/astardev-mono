@@ -8,14 +8,24 @@ namespace AStarDev.CloudSync.UI.ViewModels;
 public sealed class MainViewModel : ViewModelBase
 {
     private readonly INavigationService navigation;
+    private readonly ConnectionViewModel connection;
 
     /// <summary>Creates the view model and follows the navigation service.</summary>
     /// <param name="navigation">Decides the content. Navigating from anywhere updates <see cref="Content"/> and <see cref="SelectedDestination"/>.</param>
     /// <param name="screens">Every registered screen. The primary ones become <see cref="Destinations"/>.</param>
     /// <param name="statusBar">The permanent status bar.</param>
     /// <param name="onboarding">The first-run flow, drawn over the window while it is active.</param>
-    internal MainViewModel(INavigationService navigation, IEnumerable<IScreen> screens, StatusBarViewModel statusBar, OnboardingViewModel onboarding)
+    /// <param name="connection">The daemon link; the starting up screen covers the window until it has connected once.</param>
+    internal MainViewModel(INavigationService navigation, IEnumerable<IScreen> screens, StatusBarViewModel statusBar, OnboardingViewModel onboarding, ConnectionViewModel connection)
     {
+        this.connection = connection;
+        connection.PropertyChanged += (_, args) =>
+        {
+            if (args.PropertyName is not (nameof(ConnectionViewModel.HasConnected) or nameof(ConnectionViewModel.StartupTimedOut))) return;
+            OnPropertyChanged(nameof(IsStarting));
+            OnPropertyChanged(nameof(IsStartupWaiting));
+            OnPropertyChanged(nameof(IsStartupFailed));
+        };
         this.navigation = navigation;
         StatusBar = statusBar;
         Onboarding = onboarding;
@@ -56,4 +66,13 @@ public sealed class MainViewModel : ViewModelBase
     public StatusBarViewModel StatusBar { get; }
 
     internal OnboardingViewModel Onboarding { get; }
+
+    /// <summary>True until the first successful connect to the daemon; the window shows the starting up screen instead of the dashboard.</summary>
+    public bool IsStarting => !connection.HasConnected;
+
+    /// <summary>True while <see cref="IsStarting"/> and the startup timeout has not yet passed.</summary>
+    public bool IsStartupWaiting => IsStarting && !connection.StartupTimedOut;
+
+    /// <summary>True while <see cref="IsStarting"/> and the startup timeout has passed, so the screen says the daemon cannot be reached.</summary>
+    public bool IsStartupFailed => IsStarting && connection.StartupTimedOut;
 }

@@ -28,6 +28,14 @@
         </DockPanel>
     </DockPanel>
     <ContentControl Content="{Binding Onboarding}" IsVisible="{Binding Onboarding.IsActive}" />
+    <Border Background="{DynamicResource Surface.Brush}" IsVisible="{Binding IsStarting}">
+        <StackPanel VerticalAlignment="Center" HorizontalAlignment="Center" Spacing="12">
+            <TextBlock Text="{loc:Loc Startup.Title}" FontSize="24" FontWeight="SemiBold" HorizontalAlignment="Center" IsVisible="{Binding IsStartupWaiting}" />
+            <TextBlock Text="{loc:Loc Startup.Waiting}" HorizontalAlignment="Center" Foreground="{DynamicResource Text.Secondary.Brush}" IsVisible="{Binding IsStartupWaiting}" />
+            <TextBlock Text="{loc:Loc Startup.Failed.Title}" FontSize="24" FontWeight="SemiBold" HorizontalAlignment="Center" IsVisible="{Binding IsStartupFailed}" />
+            <TextBlock Text="{loc:Loc Startup.Failed}" HorizontalAlignment="Center" Foreground="{DynamicResource Text.Secondary.Brush}" IsVisible="{Binding IsStartupFailed}" />
+        </StackPanel>
+    </Border>
     </Panel>
 
 </Window>

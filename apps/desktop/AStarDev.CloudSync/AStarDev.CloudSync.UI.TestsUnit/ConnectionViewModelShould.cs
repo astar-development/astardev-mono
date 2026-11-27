@@ -41,6 +41,49 @@ public sealed class ConnectionViewModelShould
     }
 
     [Fact]
+    public async Task not_have_connected_while_the_daemon_is_unavailable()
+    {
+        var viewModel = Create(new FakeIpcClient([], available: false));
+        using var source = CancellationTokenSource.CreateLinkedTokenSource(Token);
+
+        var run = viewModel.RunAsync(source.Token);
+        await WaitForAsync(() => viewModel.State == ConnectionState.Disconnected);
+        await source.CancelAsync();
+        await Should.ThrowAsync<OperationCanceledException>(() => run);
+
+        viewModel.HasConnected.ShouldBeFalse();
+        viewModel.StartupTimedOut.ShouldBeFalse();
+    }
+
+    [Fact]
+    public async Task time_out_startup_when_no_connect_happens_within_the_startup_timeout()
+    {
+        var viewModel = new ConnectionViewModel(() => new FakeIpcClient([], available: false), Delay, Delay, startupTimeout: TimeSpan.FromMilliseconds(150));
+        using var source = CancellationTokenSource.CreateLinkedTokenSource(Token);
+
+        var run = viewModel.RunAsync(source.Token);
+        await WaitForAsync(() => viewModel.StartupTimedOut);
+        await source.CancelAsync();
+        await Should.ThrowAsync<OperationCanceledException>(() => run);
+
+        viewModel.HasConnected.ShouldBeFalse();
+    }
+
+    [Fact]
+    public async Task have_connected_and_not_time_out_once_the_daemon_answers()
+    {
+        var viewModel = new ConnectionViewModel(() => new FakeIpcClient([], available: true), Delay, Delay, startupTimeout: TimeSpan.Zero);
+        using var source = CancellationTokenSource.CreateLinkedTokenSource(Token);
+
+        var run = viewModel.RunAsync(source.Token);
+        await WaitForAsync(() => viewModel.HasConnected);
+        await source.CancelAsync();
+        await Should.ThrowAsync<OperationCanceledException>(() => run);
+
+        viewModel.StartupTimedOut.ShouldBeFalse();
+    }
+
+    [Fact]
     public async Task load_the_activities_on_connect_and_follow_changes()
     {
         var started = new DateTimeOffset(2026, 11, 22, 9, 0, 0, TimeSpan.Zero);

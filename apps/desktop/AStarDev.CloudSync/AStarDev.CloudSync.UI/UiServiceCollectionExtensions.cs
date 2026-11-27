@@ -79,7 +79,7 @@ internal static class UiServiceCollectionExtensions
         services.AddSingleton<SettingsStartup>();
         services.AddSingleton(provider => new StatusBarViewModel(provider.GetRequiredService<ConnectionViewModel>(), provider.GetRequiredService<ILocalisationService>(), provider.GetRequiredService<ICultureService>()));
         services.AddSingleton(provider => new OnboardingViewModel(provider.GetRequiredService<ILocalisationService>(), provider.GetRequiredService<ICultureService>(), provider.GetRequiredService<Func<IIpcClient>>(), provider.GetRequiredService<Func<INavigationService>>(), provider.GetRequiredService<ConnectionViewModel>(), provider.GetRequiredService<AccountsViewModel>(), provider.GetRequiredService<ConnectViewModel>(), provider.GetRequiredService<FolderTreeViewModel>(), provider.GetRequiredService<ScopeSelectionViewModel>()));
-        services.AddSingleton(provider => new MainViewModel(provider.GetRequiredService<INavigationService>(), provider.GetServices<IScreen>(), provider.GetRequiredService<StatusBarViewModel>(), provider.GetRequiredService<OnboardingViewModel>()));
+        services.AddSingleton(provider => new MainViewModel(provider.GetRequiredService<INavigationService>(), provider.GetServices<IScreen>(), provider.GetRequiredService<StatusBarViewModel>(), provider.GetRequiredService<OnboardingViewModel>(), provider.GetRequiredService<ConnectionViewModel>()));
         services.AddSingleton<TrayLifecycle>();
         services.AddSingleton<InAppNotificationPresenter>();
         services.AddSingleton<IDesktopNotifier, NotifySendNotifier>();
