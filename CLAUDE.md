@@ -3,6 +3,10 @@
 .NET 11, C#, solution `AStarDev.slnx`. Apps in `apps/`, shared packages in `nuget-packages/`.
 Architecture docs in `docs/architecture/` = source of truth; start at `00 architecture-index.md`. Code and docs contradict: ask before changing either.
 
+## Working with the user
+
+- Never guess what the user did, which accounts, data or state they had, or how they reproduced a problem. Not in evidence (code, logs, dumps, tests): ask. State unverified causes as questions, not facts.
+
 ## Build and test
 
 - Build: `dotnet build` (must finish 0 errors, 0 warnings).
