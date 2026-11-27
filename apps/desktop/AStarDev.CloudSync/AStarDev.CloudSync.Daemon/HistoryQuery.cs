@@ -12,23 +12,29 @@ internal sealed class HistoryQuery(IOperationStore operations, OperationLookup l
     private const string Completed = "Completed";
     private const string Failed = "Failed";
 
-    /// <summary>Lists the operations that completed or failed, newest first, narrowed by every filter the query sets.</summary>
+    /// <summary>Lists the newest operations that completed or failed, at most <see cref="ApplicationConstants.HistoryListLimit"/>, newest first, narrowed by every filter the query sets, so one answer always fits an IPC frame however long the history is.</summary>
     /// <returns>
     /// The matching operations, empty when none match. An operation that gave up after its retries counts as failed. An operation whose item or account the daemon no longer knows keeps an empty path or provider and fails the path or provider filter when that filter is set.
     /// <see cref="HandlerFailed"/> carries a store failure worded for the user. Cancellation propagates as <see cref="OperationCanceledException"/>.
     /// </returns>
-    public async Task<Result<HistoryView, IpcError>> HandleAsync(GetHistory query, CancellationToken cancellationToken)
+    public Task<Result<HistoryView, IpcError>> HandleAsync(GetHistory query, CancellationToken cancellationToken) => ListAsync(query, ApplicationConstants.HistoryListLimit, cancellationToken);
+
+    /// <summary>Lists every operation <see cref="HandleAsync"/> would, without its limit, for an export that is written to a file and never sent as one IPC frame.</summary>
+    /// <returns>The same results and failures as <see cref="HandleAsync"/>.</returns>
+    public Task<Result<HistoryView, IpcError>> ListAllAsync(GetHistory query, CancellationToken cancellationToken) => ListAsync(query, int.MaxValue, cancellationToken);
+
+    private async Task<Result<HistoryView, IpcError>> ListAsync(GetHistory query, int limit, CancellationToken cancellationToken)
     {
         cancellationToken.ThrowIfCancellationRequested();
 
         return await operations.ListAsync(cancellationToken) switch
         {
-            Ok<IReadOnlyList<Operation>> ok => await DescribeAsync(query, ok.Value.Where(operation => IsFinished(operation) && Keeps(query, operation)).OrderByDescending(operation => operation.CreatedUtc).ToList(), cancellationToken),
+            Ok<IReadOnlyList<Operation>> ok => await DescribeAsync(query, limit, ok.Value.Where(operation => IsFinished(operation) && Keeps(query, operation)).OrderByDescending(operation => operation.CreatedUtc).ToList(), cancellationToken),
             Fail<StoreError> fail => Failure(fail.Error)
         };
     }
 
-    private async Task<Result<HistoryView, IpcError>> DescribeAsync(GetHistory query, IReadOnlyList<Operation> finished, CancellationToken cancellationToken)
+    private async Task<Result<HistoryView, IpcError>> DescribeAsync(GetHistory query, int limit, IReadOnlyList<Operation> finished, CancellationToken cancellationToken)
     {
         if (finished.Count == 0) return new Ok<HistoryView>(new HistoryView([]));
 
@@ -40,7 +46,7 @@ internal sealed class HistoryQuery(IOperationStore operations, OperationLookup l
 
         var providerOf = ((Ok<IReadOnlyDictionary<SyncJobId, string>>)providers.Value).Value;
         var stateOf = ((Ok<IReadOnlyDictionary<ItemId, CanonicalItemState>>)items.Value).Value;
-        var entries = finished.Select(operation => EntryOf(operation, providerOf.GetValueOrDefault(operation.SyncJobId, string.Empty), stateOf.GetValueOrDefault(operation.ItemId))).Where(entry => Matches(query, entry)).ToList();
+        var entries = finished.Select(operation => EntryOf(operation, providerOf.GetValueOrDefault(operation.SyncJobId, string.Empty), stateOf.GetValueOrDefault(operation.ItemId))).Where(entry => Matches(query, entry)).Take(limit).ToList();
 
         return new Ok<HistoryView>(new HistoryView(entries));
     }

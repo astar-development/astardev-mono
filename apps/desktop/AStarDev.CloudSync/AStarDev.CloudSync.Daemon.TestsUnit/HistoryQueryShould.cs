@@ -63,6 +63,33 @@ public sealed class HistoryQueryShould
     }
 
     [Fact]
+    public async Task list_only_the_newest_operations_so_the_answer_fits_an_ipc_frame()
+    {
+        var (host, job, items) = await SeedAsync();
+        await using var _ = host;
+        var total = ApplicationConstants.HistoryListLimit + 5;
+        for (var index = 0; index < total; index++) await AddAsync(host, job, items["Docs/c.md"], OperationType.DownloadFile, OperationStatus.Completed, Stamp.AddSeconds(index));
+
+        var entries = await QueryAsync(host, new GetHistory());
+
+        entries.Count.ShouldBe(ApplicationConstants.HistoryListLimit);
+        entries[0].Timestamp.ShouldBe(Stamp.AddSeconds(total - 1));
+    }
+
+    [Fact]
+    public async Task export_every_operation_without_the_screen_limit()
+    {
+        var (host, job, items) = await SeedAsync();
+        await using var _ = host;
+        var total = ApplicationConstants.HistoryListLimit + 5;
+        for (var index = 0; index < total; index++) await AddAsync(host, job, items["Docs/c.md"], OperationType.DownloadFile, OperationStatus.Completed, Stamp.AddSeconds(index));
+
+        var result = await host.Services.GetRequiredService<ExportQuery>().HandleAsync(new ExportHistory(new GetHistory()), Token);
+
+        result.Value.ShouldBeOfType<Ok<ExportView>>().Value.Csv.Split("\r\n", StringSplitOptions.RemoveEmptyEntries).Length.ShouldBe(total + 1);
+    }
+
+    [Fact]
     public async Task filter_by_status_and_date_range()
     {
         var (host, job, items) = await SeedAsync();
