@@ -157,6 +157,7 @@ public sealed class ClassificationEditingShould
 
         client.Sent.ShouldBe([new PromoteSuggestion("zorblax", Colour), new IgnoreSuggestion("plimbus", Colour)]);
         screen.Suggestions.Rows.ShouldBeEmpty();
+        screen.Suggestions.Category.ShouldBe(screen.Editor.Categories.Single());
         screen.Suggestions.IsEmpty.ShouldBeTrue();
     }
 

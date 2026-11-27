@@ -199,6 +199,26 @@ public sealed class ScopeSelectionViewModelShould
     }
 
     [Fact]
+    public async Task send_every_tick_when_ticks_follow_each_other_quickly()
+    {
+        var hold = new TaskCompletionSource();
+        var client = new FakeIpcClient([], available: true) { JobsReply = new Ok<SyncJobsView>(new SyncJobsView([Job])), HoldCommand = hold };
+        var viewModel = new ScopeSelectionViewModel(() => client, new FakeFolderPicker(null));
+        await viewModel.RefreshAsync(Token);
+        viewModel.Select("docs", true);
+        var first = viewModel.ApplyCommand.ExecutionTask!;
+        viewModel.Select("notes", true);
+        var second = viewModel.ApplyCommand.ExecutionTask!;
+
+        hold.SetResult();
+        await Task.WhenAll(first, second).WaitAsync(TimeSpan.FromSeconds(10), Token);
+
+        first.IsCompletedSuccessfully.ShouldBeTrue();
+        second.IsCompletedSuccessfully.ShouldBeTrue();
+        client.Sent.ShouldBe([new AddSyncScope(Job.Id, "docs"), new AddSyncScope(Job.Id, "notes")]);
+    }
+
+    [Fact]
     public async Task show_the_reason_and_reload_when_the_daemon_rejects_a_scope_change()
     {
         var client = new FakeIpcClient([], available: true) { JobsReply = new Ok<SyncJobsView>(new SyncJobsView([Job])), CommandReply = new Ok<CommandResult>(new CommandResult(CommandOutcome.Rejected, "That folder is already selected.")) };
