@@ -91,6 +91,46 @@ public sealed class AccountStoreShould
     }
 
     [Fact]
+    public async Task give_a_new_account_four_concurrent_operations()
+    {
+        await using var host = await PersistenceTestHost.CreateInitialisedAsync(Token);
+        var store = host.Services.GetRequiredService<IAccountStore>();
+        var account = NewAccount("acct-1");
+        await store.AddAsync(account, Token);
+
+        var found = await store.GetAsync(account.Id, Token);
+
+        found.Value.ShouldBeOfType<Ok<Account>>().Value.MaxConcurrentOperations.ShouldBe(4);
+    }
+
+    [Fact]
+    public async Task keep_a_changed_concurrency()
+    {
+        await using var host = await PersistenceTestHost.CreateInitialisedAsync(Token);
+        var store = host.Services.GetRequiredService<IAccountStore>();
+        var account = NewAccount("acct-1");
+        await store.AddAsync(account, Token);
+
+        var updated = await store.UpdateConcurrencyAsync(account.Id, 8, Token);
+        var found = await store.GetAsync(account.Id, Token);
+
+        updated.Value.ShouldBeOfType<Ok<Unit>>();
+        found.Value.ShouldBeOfType<Ok<Account>>().Value.ShouldBe(account with { MaxConcurrentOperations = 8 });
+    }
+
+    [Fact]
+    public async Task report_an_unknown_account_when_updating_the_concurrency()
+    {
+        await using var host = await PersistenceTestHost.CreateInitialisedAsync(Token);
+        var store = host.Services.GetRequiredService<IAccountStore>();
+        var id = new AccountId(Guid.NewGuid());
+
+        var result = await store.UpdateConcurrencyAsync(id, 2, Token);
+
+        result.Value.ShouldBeOfType<Fail<StoreError>>().Error.Value.ShouldBe(new AccountNotFound(id));
+    }
+
+    [Fact]
     public async Task forget_a_removed_account()
     {
         await using var host = await PersistenceTestHost.CreateInitialisedAsync(Token);
@@ -140,6 +180,7 @@ public sealed class AccountStoreShould
         await Should.ThrowAsync<OperationCanceledException>(() => store.GetAsync(new AccountId(Guid.NewGuid()), cancelled.Token));
         await Should.ThrowAsync<OperationCanceledException>(() => store.ListAsync(cancelled.Token));
         await Should.ThrowAsync<OperationCanceledException>(() => store.UpdateStatusAsync(new AccountId(Guid.NewGuid()), AccountStatus.Connected, cancelled.Token));
+        await Should.ThrowAsync<OperationCanceledException>(() => store.UpdateConcurrencyAsync(new AccountId(Guid.NewGuid()), 2, cancelled.Token));
         await Should.ThrowAsync<OperationCanceledException>(() => store.RemoveAsync(new AccountId(Guid.NewGuid()), cancelled.Token));
     }
 

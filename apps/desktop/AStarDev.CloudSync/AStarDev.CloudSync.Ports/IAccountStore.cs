@@ -33,6 +33,13 @@ public interface IAccountStore
     /// <returns>Success, <see cref="AccountNotFound"/> when there is no such account, or <see cref="StorageFailed"/>.</returns>
     Task<Result<Unit, StoreError>> UpdateStatusAsync(AccountId id, AccountStatus status, CancellationToken cancellationToken);
 
+    /// <summary>Records how many of the account's operations may run at once. The next claim honours it; operations already running finish.</summary>
+    /// <param name="id">The account to change.</param>
+    /// <param name="maxConcurrentOperations">The new limit. The store keeps any value; callers decide which are allowed.</param>
+    /// <param name="cancellationToken">Cancelling before the write completes leaves the limit as it was.</param>
+    /// <returns>Success, <see cref="AccountNotFound"/> when there is no such account, or <see cref="StorageFailed"/>.</returns>
+    Task<Result<Unit, StoreError>> UpdateConcurrencyAsync(AccountId id, int maxConcurrentOperations, CancellationToken cancellationToken);
+
     /// <summary>Deletes an account.</summary>
     /// <param name="id">The account to delete.</param>
     /// <param name="cancellationToken">Cancelling before the write completes leaves the account stored.</param>

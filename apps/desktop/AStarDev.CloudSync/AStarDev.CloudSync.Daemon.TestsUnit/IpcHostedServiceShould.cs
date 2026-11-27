@@ -38,6 +38,7 @@ public sealed class IpcHostedServiceShould
             services.GetRequiredService<ResolveConflictHandler>(),
             services.GetRequiredService<SettingsQuery>(),
             services.GetRequiredService<SetSettingHandler>(),
+            services.GetRequiredService<SetAccountConcurrencyHandler>(),
             services.GetRequiredService<SyncStatusQuery>(),
             services.GetRequiredService<DashboardSnapshotQuery>(),
             services.GetRequiredService<HistoryQuery>(),

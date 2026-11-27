@@ -23,13 +23,16 @@ internal sealed class AccountEntity
     /// <summary>Whether the stored sign-in still works; stored as the enum name and <see cref="AccountStatus.Connected"/> for rows written before the column existed.</summary>
     public AccountStatus Status { get; set; }
 
+    /// <summary>How many of the account's operations the queue lets run at once; 4 for rows written before the column existed.</summary>
+    public int MaxConcurrentOperations { get; set; }
+
     /// <summary>Copies the domain account into its stored form.</summary>
     /// <param name="account">The account to store.</param>
     /// <returns>A new, untracked entity.</returns>
     public static AccountEntity From(Account account)
-        => new() { Id = account.Id, ProviderType = account.ProviderType, DisplayName = account.DisplayName, AccountIdentifier = account.AccountIdentifier, CreatedUtc = account.CreatedUtc, Status = account.Status };
+        => new() { Id = account.Id, ProviderType = account.ProviderType, DisplayName = account.DisplayName, AccountIdentifier = account.AccountIdentifier, CreatedUtc = account.CreatedUtc, Status = account.Status, MaxConcurrentOperations = account.MaxConcurrentOperations };
 
     /// <summary>Builds the domain account from the stored row.</summary>
     /// <returns>An immutable account with the same values.</returns>
-    public Account ToAccount() => new(Id, ProviderType, DisplayName, AccountIdentifier, CreatedUtc, Status);
+    public Account ToAccount() => new(Id, ProviderType, DisplayName, AccountIdentifier, CreatedUtc, Status, MaxConcurrentOperations);
 }

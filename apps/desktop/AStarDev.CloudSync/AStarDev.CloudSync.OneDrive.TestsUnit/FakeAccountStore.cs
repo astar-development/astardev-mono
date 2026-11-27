@@ -32,6 +32,8 @@ internal sealed class FakeAccountStore(params Account[] accounts) : IAccountStor
         return Task.FromResult<Result<Unit, StoreError>>(new Ok<Unit>(default));
     }
 
+    public Task<Result<Unit, StoreError>> UpdateConcurrencyAsync(AccountId id, int maxConcurrentOperations, CancellationToken cancellationToken) => throw new NotSupportedException();
+
     public Task<Result<Unit, StoreError>> RemoveAsync(AccountId id, CancellationToken cancellationToken)
     {
         Accounts.RemoveAll(account => account.Id == id);

@@ -472,6 +472,14 @@ Different items may execute concurrently.
 
 The same logical item may not.
 
+### Per-Account Limit
+
+Providers throttle per account (OneDrive answers HTTP 429 per account), so each account has its own limit on running operations: 1, 2, 4, 6 or 8, default 4. The user sets it on Settings > Synchronisation; it is stored on the account and applies from the next claim, with no restart.
+
+The limit is enforced inside the single claim statement, like the per-item lock, so concurrent workers cannot both take an account's last slot. The claim looks for each job's best candidate through the `(SyncJobId, Status, Priority, CreatedUtc)` index and skips accounts already at their limit, so an account at its limit costs no scan of its backlog.
+
+The scheduler's worker count is the total across accounts (default 8, the largest per-account limit). Two accounts both set to 8 share those 8 workers.
+
 ---
 
 ## Summary

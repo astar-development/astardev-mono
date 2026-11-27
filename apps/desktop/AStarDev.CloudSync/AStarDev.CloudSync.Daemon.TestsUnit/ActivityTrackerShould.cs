@@ -39,6 +39,8 @@ public sealed class ActivityTrackerShould
 
         public Task<Result<Unit, StoreError>> UpdateStatusAsync(AccountId id, AccountStatus status, CancellationToken cancellationToken) => throw new NotSupportedException();
 
+        public Task<Result<Unit, StoreError>> UpdateConcurrencyAsync(AccountId id, int maxConcurrentOperations, CancellationToken cancellationToken) => throw new NotSupportedException();
+
         public Task<Result<Unit, StoreError>> RemoveAsync(AccountId id, CancellationToken cancellationToken) => throw new NotSupportedException();
     }
 

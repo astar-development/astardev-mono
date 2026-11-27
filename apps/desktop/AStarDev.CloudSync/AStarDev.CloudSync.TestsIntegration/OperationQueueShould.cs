@@ -37,6 +37,54 @@ public sealed class OperationQueueShould
     }
 
     [Fact]
+    public async Task never_run_more_operations_for_an_account_than_its_limit()
+    {
+        await using var host = DatabaseTestHost.Create();
+        var job = await SeedJobAsync(host, maxConcurrentOperations: 2);
+        var store = host.Services.GetRequiredService<IOperationStore>();
+        await EnqueueAsync(store, [.. Enumerable.Range(0, 5).Select(rank => NewOperation(job, new ItemId(Guid.NewGuid()), OperationPriority.Background, rank))]);
+
+        var claims = await Task.WhenAll(Enumerable.Range(0, 8).Select(_ => store.ClaimNextAsync(Start.AddHours(1), 5, Token)));
+
+        claims.SelectMany(Claimed).Count().ShouldBe(2);
+    }
+
+    [Fact]
+    public async Task claim_for_another_account_while_one_is_at_its_limit()
+    {
+        await using var host = DatabaseTestHost.Create();
+        var busy = await SeedJobAsync(host, maxConcurrentOperations: 1);
+        var idle = await SeedJobAsync(host, maxConcurrentOperations: 1);
+        var store = host.Services.GetRequiredService<IOperationStore>();
+        var busyFirst = NewOperation(busy, new ItemId(Guid.NewGuid()), OperationPriority.Background, 0);
+        var busySecond = NewOperation(busy, new ItemId(Guid.NewGuid()), OperationPriority.Background, 1);
+        var idleOnly = NewOperation(idle, new ItemId(Guid.NewGuid()), OperationPriority.Background, 2);
+        await EnqueueAsync(store, busyFirst, busySecond, idleOnly);
+
+        var claimed = Claimed(await store.ClaimNextAsync(Start.AddHours(1), 5, Token));
+
+        claimed.Select(operation => operation.Id).ShouldBe([busyFirst.Id, idleOnly.Id]);
+    }
+
+    [Fact]
+    public async Task apply_a_changed_limit_on_the_next_claim()
+    {
+        await using var host = DatabaseTestHost.Create();
+        var job = await SeedJobAsync(host, maxConcurrentOperations: 1);
+        var store = host.Services.GetRequiredService<IOperationStore>();
+        await EnqueueAsync(store, [.. Enumerable.Range(0, 5).Select(rank => NewOperation(job, new ItemId(Guid.NewGuid()), OperationPriority.Background, rank))]);
+        var before = Claimed(await store.ClaimNextAsync(Start.AddHours(1), 5, Token));
+        var accounts = host.Services.GetRequiredService<IAccountStore>();
+        var account = Claimed(await accounts.ListAsync(Token)).Single();
+        (await accounts.UpdateConcurrencyAsync(account.Id, 4, Token)).Value.ShouldBeOfType<Ok<Unit>>();
+
+        var after = Claimed(await store.ClaimNextAsync(Start.AddHours(1), 5, Token));
+
+        before.Count.ShouldBe(1);
+        after.Count.ShouldBe(3);
+    }
+
+    [Fact]
     public async Task run_operations_for_different_items_together()
     {
         await using var host = DatabaseTestHost.Create();
@@ -367,14 +415,18 @@ public sealed class OperationQueueShould
     private static IReadOnlyList<Operation> Claimed(Result<IReadOnlyList<Operation>, StoreError> result)
         => result.Value.ShouldBeOfType<Ok<IReadOnlyList<Operation>>>().Value;
 
+    private static IReadOnlyList<Account> Claimed(Result<IReadOnlyList<Account>, StoreError> result)
+        => result.Value.ShouldBeOfType<Ok<IReadOnlyList<Account>>>().Value;
+
     private static async Task EnqueueAsync(IOperationStore store, params Operation[] operations)
     {
         foreach (var operation in operations) (await store.EnqueueAsync(operation, Token)).Value.ShouldBeOfType<Ok<Unit>>();
     }
 
-    private static async Task<SyncJobId> SeedJobAsync(DatabaseTestHost host)
+    private static async Task<SyncJobId> SeedJobAsync(DatabaseTestHost host, int maxConcurrentOperations = 4)
     {
-        var account = new Account(new AccountId(Guid.NewGuid()), "OneDrive", "ada@example.com", "acct-1", Start);
+        var identifier = $"acct-{Guid.NewGuid():N}";
+        var account = new Account(new AccountId(Guid.NewGuid()), "OneDrive", "ada@example.com", identifier, Start, MaxConcurrentOperations: maxConcurrentOperations);
         var job = new SyncJob(new SyncJobId(Guid.NewGuid()), account.Id, "OneDrive", "/home/ada/OneDrive", new RemoteItemId("root"), BootstrapMode.Download, true, Start, Start);
         await host.Services.GetRequiredService<IDatabaseInitialiser>().InitialiseAsync(Token);
         (await host.Services.GetRequiredService<IAccountStore>().AddAsync(account, Token)).Value.ShouldBeOfType<Ok<Unit>>();
