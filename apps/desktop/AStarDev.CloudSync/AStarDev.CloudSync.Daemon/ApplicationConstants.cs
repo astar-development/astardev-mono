@@ -57,6 +57,8 @@ internal static class ApplicationConstants
 
     public static TimeSpan QueuePollInterval => TimeSpan.FromSeconds(2);
 
+    public static int QueueListLimit => 500;
+
     public static TimeSpan StopReplyGrace => TimeSpan.FromMilliseconds(200);
 
     public static int RestartExitCode => 75;
