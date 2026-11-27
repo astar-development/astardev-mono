@@ -40,6 +40,9 @@ internal static partial class OneDriveLog
     [LoggerMessage(EventId = 3003, Level = LogLevel.Warning, Message = "{Call} failed temporarily: {Reason} ({ErrorCode})")]
     private static partial void TransientFailure(ILogger logger, string call, string reason, ErrorCode errorCode);
 
+    [LoggerMessage(EventId = 3005, Level = LogLevel.Warning, Message = "The account that must sign in again could not be marked as such ({ErrorCode})")]
+    internal static partial void AccountNotMarked(ILogger logger, ErrorCode errorCode);
+
     [LoggerMessage(EventId = 3004, Level = LogLevel.Error, Message = "{Call} failed: {Reason} ({ErrorCode})")]
     private static partial void PermanentFailure(ILogger logger, string call, string reason, ErrorCode errorCode);
 }

@@ -94,7 +94,7 @@ public sealed class LoggingShould
         });
         if (token is not null) accounts.Set(AccountId, token);
         var factory = LoggerFactory.Create(builder => builder.SetMinimumLevel(LogLevel.Trace).AddProvider(logs));
-        var provider = new OneDriveProvider(Options.Create(new OneDriveSettings()), new FakeTokenCacheStore(), accounts, TimeProvider.System, factory.CreateLogger<OneDriveProvider>());
+        var provider = new OneDriveProvider(Options.Create(new OneDriveSettings()), new FakeTokenCacheStore(), accounts, TimeProvider.System, TestMarker.Create(), factory.CreateLogger<OneDriveProvider>());
 
         return new Owned(provider, telemetry, clients, factory);
     }

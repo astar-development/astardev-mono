@@ -28,6 +28,7 @@ public static class OneDriveServiceCollectionExtensions
         services.AddSingleton<OneDriveTelemetry>();
         services.AddSingleton<ITokenCacheStore>(_ => new SecretToolTokenCacheStore());
         services.AddSingleton(provider => CreateAccounts(provider.GetRequiredService<OneDriveTelemetry>()));
+        services.AddSingleton<ReauthenticationMarker>();
         services.AddSingleton<ICloudProvider, OneDriveProvider>();
 
         return services;
