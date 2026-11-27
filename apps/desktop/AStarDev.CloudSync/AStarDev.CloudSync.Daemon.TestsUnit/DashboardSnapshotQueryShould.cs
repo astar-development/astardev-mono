@@ -60,6 +60,16 @@ public sealed class DashboardSnapshotQueryShould
     }
 
     [Fact]
+    public async Task count_a_job_that_stopped_on_an_error_as_an_error()
+    {
+        var (host, job) = await HostWithJobAsync();
+        await using var _ = host;
+        await host.Services.GetRequiredService<ICrawlProgressSink>().ReportAsync(new CrawlProgress(job.Id, new RemoteItemId("docs"), 0, false, Failed: true), Token);
+
+        (await SnapshotAsync(host)).Errors.ShouldBe(1);
+    }
+
+    [Fact]
     public async Task report_no_account_when_none_is_connected()
     {
         await using var host = DaemonTestHost.CreateWith(new StubCloudProvider());
