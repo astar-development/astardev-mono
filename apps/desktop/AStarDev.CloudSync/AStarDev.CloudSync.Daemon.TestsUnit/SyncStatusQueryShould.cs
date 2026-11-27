@@ -43,6 +43,40 @@ public sealed class SyncStatusQueryShould
     }
 
     [Fact]
+    public async Task count_a_job_that_stopped_on_an_error_as_an_error()
+    {
+        var (host, job) = await HostWithJobAsync();
+        await using var _ = host;
+        await host.Services.GetRequiredService<ICrawlProgressSink>().ReportAsync(new CrawlProgress(job.Id, new RemoteItemId("docs"), 0, false, Failed: true), Token);
+
+        (await StatusAsync(host)).ErrorCount.ShouldBe(1);
+    }
+
+    [Fact]
+    public async Task stop_counting_a_job_once_it_reports_again_without_failing()
+    {
+        var (host, job) = await HostWithJobAsync();
+        await using var _ = host;
+        var sink = host.Services.GetRequiredService<ICrawlProgressSink>();
+        await sink.ReportAsync(new CrawlProgress(job.Id, new RemoteItemId("docs"), 0, false, Failed: true), Token);
+        await sink.ReportAsync(new CrawlProgress(job.Id, new RemoteItemId("docs"), 10, true), Token);
+
+        (await StatusAsync(host)).ErrorCount.ShouldBe(0);
+    }
+
+    [Fact]
+    public async Task publish_a_status_change_when_a_job_stops_on_an_error()
+    {
+        var server = new RecordingIpcServer();
+        var (host, job) = await HostWithJobAsync(server);
+        await using var _ = host;
+
+        await host.Services.GetRequiredService<ICrawlProgressSink>().ReportAsync(new CrawlProgress(job.Id, new RemoteItemId("docs"), 0, false, Failed: true), Token);
+
+        server.Published.OfType<SyncStatusChanged>().Last().Status.ErrorCount.ShouldBe(1);
+    }
+
+    [Fact]
     public async Task report_provider_health_from_the_health_checks()
     {
         await using var host = DaemonTestHost.CreateWith(new StubCloudProvider());

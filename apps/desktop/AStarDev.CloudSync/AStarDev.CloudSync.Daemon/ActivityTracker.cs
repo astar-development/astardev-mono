@@ -41,6 +41,10 @@ internal sealed class ActivityTracker(ISyncJobStore jobs, TimeProvider timeProvi
         lock (states) return new ActivitiesView([.. states.Select(pair => pair.Value.ToView(pair.Key))]);
     }
 
+    /// <summary>How many jobs currently have <see cref="ActivityView.ActionRequired"/> set, that is, stopped on an error and wait to be started again.</summary>
+    /// <returns>Zero before the first report and for a job whose failed scopes have since reported without failing.</returns>
+    public int StoppedJobs() => Current().Activities.Count(activity => activity.ActionRequired);
+
     private async Task<string> NameOfAsync(SyncJobId id, CancellationToken cancellationToken)
     {
         lock (states) if (states.TryGetValue(id, out var known)) return known.Name;

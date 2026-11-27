@@ -16,7 +16,7 @@ namespace AStarDev.CloudSync.IPC;
 /// <param name="Completed">Operations finished successfully.</param>
 /// <param name="Failed">Operations whose last attempt failed and wait for a retry.</param>
 /// <param name="Conflicts">Conflicts waiting for the user, deferred ones included.</param>
-/// <param name="Errors">Operations that gave up and wait for a decision.</param>
+/// <param name="Errors">Operations that gave up plus sync jobs that stopped on an error, all waiting for a decision.</param>
 /// <param name="Warnings">Providers that need the user, for example to sign in again.</param>
 /// <param name="Activities">The operations executing now.</param>
 /// <param name="Events">Recent events as names, newest first: <c>ReconciliationCompleted</c>, <c>QueueDrained</c> or <c>SyncScopeUpdated</c>.</param>

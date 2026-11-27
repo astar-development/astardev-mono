@@ -119,7 +119,7 @@ internal sealed class DashboardSnapshotQuery(IOperationStore operations, IConfli
             completed,
             counts.GetValueOrDefault(OperationStatus.Failed),
             openConflicts,
-            counts.GetValueOrDefault(OperationStatus.DeadLetter),
+            counts.GetValueOrDefault(OperationStatus.DeadLetter) + tracker.StoppedJobs(),
             providers.Count(provider => provider.Health != ProviderHealthState.Healthy),
             running,
             EventsOf(reconciled, pending + executing == 0 && completed > 0 ? queued ?? DateTimeOffset.UnixEpoch : null, scopeEntries.Select(entry => (DateTimeOffset?)entry.OccurredUtc).Max()),
