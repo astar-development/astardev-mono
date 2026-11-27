@@ -271,7 +271,9 @@ internal sealed class ClassificationsViewModel : ViewModelBase, IScreen
         {
             case Ok<ClassificationTermsView> ok when version == termsVersion:
                 categoryNames = ok.Value.Categories.ToDictionary(category => category.Id, category => category.Name);
+                var suggestionCategory = Suggestions.Category?.Id;
                 Editor.SetCategories(ok.Value.Categories);
+                Suggestions.Category = Editor.Categories.FirstOrDefault(category => category.Id == suggestionCategory);
                 ShowTerms(ok.Value, restart);
                 ErrorMessage = null;
                 break;
