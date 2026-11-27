@@ -1,3 +1,4 @@
+using AStarDev.CloudSync.Domain;
 using AStarDev.CloudSync.IPC;
 using AStarDev.CloudSync.Ports;
 using AStarDev.FunctionalParadigm;
@@ -14,11 +15,12 @@ public sealed class DriveInfoQueryShould
     {
         var provider = new StubCloudProvider { DriveInfoResult = new Ok<ProviderDriveInfo>(new ProviderDriveInfo(30, 70, 100, Option.None<long>())) };
         await using var host = DaemonTestHost.CreateWith(provider);
+        var account = await host.AddAccountAsync("id", AccountStatus.Connected, Token);
         await using var client = UnixSocketIpc.CreateClient(host.SocketPath);
         await host.StartAsync(Token);
         (await client.ConnectAsync(Token)).Value.ShouldBeOfType<Ok<Unit>>();
 
-        var result = await client.QueryAsync(new GetDriveInfo(), Token);
+        var result = await client.QueryAsync(new GetDriveInfo(account.Id.Value), Token);
         await host.StopAsync(Token);
 
         result.Value.ShouldBeOfType<Ok<DriveInfoView>>().Value.ShouldBe(new DriveInfoView(30, 70, 100, null));
@@ -29,9 +31,10 @@ public sealed class DriveInfoQueryShould
     {
         var provider = new StubCloudProvider { DriveInfoResult = new Ok<ProviderDriveInfo>(new ProviderDriveInfo(1, 2, 3, Option.Some(42L))) };
         await using var host = DaemonTestHost.CreateWith(provider);
+        var account = await host.AddAccountAsync("id", AccountStatus.Connected, Token);
         var query = host.Services.GetRequiredService<DriveInfoQuery>();
 
-        var result = await query.HandleAsync(new GetDriveInfo(), Token);
+        var result = await query.HandleAsync(new GetDriveInfo(account.Id.Value), Token);
 
         result.Value.ShouldBeOfType<Ok<DriveInfoView>>().Value.ItemCountEstimate.ShouldBe(42);
     }
@@ -41,11 +44,12 @@ public sealed class DriveInfoQueryShould
     {
         var provider = new StubCloudProvider { DriveInfoResult = new Fail<ProviderError>(new AuthenticationFailed("Sign in first.")) };
         await using var host = DaemonTestHost.CreateWith(provider);
+        var account = await host.AddAccountAsync("id", AccountStatus.Connected, Token);
         await using var client = UnixSocketIpc.CreateClient(host.SocketPath);
         await host.StartAsync(Token);
         (await client.ConnectAsync(Token)).Value.ShouldBeOfType<Ok<Unit>>();
 
-        var result = await client.QueryAsync(new GetDriveInfo(), Token);
+        var result = await client.QueryAsync(new GetDriveInfo(account.Id.Value), Token);
         await host.StopAsync(Token);
 
         result.Value.ShouldBeOfType<Fail<IpcError>>().Error.Value.ShouldBeOfType<HandlerFailed>().Message.ShouldBe("Sign in first.");
@@ -55,10 +59,11 @@ public sealed class DriveInfoQueryShould
     public async Task honour_cancellation()
     {
         await using var host = DaemonTestHost.CreateWith(new StubCloudProvider());
+        var account = await host.AddAccountAsync("id", AccountStatus.Connected, Token);
         var query = host.Services.GetRequiredService<DriveInfoQuery>();
         using var cancelled = new CancellationTokenSource();
         await cancelled.CancelAsync();
 
-        await Should.ThrowAsync<OperationCanceledException>(() => query.HandleAsync(new GetDriveInfo(), cancelled.Token));
+        await Should.ThrowAsync<OperationCanceledException>(() => query.HandleAsync(new GetDriveInfo(account.Id.Value), cancelled.Token));
     }
 }

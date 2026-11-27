@@ -32,9 +32,8 @@ public sealed partial class AccountsViewModel(Func<IIpcClient> createClient) : V
 
     /// <summary>
     /// Asks the daemon for the accounts. Failures land in <see cref="ErrorMessage"/>; cancellation surfaces as <see cref="OperationCanceledException"/>.
-    /// Also exposed to the view as <c>RefreshCommand</c>.
+    /// Exposed to the view as <c>RefreshCommand</c>, which has no cancellation of its own, so overlapping refreshes never cancel each other.
     /// </summary>
-    [RelayCommand]
     public async Task RefreshAsync(CancellationToken cancellationToken)
     {
         await using var client = createClient();
@@ -45,6 +44,9 @@ public sealed partial class AccountsViewModel(Func<IIpcClient> createClient) : V
             Fail<ConnectFailure> fail => fail
         });
     }
+
+    [RelayCommand(AllowConcurrentExecutions = true)]
+    private Task Refresh() => RefreshAsync(CancellationToken.None);
 
     /// <summary>Asks the daemon to forget an account, then shows the accounts that remain. A refusal lands in <see cref="ErrorMessage"/>.</summary>
     /// <param name="account">The account to disconnect.</param>

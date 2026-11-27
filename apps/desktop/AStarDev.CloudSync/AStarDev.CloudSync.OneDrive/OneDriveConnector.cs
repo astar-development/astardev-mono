@@ -3,8 +3,8 @@ using AStarDev.FunctionalParadigm;
 
 namespace AStarDev.CloudSync.OneDrive;
 
-/// <summary>Signs in to OneDrive, keeps the token cache in the <see cref="ITokenCacheStore"/> and hands the access token to the <see cref="AccessTokenHolder"/>.</summary>
-internal sealed class OneDriveConnector(ITokenCacheStore store, AccessTokenHolder holder, IBrowserSignIn signIn)
+/// <summary>Signs in to OneDrive, keeps the token cache in the <see cref="ITokenCacheStore"/> and hands the access token to the account's holder in <see cref="OneDriveAccounts"/>.</summary>
+internal sealed class OneDriveConnector(ITokenCacheStore store, OneDriveAccounts accounts, IBrowserSignIn signIn)
 {
     /// <summary>Loads the stored token cache, runs the browser sign-in with it, and saves the updated cache before returning the account.</summary>
     /// <returns>The signed-in account, or a <see cref="ProviderError"/> when the keyring cannot be read or written or sign-in fails. Nothing is saved and no token is kept after a failed sign-in.</returns>
@@ -43,7 +43,7 @@ internal sealed class OneDriveConnector(ITokenCacheStore store, AccessTokenHolde
 
     private Ok<ProviderAccount> Authorised(SignInOutcome outcome)
     {
-        holder.Set(outcome.AccessToken);
+        accounts.Set(outcome.Account.AccountIdentifier, outcome.AccessToken);
 
         return new Ok<ProviderAccount>(outcome.Account);
     }

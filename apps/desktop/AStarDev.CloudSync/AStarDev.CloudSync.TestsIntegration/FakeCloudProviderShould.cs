@@ -20,7 +20,7 @@ public sealed class FakeCloudProviderShould
 
         do
         {
-            var page = await provider.GetSnapshotAsync(Scope, resumeToken, TestContext.Current.CancellationToken);
+            var page = await provider.GetSnapshotAsync("account", Scope, resumeToken, TestContext.Current.CancellationToken);
             var served = page.Value.ShouldBeOfType<Ok<ProviderSnapshotPage>>().Value;
             pageSizes.Add(served.Items.Count);
             seen.AddRange(served.Items);
@@ -41,8 +41,8 @@ public sealed class FakeCloudProviderShould
         provider.AddChild(parent, child);
         provider.AddChild(new RemoteItemId("other"), child with { RemoteItemId = new RemoteItemId("elsewhere") });
 
-        var listed = await provider.ListChildrenAsync(parent, TestContext.Current.CancellationToken);
-        var empty = await provider.ListChildrenAsync(new RemoteItemId("unknown"), TestContext.Current.CancellationToken);
+        var listed = await provider.ListChildrenAsync("account", parent, TestContext.Current.CancellationToken);
+        var empty = await provider.ListChildrenAsync("account", new RemoteItemId("unknown"), TestContext.Current.CancellationToken);
 
         listed.Value.ShouldBeOfType<Ok<IReadOnlyList<ProviderItem>>>().Value.ShouldBe([child]);
         empty.Value.ShouldBeOfType<Ok<IReadOnlyList<ProviderItem>>>().Value.ShouldBeEmpty();
@@ -55,10 +55,10 @@ public sealed class FakeCloudProviderShould
         provider.GenerateTree(3);
         provider.ScriptFailures(new Transient("network drop"), new RateLimited(TimeSpan.FromSeconds(7)), new AuthenticationFailed("expired"));
 
-        var first = await provider.GetSnapshotAsync(Scope, null, TestContext.Current.CancellationToken);
-        var second = await provider.GetSnapshotAsync(Scope, null, TestContext.Current.CancellationToken);
-        var third = await provider.GetSnapshotAsync(Scope, null, TestContext.Current.CancellationToken);
-        var fourth = await provider.GetSnapshotAsync(Scope, null, TestContext.Current.CancellationToken);
+        var first = await provider.GetSnapshotAsync("account", Scope, null, TestContext.Current.CancellationToken);
+        var second = await provider.GetSnapshotAsync("account", Scope, null, TestContext.Current.CancellationToken);
+        var third = await provider.GetSnapshotAsync("account", Scope, null, TestContext.Current.CancellationToken);
+        var fourth = await provider.GetSnapshotAsync("account", Scope, null, TestContext.Current.CancellationToken);
 
         first.Value.ShouldBeOfType<Fail<ProviderError>>().Error.Value.ShouldBeOfType<Transient>();
         second.Value.ShouldBeOfType<Fail<ProviderError>>().Error.Value.ShouldBeOfType<RateLimited>().RetryAfter.ShouldBe(TimeSpan.FromSeconds(7));
@@ -94,7 +94,7 @@ public sealed class FakeCloudProviderShould
         using var cancellation = new CancellationTokenSource();
         await cancellation.CancelAsync();
 
-        await Should.ThrowAsync<OperationCanceledException>(() => provider.GetSnapshotAsync(Scope, null, cancellation.Token));
+        await Should.ThrowAsync<OperationCanceledException>(() => provider.GetSnapshotAsync("account", Scope, null, cancellation.Token));
     }
 
     [Fact]
@@ -112,7 +112,7 @@ public sealed class FakeCloudProviderShould
     {
         var provider = new FakeCloudProvider(pageSize: 10) { DriveInfo = new ProviderDriveInfo(30, 70, 100, Option.Some(1234L)) };
 
-        var result = await provider.GetDriveInfoAsync(TestContext.Current.CancellationToken);
+        var result = await provider.GetDriveInfoAsync("account", TestContext.Current.CancellationToken);
 
         var info = result.Value.ShouldBeOfType<Ok<ProviderDriveInfo>>().Value;
         (info.UsedBytes, info.RemainingBytes, info.TotalBytes).ShouldBe((30L, 70L, 100L));
@@ -125,7 +125,7 @@ public sealed class FakeCloudProviderShould
         var provider = new FakeCloudProvider(pageSize: 10);
         provider.ScriptFailures(new Transient("down"));
 
-        var result = await provider.GetDriveInfoAsync(TestContext.Current.CancellationToken);
+        var result = await provider.GetDriveInfoAsync("account", TestContext.Current.CancellationToken);
 
         result.Value.ShouldBeOfType<Fail<ProviderError>>().Error.Value.ShouldBeOfType<Transient>();
     }
@@ -137,6 +137,6 @@ public sealed class FakeCloudProviderShould
         using var cancellation = new CancellationTokenSource();
         await cancellation.CancelAsync();
 
-        await Should.ThrowAsync<OperationCanceledException>(() => provider.GetDriveInfoAsync(cancellation.Token));
+        await Should.ThrowAsync<OperationCanceledException>(() => provider.GetDriveInfoAsync("account", cancellation.Token));
     }
 }

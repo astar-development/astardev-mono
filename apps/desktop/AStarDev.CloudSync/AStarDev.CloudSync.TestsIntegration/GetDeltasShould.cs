@@ -27,7 +27,7 @@ public sealed class GetDeltasShould
 
         do
         {
-            var result = await provider.GetDeltasAsync(Scope, Token, resumeToken, TestContext.Current.CancellationToken);
+            var result = await provider.GetDeltasAsync("account", Scope, Token, resumeToken, TestContext.Current.CancellationToken);
             last = result.Value.ShouldBeOfType<Ok<ProviderDeltaPage>>().Value;
             pageSizes.Add(last.Changes.Count);
             kinds.AddRange(last.Changes.Select(change => change.Kind));
@@ -46,7 +46,7 @@ public sealed class GetDeltasShould
         var provider = new FakeCloudProvider(pageSize: 2);
         provider.ExpireToken(Token);
 
-        var result = await provider.GetDeltasAsync(Scope, Token, null, TestContext.Current.CancellationToken);
+        var result = await provider.GetDeltasAsync("account", Scope, Token, null, TestContext.Current.CancellationToken);
 
         result.Value.ShouldBeOfType<Fail<ProviderError>>().Error.Value.ShouldBeOfType<InvalidDeltaToken>();
     }
@@ -58,6 +58,6 @@ public sealed class GetDeltasShould
         using var cancellation = new CancellationTokenSource();
         await cancellation.CancelAsync();
 
-        await Should.ThrowAsync<OperationCanceledException>(() => provider.GetDeltasAsync(Scope, Token, null, cancellation.Token));
+        await Should.ThrowAsync<OperationCanceledException>(() => provider.GetDeltasAsync("account", Scope, Token, null, cancellation.Token));
     }
 }

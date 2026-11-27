@@ -5,12 +5,19 @@ using AStarDev.FunctionalParadigm;
 namespace AStarDev.CloudSync.Daemon;
 
 /// <summary>Answers <see cref="GetDriveInfo"/> by asking <see cref="ICloudProvider"/> for the drive facts.</summary>
-internal sealed class DriveInfoQuery(ICloudProvider provider)
+internal sealed class DriveInfoQuery(ICloudProvider provider, IAccountStore accounts)
 {
     /// <summary>Reads the storage figures from the provider.</summary>
     /// <returns>The figures, or <see cref="HandlerFailed"/> carrying the provider's failure worded for the user. Cancellation propagates as <see cref="OperationCanceledException"/>.</returns>
     public async Task<Result<DriveInfoView, IpcError>> HandleAsync(GetDriveInfo query, CancellationToken cancellationToken)
-        => await provider.GetDriveInfoAsync(cancellationToken) switch
+        => await AccountIdentifiers.FindAsync(accounts, query.AccountId, cancellationToken) switch
+        {
+            Ok<string> account => await MeasureAsync(account.Value, cancellationToken),
+            Fail<IpcError> fail => fail
+        };
+
+    private async Task<Result<DriveInfoView, IpcError>> MeasureAsync(string account, CancellationToken cancellationToken)
+        => await provider.GetDriveInfoAsync(account, cancellationToken) switch
         {
             Ok<ProviderDriveInfo> info => new Ok<DriveInfoView>(ViewOf(info.Value)),
             Fail<ProviderError> fail => new Fail<IpcError>(new HandlerFailed(ProviderErrorMessages.Describe(fail.Error)))

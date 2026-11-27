@@ -11,7 +11,7 @@ internal static class StoreErrorMessages
         AccountNotFound => "That account is no longer connected.",
         AccountAlreadyExists => "That account is already connected.",
         SyncJobNotFound => "That sync job no longer exists.",
-        SyncJobAlreadyExists => "A sync job already exists. This version supports a single job.",
+        SyncJobAlreadyExists => "This account already has a sync job.",
         SyncScopeAlreadyExists => "That folder is already selected.",
         SyncScopeNotFound => "That folder is not selected.",
         OperationNotRunning => "That operation is not running.",

@@ -1,7 +1,7 @@
 namespace AStarDev.CloudSync.IPC;
 
 /// <summary>
-/// Asks the daemon to create the sync job for an account. Connecting an account creates no job, and the MVP allows one job, so a second request is declined.
+/// Asks the daemon to create the sync job for an account. Connecting an account creates no job. Each account has one job, so a second request for the same account is declined.
 /// Answered with <see cref="CommandOutcome.Accepted"/> once the job is stored, or <see cref="CommandOutcome.Rejected"/> with a message the UI can show as it is
 /// (a job already exists, the local folder does not exist, the account is unknown). Nothing is synchronised until scopes are added with <see cref="AddSyncScope"/>.
 /// </summary>

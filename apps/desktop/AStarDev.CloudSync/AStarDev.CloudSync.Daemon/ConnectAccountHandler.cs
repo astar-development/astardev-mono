@@ -67,7 +67,7 @@ internal sealed class ConnectAccountHandler(ICloudProvider provider, IAccountSto
 
         return await server.PublishAsync(new AccountConnected(account.DisplayName), cancellationToken) switch
         {
-            Ok<Unit> => new Ok<CommandResult>(new CommandResult(CommandOutcome.Accepted)),
+            Ok<Unit> => new Ok<CommandResult>(new CommandResult(CommandOutcome.Accepted, AccountId: id.Value)),
             Fail<IpcError> fail => fail
         };
     }

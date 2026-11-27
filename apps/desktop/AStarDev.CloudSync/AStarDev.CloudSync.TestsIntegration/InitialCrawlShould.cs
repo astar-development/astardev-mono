@@ -33,6 +33,27 @@ public sealed class InitialCrawlShould
     }
 
     [Fact]
+    public async Task crawl_each_job_with_its_own_account()
+    {
+        var provider = new FakeCloudProvider(pageSize: 100);
+        provider.GenerateTree(5, Docs);
+        provider.GenerateTree(5, Notes);
+        await using var host = CreateHost(provider, new RecordingProgressSink());
+        var first = await SeedAsync(host, Docs);
+        var other = new Account(new AccountId(Guid.NewGuid()), "OneDrive", "bob@example.com", "acct-2", DateTimeOffset.UnixEpoch);
+        var second = new SyncJob(new SyncJobId(Guid.NewGuid()), other.Id, "OneDrive", "/home/bob/OneDrive", new RemoteItemId("root"), BootstrapMode.Download, true, other.CreatedUtc, other.CreatedUtc);
+        (await host.Services.GetRequiredService<IAccountStore>().AddAsync(other, Token)).Value.ShouldBeOfType<Ok<Unit>>();
+        (await host.Services.GetRequiredService<ISyncJobStore>().AddAsync(second, Token)).Value.ShouldBeOfType<Ok<Unit>>();
+        (await host.Services.GetRequiredService<ISyncScopeStore>().AddAsync(new SyncScope(second.Id, Notes), Token)).Value.ShouldBeOfType<Ok<Unit>>();
+
+        await CrawlAsync(host, first);
+        provider.AccountsSeen.ShouldBe(["acct-1"]);
+        await CrawlAsync(host, second);
+
+        provider.AccountsSeen.ShouldBe(["acct-1", "acct-2"]);
+    }
+
+    [Fact]
     public async Task resume_from_the_checkpoint_without_reindexing()
     {
         var provider = new FakeCloudProvider(pageSize: 100);

@@ -56,6 +56,55 @@ public sealed class ScopeSelectionViewModelShould
     }
 
     [Fact]
+    public async Task show_only_the_job_of_the_chosen_account()
+    {
+        var other = new SyncJobView(Guid.NewGuid(), Guid.NewGuid(), "Other", "/home/bob/OneDrive", SyncBootstrapMode.Download);
+        var client = new FakeIpcClient([], available: true) { JobsReply = new Ok<SyncJobsView>(new SyncJobsView([other, Job])) };
+        var viewModel = new ScopeSelectionViewModel(() => client, new FakeFolderPicker(null)) { AccountId = Account.Id };
+
+        await viewModel.RefreshAsync(Token);
+
+        viewModel.LocalRoot.ShouldBe(Job.LocalRootPath);
+    }
+
+    [Fact]
+    public async Task show_no_job_for_an_account_that_has_none()
+    {
+        var client = new FakeIpcClient([], available: true) { JobsReply = new Ok<SyncJobsView>(new SyncJobsView([Job])) };
+        var viewModel = new ScopeSelectionViewModel(() => client, new FakeFolderPicker(null)) { AccountId = Guid.NewGuid() };
+
+        await viewModel.RefreshAsync(Token);
+
+        viewModel.HasJob.ShouldBeFalse();
+        viewModel.LocalRoot.ShouldBeEmpty();
+    }
+
+    [Fact]
+    public void forget_the_choices_of_the_previous_account_when_the_account_changes()
+    {
+        var viewModel = new ScopeSelectionViewModel(() => new FakeIpcClient([], available: true), new FakeFolderPicker(null)) { AccountId = Account.Id, LocalRoot = "/home/ada/OneDrive" };
+        viewModel.Select("docs", true);
+
+        viewModel.AccountId = Guid.NewGuid();
+
+        viewModel.SelectedFolderIds.ShouldBeEmpty();
+        viewModel.LocalRoot.ShouldBeEmpty();
+    }
+
+    [Fact]
+    public async Task create_the_job_for_the_chosen_account_not_the_first()
+    {
+        var first = new AccountView(Guid.NewGuid(), "first@example.com", "OneDrive", AccountState.Connected);
+        var client = new FakeIpcClient([], available: true) { AccountsReply = new Ok<AccountsView>(new AccountsView([first, Account])), JobsReply = new Ok<SyncJobsView>(new SyncJobsView([Job])) };
+        var viewModel = new ScopeSelectionViewModel(() => client, new FakeFolderPicker(null)) { AccountId = Account.Id, LocalRoot = Job.LocalRootPath };
+        viewModel.Select("docs", true);
+
+        await viewModel.CreateJobAsync(Token);
+
+        client.Sent.OfType<CreateSyncJob>().ShouldHaveSingleItem().AccountId.ShouldBe(Account.Id);
+    }
+
+    [Fact]
     public async Task create_the_job_with_the_mode_and_add_each_ticked_folder()
     {
         var client = new FakeIpcClient([], available: true) { AccountsReply = new Ok<AccountsView>(new AccountsView([Account])), JobsReply = new Ok<SyncJobsView>(new SyncJobsView([Job])) };

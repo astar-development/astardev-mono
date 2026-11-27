@@ -47,6 +47,8 @@ internal sealed class FakeCloudProvider(int pageSize) : ICloudProvider
 
     public List<string?> ResumeTokensSeen { get; } = [];
 
+    public List<string> AccountsSeen { get; } = [];
+
     public void AddItem(ProviderItem item, RemoteItemId? root = null)
     {
         var key = root ?? DefaultRoot;
@@ -111,7 +113,7 @@ internal sealed class FakeCloudProvider(int pageSize) : ICloudProvider
         return Task.FromResult<Result<Unit, ProviderError>>(new Ok<Unit>(default));
     }
 
-    public Task<Result<ProviderDriveInfo, ProviderError>> GetDriveInfoAsync(CancellationToken cancellationToken)
+    public Task<Result<ProviderDriveInfo, ProviderError>> GetDriveInfoAsync(string accountIdentifier, CancellationToken cancellationToken)
     {
         cancellationToken.ThrowIfCancellationRequested();
 
@@ -122,7 +124,7 @@ internal sealed class FakeCloudProvider(int pageSize) : ICloudProvider
         return Task.FromResult(result);
     }
 
-    public Task<Result<IReadOnlyList<ProviderItem>, ProviderError>> ListChildrenAsync(RemoteItemId parent, CancellationToken cancellationToken)
+    public Task<Result<IReadOnlyList<ProviderItem>, ProviderError>> ListChildrenAsync(string accountIdentifier, RemoteItemId parent, CancellationToken cancellationToken)
     {
         cancellationToken.ThrowIfCancellationRequested();
 
@@ -133,7 +135,7 @@ internal sealed class FakeCloudProvider(int pageSize) : ICloudProvider
         return Task.FromResult(result);
     }
 
-    public Task<Result<ProviderSnapshotPage, ProviderError>> GetSnapshotAsync(RemoteItemId root, string? resumeToken, CancellationToken cancellationToken)
+    public Task<Result<ProviderSnapshotPage, ProviderError>> GetSnapshotAsync(string accountIdentifier, RemoteItemId root, string? resumeToken, CancellationToken cancellationToken)
     {
         BeforePage?.Invoke(PagesServed + 1);
         cancellationToken.ThrowIfCancellationRequested();
@@ -150,12 +152,13 @@ internal sealed class FakeCloudProvider(int pageSize) : ICloudProvider
         PagesServed++;
         ItemsServed += page.Count;
         ResumeTokensSeen.Add(resumeToken);
+        AccountsSeen.Add(accountIdentifier);
         var token = last ? new DeltaToken(NextListingToken(root)) : (DeltaToken?)null;
 
         return Task.FromResult<Result<ProviderSnapshotPage, ProviderError>>(new Ok<ProviderSnapshotPage>(new ProviderSnapshotPage(page, last ? null : next.ToString(), token, source.Count)));
     }
 
-    public Task<Result<ProviderDeltaPage, ProviderError>> GetDeltasAsync(RemoteItemId root, DeltaToken token, string? resumeToken, CancellationToken cancellationToken)
+    public Task<Result<ProviderDeltaPage, ProviderError>> GetDeltasAsync(string accountIdentifier, RemoteItemId root, DeltaToken token, string? resumeToken, CancellationToken cancellationToken)
     {
         cancellationToken.ThrowIfCancellationRequested();
 
@@ -173,7 +176,7 @@ internal sealed class FakeCloudProvider(int pageSize) : ICloudProvider
         return Task.FromResult<Result<ProviderDeltaPage, ProviderError>>(new Ok<ProviderDeltaPage>(new ProviderDeltaPage(page, last ? null : next.ToString(), newToken)));
     }
 
-    public Task<Result<Stream, ProviderError>> DownloadAsync(RemoteItemId itemId, CancellationToken cancellationToken)
+    public Task<Result<Stream, ProviderError>> DownloadAsync(string accountIdentifier, RemoteItemId itemId, CancellationToken cancellationToken)
     {
         cancellationToken.ThrowIfCancellationRequested();
 
@@ -188,7 +191,7 @@ internal sealed class FakeCloudProvider(int pageSize) : ICloudProvider
         return Task.FromResult(result);
     }
 
-    public async Task<Result<Unit, ProviderError>> UploadAsync(UploadRequest request, CancellationToken cancellationToken)
+    public async Task<Result<Unit, ProviderError>> UploadAsync(string accountIdentifier, UploadRequest request, CancellationToken cancellationToken)
     {
         cancellationToken.ThrowIfCancellationRequested();
         using var copy = new MemoryStream();
@@ -198,7 +201,7 @@ internal sealed class FakeCloudProvider(int pageSize) : ICloudProvider
         return new Ok<Unit>(default);
     }
 
-    public Task<Result<Unit, ProviderError>> RenameAsync(RemoteItemId itemId, RelativePath path, CancellationToken cancellationToken)
+    public Task<Result<Unit, ProviderError>> RenameAsync(string accountIdentifier, RemoteItemId itemId, RelativePath path, CancellationToken cancellationToken)
     {
         cancellationToken.ThrowIfCancellationRequested();
         Renames.Add((itemId, path));
@@ -206,7 +209,7 @@ internal sealed class FakeCloudProvider(int pageSize) : ICloudProvider
         return Task.FromResult<Result<Unit, ProviderError>>(new Ok<Unit>(default));
     }
 
-    public Task<Result<Unit, ProviderError>> DeleteAsync(RemoteItemId itemId, CancellationToken cancellationToken)
+    public Task<Result<Unit, ProviderError>> DeleteAsync(string accountIdentifier, RemoteItemId itemId, CancellationToken cancellationToken)
     {
         cancellationToken.ThrowIfCancellationRequested();
         Deletes.Add(itemId);

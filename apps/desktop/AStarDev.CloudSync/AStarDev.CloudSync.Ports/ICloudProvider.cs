@@ -29,12 +29,14 @@ public interface ICloudProvider
     Task<Result<Unit, ProviderError>> DisconnectAsync(string accountIdentifier, CancellationToken cancellationToken);
 
     /// <summary>Lists every file and folder directly under one remote folder, following the provider's paging until the last page.</summary>
+    /// <param name="accountIdentifier">The account whose drive is used, as <see cref="ProviderAccount.AccountIdentifier"/> reported it. An account that is not signed in is <see cref="AuthenticationFailed"/>; one account's call never carries another account's sign-in.</param>
     /// <param name="parent">The folder to list. Pass the provider's root id to list the top of the drive.</param>
     /// <param name="cancellationToken">Cancelling abandons the listing and surfaces as <see cref="OperationCanceledException"/>, never as a <see cref="ProviderError"/>.</param>
     /// <returns>The children in the order the provider reports them, empty for an empty folder; or the first <see cref="ProviderError"/> met, in which case nothing is returned from earlier pages. Items inside subfolders are not included.</returns>
-    Task<Result<IReadOnlyList<ProviderItem>, ProviderError>> ListChildrenAsync(RemoteItemId parent, CancellationToken cancellationToken);
+    Task<Result<IReadOnlyList<ProviderItem>, ProviderError>> ListChildrenAsync(string accountIdentifier, RemoteItemId parent, CancellationToken cancellationToken);
 
     /// <summary>Lists the remote items under one remote root as they are now, one page at a time.</summary>
+    /// <param name="accountIdentifier">The account whose drive is used, as <see cref="ProviderAccount.AccountIdentifier"/> reported it. An account that is not signed in is <see cref="AuthenticationFailed"/>; one account's call never carries another account's sign-in.</param>
     /// <param name="root">The remote folder to list.</param>
     /// <param name="resumeToken"><see langword="null"/> to start at the first page, or the <see cref="ProviderSnapshotPage.ResumeToken"/> of the previous page to continue after it, also in a later run of the process.</param>
     /// <param name="cancellationToken">Cancelling abandons the listing and surfaces as <see cref="OperationCanceledException"/>, never as a <see cref="ProviderError"/>.</param>
@@ -49,43 +51,49 @@ public interface ICloudProvider
     /// };
     /// </code>
     /// </example>
-    Task<Result<ProviderSnapshotPage, ProviderError>> GetSnapshotAsync(RemoteItemId root, string? resumeToken, CancellationToken cancellationToken);
+    Task<Result<ProviderSnapshotPage, ProviderError>> GetSnapshotAsync(string accountIdentifier, RemoteItemId root, string? resumeToken, CancellationToken cancellationToken);
 
     /// <summary>Lists what changed under one remote root since a delta token was issued, one page at a time.</summary>
+    /// <param name="accountIdentifier">The account whose drive is used, as <see cref="ProviderAccount.AccountIdentifier"/> reported it. An account that is not signed in is <see cref="AuthenticationFailed"/>; one account's call never carries another account's sign-in.</param>
     /// <param name="root">The remote folder the token was issued for.</param>
     /// <param name="token">The bookmark from <see cref="ProviderSnapshotPage.DeltaToken"/> or the last <see cref="ProviderDeltaPage.DeltaToken"/>.</param>
     /// <param name="resumeToken"><see langword="null"/> to start at the first page, or the <see cref="ProviderDeltaPage.ResumeToken"/> of the previous page to continue after it.</param>
     /// <param name="cancellationToken">Cancelling abandons the call and surfaces as <see cref="OperationCanceledException"/>, never as a <see cref="ProviderError"/>.</param>
     /// <returns>One page of changes, or the reason it failed. The last page carries the new <see cref="ProviderDeltaPage.DeltaToken"/>. <see cref="InvalidDeltaToken"/> means the token is spent: do not retry, list the root again. The same call can be repeated after other failures.</returns>
-    Task<Result<ProviderDeltaPage, ProviderError>> GetDeltasAsync(RemoteItemId root, DeltaToken token, string? resumeToken, CancellationToken cancellationToken);
+    Task<Result<ProviderDeltaPage, ProviderError>> GetDeltasAsync(string accountIdentifier, RemoteItemId root, DeltaToken token, string? resumeToken, CancellationToken cancellationToken);
 
     /// <summary>Opens the content of one remote file for reading.</summary>
+    /// <param name="accountIdentifier">The account whose drive is used, as <see cref="ProviderAccount.AccountIdentifier"/> reported it. An account that is not signed in is <see cref="AuthenticationFailed"/>; one account's call never carries another account's sign-in.</param>
     /// <param name="itemId">The file to read.</param>
     /// <param name="cancellationToken">Cancelling abandons the call and surfaces as <see cref="OperationCanceledException"/>, never as a <see cref="ProviderError"/>.</param>
     /// <returns>A stream of the content that the caller must dispose, or <see cref="Permanent"/> when the file is missing or forbidden. Nothing is read until the stream is; a failure while reading surfaces as an <see cref="IOException"/> from the stream. The same call can be repeated.</returns>
-    Task<Result<Stream, ProviderError>> DownloadAsync(RemoteItemId itemId, CancellationToken cancellationToken);
+    Task<Result<Stream, ProviderError>> DownloadAsync(string accountIdentifier, RemoteItemId itemId, CancellationToken cancellationToken);
 
     /// <summary>Puts a file's content at a remote path, replacing what is there, and gives the remote copy the request's modified time.</summary>
+    /// <param name="accountIdentifier">The account whose drive is used, as <see cref="ProviderAccount.AccountIdentifier"/> reported it. An account that is not signed in is <see cref="AuthenticationFailed"/>; one account's call never carries another account's sign-in.</param>
     /// <param name="request">What to send and where.</param>
     /// <param name="cancellationToken">Cancelling abandons the upload and surfaces as <see cref="OperationCanceledException"/>, never as a <see cref="ProviderError"/>.</param>
     /// <returns>Success, or the reason the upload failed. Small files go in one request, larger ones in chunks of one upload session. A failed upload leaves the earlier remote content in place; repeating the call starts the upload again from the beginning.</returns>
-    Task<Result<Unit, ProviderError>> UploadAsync(UploadRequest request, CancellationToken cancellationToken);
+    Task<Result<Unit, ProviderError>> UploadAsync(string accountIdentifier, UploadRequest request, CancellationToken cancellationToken);
 
     /// <summary>Renames or moves a remote item to a new path.</summary>
+    /// <param name="accountIdentifier">The account whose drive is used, as <see cref="ProviderAccount.AccountIdentifier"/> reported it. An account that is not signed in is <see cref="AuthenticationFailed"/>; one account's call never carries another account's sign-in.</param>
     /// <param name="itemId">The item to move.</param>
     /// <param name="path">The new path from the drive root. The folder it sits in must exist.</param>
     /// <param name="cancellationToken">Cancelling abandons the call and surfaces as <see cref="OperationCanceledException"/>, never as a <see cref="ProviderError"/>.</param>
     /// <returns>Success, also when the item is already at the path, or the reason the move failed.</returns>
-    Task<Result<Unit, ProviderError>> RenameAsync(RemoteItemId itemId, RelativePath path, CancellationToken cancellationToken);
+    Task<Result<Unit, ProviderError>> RenameAsync(string accountIdentifier, RemoteItemId itemId, RelativePath path, CancellationToken cancellationToken);
 
     /// <summary>Deletes a remote item.</summary>
+    /// <param name="accountIdentifier">The account whose drive is used, as <see cref="ProviderAccount.AccountIdentifier"/> reported it. An account that is not signed in is <see cref="AuthenticationFailed"/>; one account's call never carries another account's sign-in.</param>
     /// <param name="itemId">The item to delete.</param>
     /// <param name="cancellationToken">Cancelling abandons the call and surfaces as <see cref="OperationCanceledException"/>, never as a <see cref="ProviderError"/>.</param>
     /// <returns>Success, also when the item is already gone, so calling twice is safe; or the reason the delete failed.</returns>
-    Task<Result<Unit, ProviderError>> DeleteAsync(RemoteItemId itemId, CancellationToken cancellationToken);
+    Task<Result<Unit, ProviderError>> DeleteAsync(string accountIdentifier, RemoteItemId itemId, CancellationToken cancellationToken);
 
     /// <summary>Reports how much storage the connected drive uses, has left and is allowed.</summary>
+    /// <param name="accountIdentifier">The account whose drive is used, as <see cref="ProviderAccount.AccountIdentifier"/> reported it. An account that is not signed in is <see cref="AuthenticationFailed"/>; one account's call never carries another account's sign-in.</param>
     /// <param name="cancellationToken">Cancelling abandons the call and surfaces as <see cref="OperationCanceledException"/>, never as a <see cref="ProviderError"/>.</param>
     /// <returns>The drive facts, or the reason they could not be read. <see cref="ProviderDriveInfo.ItemCountEstimate"/> is none when the provider has no such figure. The same call can be repeated.</returns>
-    Task<Result<ProviderDriveInfo, ProviderError>> GetDriveInfoAsync(CancellationToken cancellationToken);
+    Task<Result<ProviderDriveInfo, ProviderError>> GetDriveInfoAsync(string accountIdentifier, CancellationToken cancellationToken);
 }

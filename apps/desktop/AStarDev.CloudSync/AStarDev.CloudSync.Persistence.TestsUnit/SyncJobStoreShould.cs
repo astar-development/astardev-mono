@@ -33,7 +33,7 @@ public sealed class SyncJobStoreShould
     }
 
     [Fact]
-    public async Task refuse_a_second_job()
+    public async Task refuse_a_second_job_for_the_same_account()
     {
         await using var host = await PersistenceTestHost.CreateInitialisedAsync(Token);
         var first = await AddAccountAndJobAsync(host, BootstrapMode.Merge);
@@ -42,6 +42,21 @@ public sealed class SyncJobStoreShould
         var result = await host.Services.GetRequiredService<ISyncJobStore>().AddAsync(second, Token);
 
         result.Value.ShouldBeOfType<Fail<StoreError>>().Error.Value.ShouldBe(new SyncJobAlreadyExists(first.Id));
+    }
+
+    [Fact]
+    public async Task keep_one_job_per_account_for_two_accounts()
+    {
+        await using var host = await PersistenceTestHost.CreateInitialisedAsync(Token);
+        var first = await AddAccountAndJobAsync(host, BootstrapMode.Merge);
+        var otherAccount = new Account(new AccountId(Guid.NewGuid()), "OneDrive", "bob@example.com", "acct-2", DateTimeOffset.UnixEpoch);
+        (await host.Services.GetRequiredService<IAccountStore>().AddAsync(otherAccount, Token)).Value.ShouldBeOfType<Ok<Unit>>();
+        var second = NewJob(otherAccount.Id, BootstrapMode.Merge);
+
+        var result = await host.Services.GetRequiredService<ISyncJobStore>().AddAsync(second, Token);
+
+        result.Value.ShouldBeOfType<Ok<Unit>>();
+        (await host.Services.GetRequiredService<ISyncJobStore>().ListAsync(Token)).Value.ShouldBeOfType<Ok<IReadOnlyList<SyncJob>>>().Value.ShouldBe([first, second]);
     }
 
     [Fact]

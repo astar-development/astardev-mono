@@ -12,7 +12,7 @@ public sealed class OneDriveConnectorShould
     public async Task connect_and_persist_the_refreshed_cache()
     {
         var store = new FakeStore();
-        var connector = new OneDriveConnector(store, new AccessTokenHolder(), new FakeSignIn(() => new SignInOutcome(Account, [9], "token")));
+        var connector = new OneDriveConnector(store, TestAccounts.Create(), new FakeSignIn(() => new SignInOutcome(Account, [9], "token")));
 
         var result = await connector.ConnectAsync(TestContext.Current.CancellationToken);
 
@@ -23,23 +23,23 @@ public sealed class OneDriveConnectorShould
     [Fact]
     public async Task keep_the_access_token_for_later_requests_only_after_the_cache_is_saved()
     {
-        var holder = new AccessTokenHolder();
-        var connector = new OneDriveConnector(new FakeStore(), holder, new FakeSignIn(() => new SignInOutcome(Account, [9], "token")));
+        var accounts = TestAccounts.Create();
+        var connector = new OneDriveConnector(new FakeStore(), accounts, new FakeSignIn(() => new SignInOutcome(Account, [9], "token")));
 
         await connector.ConnectAsync(TestContext.Current.CancellationToken);
 
-        holder.Current.ShouldBe("token");
+        accounts.For("id").Holder.Current.ShouldBe("token");
     }
 
     [Fact]
     public async Task keep_no_access_token_when_sign_in_fails()
     {
-        var holder = new AccessTokenHolder();
-        var connector = new OneDriveConnector(new FakeStore(), holder, new FakeSignIn(() => throw new MsalServiceException("x", "denied")));
+        var accounts = TestAccounts.Create();
+        var connector = new OneDriveConnector(new FakeStore(), accounts, new FakeSignIn(() => throw new MsalServiceException("x", "denied")));
 
         await connector.ConnectAsync(TestContext.Current.CancellationToken);
 
-        holder.Current.ShouldBeNull();
+        accounts.For("id").Holder.Current.ShouldBeNull();
     }
 
     [Fact]
@@ -47,7 +47,7 @@ public sealed class OneDriveConnectorShould
     {
         var failure = new Fail<ProviderError>(new AuthenticationFailed("no keyring"));
         var signIn = new FakeSignIn(() => new SignInOutcome(Account, [], "token"));
-        var connector = new OneDriveConnector(new FakeStore { LoadResult = failure }, new AccessTokenHolder(), signIn);
+        var connector = new OneDriveConnector(new FakeStore { LoadResult = failure }, TestAccounts.Create(), signIn);
 
         var result = await connector.ConnectAsync(TestContext.Current.CancellationToken);
 
@@ -58,7 +58,7 @@ public sealed class OneDriveConnectorShould
     [Fact]
     public async Task map_a_msal_failure_to_authentication_failed()
     {
-        var connector = new OneDriveConnector(new FakeStore(), new AccessTokenHolder(), new FakeSignIn(() => throw new MsalServiceException("x", "denied")));
+        var connector = new OneDriveConnector(new FakeStore(), TestAccounts.Create(), new FakeSignIn(() => throw new MsalServiceException("x", "denied")));
 
         var result = await connector.ConnectAsync(TestContext.Current.CancellationToken);
 
@@ -68,7 +68,7 @@ public sealed class OneDriveConnectorShould
     [Fact]
     public async Task honour_cancellation()
     {
-        var connector = new OneDriveConnector(new FakeStore(), new AccessTokenHolder(), new FakeSignIn(() => new SignInOutcome(Account, [], "token")));
+        var connector = new OneDriveConnector(new FakeStore(), TestAccounts.Create(), new FakeSignIn(() => new SignInOutcome(Account, [], "token")));
         using var cancelled = new CancellationTokenSource();
         await cancelled.CancelAsync();
 

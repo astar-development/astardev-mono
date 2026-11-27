@@ -10,7 +10,7 @@ public static class OneDriveServiceCollectionExtensions
 
     /// <summary>
     /// Registers <see cref="ICloudProvider"/> backed by OneDrive, with its settings from the <c>OneDrive</c> configuration section, the Secret Service token cache,
-    /// and a Graph client that sends the access token of the latest sign-in. Nothing contacts Microsoft until <see cref="ICloudProvider.ConnectAsync"/> runs.
+    /// and Graph clients per account, each sending only its own account's access token. Nothing contacts Microsoft until <see cref="ICloudProvider.ConnectAsync"/> runs.
     /// </summary>
     /// <param name="services">The collection to add the provider to.</param>
     /// <returns>The same collection, for chaining.</returns>
@@ -24,14 +24,15 @@ public static class OneDriveServiceCollectionExtensions
     {
         services.AddOptions<OneDriveSettings>().BindConfiguration(OneDriveSettings.ConfigurationSection);
         services.AddSingleton<OneDriveTelemetry>();
-        services.AddSingleton<AccessTokenHolder>();
         services.AddSingleton<ITokenCacheStore>(_ => new SecretToolTokenCacheStore());
-        services.AddSingleton(provider => new RootEnumerator(CreateGraphClient(provider.GetRequiredService<AccessTokenHolder>()), provider.GetRequiredService<OneDriveTelemetry>()));
-        services.AddSingleton(provider => new ItemTransfer(CreateGraphClient(provider.GetRequiredService<AccessTokenHolder>()), new HttpClient(new SocketsHttpHandler()) { Timeout = Timeout.InfiniteTimeSpan }, ItemTransfer.DefaultChunkSize, provider.GetRequiredService<OneDriveTelemetry>().Provider));
+        services.AddSingleton(provider => CreateAccounts(provider.GetRequiredService<OneDriveTelemetry>()));
         services.AddSingleton<ICloudProvider, OneDriveProvider>();
 
         return services;
     }
+
+    private static OneDriveAccounts CreateAccounts(OneDriveTelemetry telemetry)
+        => new(holder => new AccountClients(holder, new RootEnumerator(CreateGraphClient(holder), telemetry), new ItemTransfer(CreateGraphClient(holder), new HttpClient(new SocketsHttpHandler()) { Timeout = Timeout.InfiniteTimeSpan }, ItemTransfer.DefaultChunkSize, telemetry.Provider)));
 
     private static HttpClient CreateGraphClient(AccessTokenHolder holder)
         => new(new BearerTokenHandler(holder) { InnerHandler = new SocketsHttpHandler() }) { BaseAddress = new Uri(GraphBaseAddress) };

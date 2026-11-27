@@ -28,6 +28,18 @@ public sealed class DashboardSnapshotQueryShould
     }
 
     [Fact]
+    public async Task list_every_account_as_a_provider_even_when_they_share_a_provider_type()
+    {
+        var (host, _) = await HostWithJobAsync();
+        await using var _ = host;
+        await host.AddAccountAsync("second", AccountStatus.ReauthenticationRequired, Token);
+
+        var dashboard = await SnapshotAsync(host);
+
+        dashboard.Providers.ShouldBe([new DashboardProviderView("id@example.com", ProviderHealthState.Healthy), new DashboardProviderView("second@example.com", ProviderHealthState.Degraded)]);
+    }
+
+    [Fact]
     public async Task report_counts_from_the_stores()
     {
         var (host, job) = await HostWithJobAsync();
@@ -43,7 +55,7 @@ public sealed class DashboardSnapshotQueryShould
         dashboard.Running.ShouldBe(1);
         dashboard.Errors.ShouldBe(1);
         dashboard.Conflicts.ShouldBe(0);
-        dashboard.Providers.ShouldBe([new DashboardProviderView("OneDrive", ProviderHealthState.Healthy)]);
+        dashboard.Providers.ShouldBe([new DashboardProviderView("id@example.com", ProviderHealthState.Healthy)]);
         dashboard.Stage.ShouldBe(DashboardStage.ExecuteQueue);
     }
 

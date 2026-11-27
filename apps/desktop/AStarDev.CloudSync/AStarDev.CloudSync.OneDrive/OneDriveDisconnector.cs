@@ -3,22 +3,40 @@ using AStarDev.FunctionalParadigm;
 
 namespace AStarDev.CloudSync.OneDrive;
 
-/// <summary>Forgets the stored OneDrive sign-in: the Secret Service entry and the access token held in memory.</summary>
-internal sealed class OneDriveDisconnector(ITokenCacheStore store, AccessTokenHolder holder)
+/// <summary>Signs one OneDrive account out and leaves the other accounts signed in.</summary>
+internal sealed class OneDriveDisconnector(ITokenCacheStore store, OneDriveAccounts accounts, ISignOut signOut)
 {
-    /// <summary>Removes the stored token cache and drops the held token.</summary>
-    /// <returns>Success when nothing remains stored, also when nothing was; or the keyring failure, in which case the held token is kept.</returns>
-    public async Task<Result<Unit, ProviderError>> DisconnectAsync(CancellationToken cancellationToken)
-        => await store.ClearAsync(cancellationToken).ConfigureAwait(false) switch
+    /// <summary>Removes the account from the stored cache, clears the whole cache when no account remains, and forgets the account's access token.</summary>
+    /// <returns>Success, also when the account was not stored, or a <see cref="ProviderError"/>. The token is kept after a failure.</returns>
+    public async Task<Result<Unit, ProviderError>> DisconnectAsync(string accountIdentifier, CancellationToken cancellationToken)
+        => await store.LoadAsync(cancellationToken).ConfigureAwait(false) switch
         {
-            Ok<Unit> ok => Forget(ok),
+            Ok<byte[]> ok => await RemoveAsync(ok.Value, accountIdentifier, cancellationToken).ConfigureAwait(false),
             Fail<ProviderError> fail => fail
         };
 
-    private Ok<Unit> Forget(Ok<Unit> cleared)
+    private async Task<Result<Unit, ProviderError>> RemoveAsync(byte[] cache, string accountIdentifier, CancellationToken cancellationToken)
     {
-        holder.Clear();
+        var outcome = await Try.RunAsync(token => signOut.RemoveAsync(cache, accountIdentifier, token), cancellationToken).ConfigureAwait(false);
 
-        return cleared;
+        return outcome.ToResult(AuthenticationErrors.From) switch
+        {
+            Ok<RemainingCache> ok => await KeepAsync(ok.Value, accountIdentifier, cancellationToken).ConfigureAwait(false),
+            Fail<ProviderError> fail => fail
+        };
+    }
+
+    private async Task<Result<Unit, ProviderError>> KeepAsync(RemainingCache remaining, string accountIdentifier, CancellationToken cancellationToken)
+        => await (remaining.HasAccounts ? store.SaveAsync(remaining.Cache, cancellationToken) : store.ClearAsync(cancellationToken)).ConfigureAwait(false) switch
+        {
+            Ok<Unit> ok => Forget(ok, accountIdentifier),
+            Fail<ProviderError> fail => fail
+        };
+
+    private Ok<Unit> Forget(Ok<Unit> saved, string accountIdentifier)
+    {
+        accounts.Clear(accountIdentifier);
+
+        return saved;
     }
 }

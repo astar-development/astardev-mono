@@ -10,6 +10,8 @@ namespace AStarDev.CloudSync.OneDrive.TestsUnit;
 
 public sealed class LoggingShould
 {
+    private const string AccountId = "id";
+
     private const string SecretToken = "eyJ0b2tlbi1zZWNyZXQtMTIzNDU2";
 
     private static CancellationToken Token => TestContext.Current.CancellationToken;
@@ -18,9 +20,9 @@ public sealed class LoggingShould
     public async Task log_rate_limit_as_a_warning()
     {
         var logs = new CapturingLoggerProvider();
-        using var provider = Create(logs, status: HttpStatusCode.TooManyRequests, retryAfter: TimeSpan.FromSeconds(7), holder: new AccessTokenHolder());
+        using var provider = Create(logs, status: HttpStatusCode.TooManyRequests, retryAfter: TimeSpan.FromSeconds(7), token: null);
 
-        var result = await provider.Value.GetSnapshotAsync(new RemoteItemId("root-1"), null, Token);
+        var result = await provider.Value.GetSnapshotAsync(AccountId, new RemoteItemId("root-1"), null, Token);
 
         result.Value.ShouldBeOfType<Fail<ProviderError>>().Error.Value.ShouldBeOfType<RateLimited>();
         var entry = logs.Entries.ShouldHaveSingleItem();
@@ -34,9 +36,9 @@ public sealed class LoggingShould
     public async Task log_an_expired_authentication_as_an_error_with_the_account_id()
     {
         var logs = new CapturingLoggerProvider();
-        using var provider = Create(logs, status: HttpStatusCode.Unauthorized, retryAfter: null, holder: new AccessTokenHolder());
+        using var provider = Create(logs, status: HttpStatusCode.Unauthorized, retryAfter: null, token: null);
 
-        await provider.Value.ListChildrenAsync(new RemoteItemId("folder-1"), Token);
+        await provider.Value.ListChildrenAsync(AccountId, new RemoteItemId("folder-1"), Token);
 
         var entry = logs.Entries.ShouldHaveSingleItem();
         entry.Level.ShouldBe(LogLevel.Error);
@@ -48,12 +50,10 @@ public sealed class LoggingShould
     public async Task not_log_tokens()
     {
         var logs = new CapturingLoggerProvider();
-        var holder = new AccessTokenHolder();
-        holder.Set(SecretToken);
-        using var provider = Create(logs, status: HttpStatusCode.Unauthorized, retryAfter: null, holder: holder);
+        using var provider = Create(logs, status: HttpStatusCode.Unauthorized, retryAfter: null, token: SecretToken);
 
-        await provider.Value.GetSnapshotAsync(new RemoteItemId("root-1"), null, Token);
-        await provider.Value.GetDeltasAsync(new RemoteItemId("root-1"), new DeltaToken("delta-link-secret"), null, Token);
+        await provider.Value.GetSnapshotAsync(AccountId, new RemoteItemId("root-1"), null, Token);
+        await provider.Value.GetDeltasAsync(AccountId, new RemoteItemId("root-1"), new DeltaToken("delta-link-secret"), null, Token);
 
         logs.Entries.ShouldNotBeEmpty();
         foreach (var entry in logs.Entries)
@@ -67,14 +67,14 @@ public sealed class LoggingShould
     public async Task honour_cancellation_when_observing_a_provider_call()
     {
         var logs = new CapturingLoggerProvider();
-        using var provider = Create(logs, status: HttpStatusCode.OK, retryAfter: null, holder: new AccessTokenHolder());
+        using var provider = Create(logs, status: HttpStatusCode.OK, retryAfter: null, token: null);
         using var cancelled = new CancellationTokenSource();
         await cancelled.CancelAsync();
 
-        await Should.ThrowAsync<OperationCanceledException>(() => provider.Value.ListChildrenAsync(new RemoteItemId("folder-1"), cancelled.Token));
+        await Should.ThrowAsync<OperationCanceledException>(() => provider.Value.ListChildrenAsync(AccountId, new RemoteItemId("folder-1"), cancelled.Token));
     }
 
-    private static Owned Create(CapturingLoggerProvider logs, HttpStatusCode status, TimeSpan? retryAfter, AccessTokenHolder holder)
+    private static Owned Create(CapturingLoggerProvider logs, HttpStatusCode status, TimeSpan? retryAfter, string? token)
     {
         var telemetry = new OneDriveTelemetry();
         var handler = new FakeGraphHandler(_ =>
@@ -84,18 +84,26 @@ public sealed class LoggingShould
 
             return response;
         });
-        var client = new HttpClient(new BearerTokenHandler(holder) { InnerHandler = handler }) { BaseAddress = new Uri("https://graph.test/v1.0/") };
-        var factory = LoggerFactory.Create(builder => builder.SetMinimumLevel(LogLevel.Trace).AddProvider(logs));
-        var provider = new OneDriveProvider(Options.Create(new OneDriveSettings()), new FakeTokenCacheStore(), holder, new RootEnumerator(client, telemetry), new ItemTransfer(client, client), factory.CreateLogger<OneDriveProvider>());
+        var clients = new List<HttpClient>();
+        var accounts = new OneDriveAccounts(holder =>
+        {
+            var client = new HttpClient(new BearerTokenHandler(holder) { InnerHandler = handler }) { BaseAddress = new Uri("https://graph.test/v1.0/") };
+            clients.Add(client);
 
-        return new Owned(provider, telemetry, client, factory);
+            return new AccountClients(holder, new RootEnumerator(client, telemetry), new ItemTransfer(client, client));
+        });
+        if (token is not null) accounts.Set(AccountId, token);
+        var factory = LoggerFactory.Create(builder => builder.SetMinimumLevel(LogLevel.Trace).AddProvider(logs));
+        var provider = new OneDriveProvider(Options.Create(new OneDriveSettings()), new FakeTokenCacheStore(), accounts, factory.CreateLogger<OneDriveProvider>());
+
+        return new Owned(provider, telemetry, clients, factory);
     }
 
-    private sealed record Owned(OneDriveProvider Value, OneDriveTelemetry Telemetry, HttpClient Client, ILoggerFactory Factory) : IDisposable
+    private sealed record Owned(OneDriveProvider Value, OneDriveTelemetry Telemetry, IReadOnlyList<HttpClient> Clients, ILoggerFactory Factory) : IDisposable
     {
         public void Dispose()
         {
-            Client.Dispose();
+            foreach (var client in Clients) client.Dispose();
             Telemetry.Dispose();
             Factory.Dispose();
         }

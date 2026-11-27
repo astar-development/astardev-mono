@@ -4,7 +4,7 @@ using AStarDev.FunctionalParadigm;
 namespace AStarDev.CloudSync.OneDrive;
 
 /// <summary>Signs a stored OneDrive account in again from the token cache, with no browser.</summary>
-internal sealed class OneDriveReconnector(ITokenCacheStore store, AccessTokenHolder holder, ISilentSignIn signIn)
+internal sealed class OneDriveReconnector(ITokenCacheStore store, OneDriveAccounts accounts, ISilentSignIn signIn)
 {
     /// <summary>Loads the stored cache, acquires a token silently and saves the cache MSAL refreshed.</summary>
     /// <returns>The account, or a <see cref="ProviderError"/>. Nothing is saved and no token is kept after a failure.</returns>
@@ -35,7 +35,7 @@ internal sealed class OneDriveReconnector(ITokenCacheStore store, AccessTokenHol
 
     private Ok<ProviderAccount> Authorised(SignInOutcome outcome)
     {
-        holder.Set(outcome.AccessToken);
+        accounts.Set(outcome.Account.AccountIdentifier, outcome.AccessToken);
 
         return new Ok<ProviderAccount>(outcome.Account);
     }

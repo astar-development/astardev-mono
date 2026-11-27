@@ -11,7 +11,7 @@ namespace AStarDev.CloudSync.SyncEngine;
 /// Lists every selected scope of a job through <see cref="ICloudProvider"/> and stores the items page by page, with a checkpoint saved in the same write as each page.
 /// A restart therefore continues from the last stored page instead of starting again, and no more than one page is ever held in memory.
 /// </summary>
-internal sealed class InitialCrawler(ICloudProvider provider, IItemIndexStore index, ISyncScopeStore scopes, ICrawlProgressSink progress, TimeProvider timeProvider, ILogger<InitialCrawler> logger)
+internal sealed class InitialCrawler(ICloudProvider provider, IJobAccounts accounts, IItemIndexStore index, ISyncScopeStore scopes, ICrawlProgressSink progress, TimeProvider timeProvider, ILogger<InitialCrawler> logger)
 {
     /// <summary>Crawls each scope of the job in order. A scope that fails keeps its checkpoint and the others still run; a scope that already completed is skipped.</summary>
     /// <param name="syncJobId">The job whose scopes to crawl.</param>
@@ -61,12 +61,19 @@ internal sealed class InitialCrawler(ICloudProvider provider, IItemIndexStore in
     }
 
     private async Task<bool> CrawlPagesAsync(SyncScope scope, CrawlCheckpoint start, CrawlProgressThrottle throttle, CancellationToken cancellationToken)
+        => await accounts.AccountIdentifierAsync(scope.SyncJobId, cancellationToken) switch
+        {
+            Ok<string> account => await CrawlAccountPagesAsync(account.Value, scope, start, throttle, cancellationToken),
+            Fail<StoreError> fail => Failed(scope, fail.Error.ToString()!, ErrorInfo.CodeOf(fail.Error.Value))
+        };
+
+    private async Task<bool> CrawlAccountPagesAsync(string account, SyncScope scope, CrawlCheckpoint start, CrawlProgressThrottle throttle, CancellationToken cancellationToken)
     {
         var current = start;
 
         while (!current.Completed)
         {
-            if (await CrawlPageAsync(scope, current, throttle, cancellationToken) is not Ok<CrawlCheckpoint> next) return false;
+            if (await CrawlPageAsync(account, scope, current, throttle, cancellationToken) is not Ok<CrawlCheckpoint> next) return false;
 
             current = next.Value;
         }
@@ -74,10 +81,10 @@ internal sealed class InitialCrawler(ICloudProvider provider, IItemIndexStore in
         return true;
     }
 
-    private async Task<Result<CrawlCheckpoint, CrawlFailure>> CrawlPageAsync(SyncScope scope, CrawlCheckpoint current, CrawlProgressThrottle throttle, CancellationToken cancellationToken)
+    private async Task<Result<CrawlCheckpoint, CrawlFailure>> CrawlPageAsync(string account, SyncScope scope, CrawlCheckpoint current, CrawlProgressThrottle throttle, CancellationToken cancellationToken)
     {
         using var span = SyncEngineTelemetry.StartPage();
-        Result<CrawlCheckpoint, CrawlFailure> stored = await FetchPageAsync(scope, current, cancellationToken) switch
+        Result<CrawlCheckpoint, CrawlFailure> stored = await FetchPageAsync(account, scope, current, cancellationToken) switch
         {
             Ok<ProviderSnapshotPage> ok => await StorePageAsync(scope, current, ok.Value, throttle, cancellationToken),
             Fail<ProviderError> fail => new Fail<CrawlFailure>(new CrawlFailure(fail.Error.Value.ToString()!, ErrorInfo.CodeOf(fail.Error.Value)))
@@ -103,13 +110,13 @@ internal sealed class InitialCrawler(ICloudProvider provider, IItemIndexStore in
 
     private static CrawlProgress Measured(SyncScope scope, CrawlCheckpoint checkpoint, long? total) => new(scope.SyncJobId, scope.RemoteRootId, checkpoint.ItemsIndexed, checkpoint.Completed, total);
 
-    private async Task<Result<ProviderSnapshotPage, ProviderError>> FetchPageAsync(SyncScope scope, CrawlCheckpoint current, CancellationToken cancellationToken)
+    private async Task<Result<ProviderSnapshotPage, ProviderError>> FetchPageAsync(string account, SyncScope scope, CrawlCheckpoint current, CancellationToken cancellationToken)
     {
         var root = scope.RemoteRootId;
 
         for (var attempt = 1; ; attempt++)
         {
-            var page = await provider.GetSnapshotAsync(root, current.ResumeToken, cancellationToken);
+            var page = await provider.GetSnapshotAsync(account, root, current.ResumeToken, cancellationToken);
             if (page is not Fail<ProviderError> fail || attempt == ApplicationConstants.MaxPageAttempts || RetryDelay(fail.Error, attempt) is not { } delay) return page;
 
             EngineLog.ListingRetrying(logger, root.Value, delay, attempt, fail.Error.Value, ErrorInfo.CodeOf(fail.Error.Value));

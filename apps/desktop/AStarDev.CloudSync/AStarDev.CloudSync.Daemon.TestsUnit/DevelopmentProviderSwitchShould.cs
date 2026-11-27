@@ -46,7 +46,7 @@ public sealed class DevelopmentProviderSwitchShould
         await using var host = DaemonTestHost.Create(configuration: new Dictionary<string, string?> { ["CloudSync:Provider"] = "Fake", ["CloudSync:FakeTreeSize"] = "25" });
 
         var provider = host.Services.GetRequiredService<ICloudProvider>();
-        var page = (await provider.GetSnapshotAsync(new RemoteItemId("root"), null, Token)).Value.ShouldBeOfType<Ok<ProviderSnapshotPage>>().Value;
+        var page = (await provider.GetSnapshotAsync("account", new RemoteItemId("root"), null, Token)).Value.ShouldBeOfType<Ok<ProviderSnapshotPage>>().Value;
 
         provider.GetType().FullName.ShouldBe("AStarDev.CloudSync.FakeProvider.FakeCloudProvider");
         page.TotalItems.ShouldBe(25);
@@ -57,7 +57,7 @@ public sealed class DevelopmentProviderSwitchShould
     {
         await using var host = DaemonTestHost.Create(configuration: new Dictionary<string, string?> { ["CloudSync:Provider"] = "Fake", ["CloudSync:FakeTreeSize"] = "5" });
 
-        var download = await host.Services.GetRequiredService<ICloudProvider>().DownloadAsync(new RemoteItemId("item-1"), Token);
+        var download = await host.Services.GetRequiredService<ICloudProvider>().DownloadAsync("account", new RemoteItemId("item-1"), Token);
 
         download.Value.ShouldBeOfType<Ok<Stream>>();
     }
