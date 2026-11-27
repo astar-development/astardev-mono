@@ -14,5 +14,12 @@ internal sealed class FakeNotificationService : INotificationService
     {
     }
 
-    public Result<Unit, NavigationError> Open(Notification notification) => new Ok<Unit>(default);
+    public List<Notification> Opened { get; } = [];
+
+    public Result<Unit, NavigationError> Open(Notification notification)
+    {
+        Opened.Add(notification);
+
+        return new Ok<Unit>(default);
+    }
 }
