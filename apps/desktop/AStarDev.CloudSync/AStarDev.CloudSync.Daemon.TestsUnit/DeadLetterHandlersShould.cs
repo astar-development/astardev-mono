@@ -13,6 +13,26 @@ public sealed class DeadLetterHandlersShould
     private static CancellationToken Token => TestContext.Current.CancellationToken;
 
     [Fact]
+    public async Task list_one_page_of_the_dead_letters_with_how_many_there_are()
+    {
+        await using var host = DaemonTestHost.CreateWith(new StubCloudProvider());
+        var first = await SeedDeadLetterAsync(host);
+        var store = host.Services.GetRequiredService<IOperationStore>();
+        var others = new[] { await SeedPendingAsync(host, first.SyncJobId), await SeedPendingAsync(host, first.SyncJobId) };
+        (await store.ClaimNextAsync(Start.AddHours(1), 2, Token)).Value.ShouldBeOfType<Ok<IReadOnlyList<Operation>>>().Value.Count.ShouldBe(2);
+        foreach (var other in others)
+            (await store.FailAsync(other.Id, "access denied", null, Token)).Value.ShouldBeOfType<Ok<Unit>>();
+        var query = host.Services.GetRequiredService<DeadLettersQuery>();
+
+        var pages = new List<DeadLettersView>();
+        foreach (var skip in new[] { 0, 1, 2 })
+            pages.Add((await query.HandleAsync(new GetDeadLetters(skip, 1), Token)).Value.ShouldBeOfType<Ok<DeadLettersView>>().Value);
+
+        pages.Select(page => (page.Total, page.DeadLetters.Count)).ShouldBe([(3, 1), (3, 1), (3, 1)]);
+        pages.Select(page => page.DeadLetters[0].OperationId).ShouldBe([first.Id.Value, .. others.Select(other => other.Id.Value)], ignoreOrder: true);
+    }
+
+    [Fact]
     public async Task list_the_dead_lettered_operations_only()
     {
         await using var host = DaemonTestHost.CreateWith(new StubCloudProvider());

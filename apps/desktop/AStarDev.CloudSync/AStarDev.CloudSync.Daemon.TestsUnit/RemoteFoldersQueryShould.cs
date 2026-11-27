@@ -32,9 +32,9 @@ public sealed class RemoteFoldersQueryShould
     }
 
     [Fact]
-    public async Task list_only_the_first_folders_so_the_answer_fits_an_ipc_frame()
+    public async Task list_at_most_one_page_of_folders_with_the_total_so_the_answer_fits_an_ipc_frame()
     {
-        var folders = Enumerable.Range(0, ApplicationConstants.RemoteFolderListLimit + 5).Select(index => (ProviderItem)StubCloudProvider.Folder($"f{index}", $"Docs/d{index:D5}")).ToList();
+        var folders = Enumerable.Range(0, ApplicationConstants.ListLimit + 5).Select(index => (ProviderItem)StubCloudProvider.Folder($"f{index}", $"Docs/d{index:D5}")).ToList();
         var provider = new StubCloudProvider { ChildrenResult = new Ok<IReadOnlyList<ProviderItem>>(folders) };
         await using var host = DaemonTestHost.CreateWith(provider);
         var account = await host.AddAccountAsync("id", AccountStatus.Connected, Token);
@@ -42,10 +42,13 @@ public sealed class RemoteFoldersQueryShould
         await host.StartAsync(Token);
         (await client.ConnectAsync(Token)).Value.ShouldBeOfType<Ok<Unit>>();
 
-        var result = await client.QueryAsync(new GetRemoteFolders(account.Id.Value), Token);
+        var first = await client.QueryAsync(new GetRemoteFolders(account.Id.Value, Take: 10_000), Token);
+        var rest = await client.QueryAsync(new GetRemoteFolders(account.Id.Value, Skip: ApplicationConstants.ListLimit), Token);
         await host.StopAsync(Token);
 
-        result.Value.ShouldBeOfType<Ok<RemoteFoldersView>>().Value.Folders.Count.ShouldBe(ApplicationConstants.RemoteFolderListLimit);
+        var page = first.Value.ShouldBeOfType<Ok<RemoteFoldersView>>().Value;
+        (page.Total, page.Folders.Count).ShouldBe((ApplicationConstants.ListLimit + 5, ApplicationConstants.ListLimit));
+        rest.Value.ShouldBeOfType<Ok<RemoteFoldersView>>().Value.Folders.Select(folder => folder.Name).ShouldBe(["d00500", "d00501", "d00502", "d00503", "d00504"]);
     }
 
     [Fact]

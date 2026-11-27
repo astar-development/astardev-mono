@@ -10,6 +10,8 @@ internal sealed class FakeConflictStore(Result<int, StoreError> count) : IConfli
 
     public Task<Result<IReadOnlyList<Conflict>, StoreError>> ListOpenAsync(SyncJobId jobId, CancellationToken cancellationToken) => throw new NotSupportedException();
 
+    public Task<Result<Page<Conflict>, StoreError>> PageOpenAsync(SyncJobId jobId, int skip, int take, CancellationToken cancellationToken) => throw new NotSupportedException();
+
     public Task<Result<Conflict, StoreError>> GetAsync(ConflictId id, CancellationToken cancellationToken) => throw new NotSupportedException();
 
     public Task<Result<Unit, StoreError>> UpdateStatusAsync(ConflictId id, ConflictStatus status, CancellationToken cancellationToken) => throw new NotSupportedException();

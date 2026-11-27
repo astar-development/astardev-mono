@@ -63,8 +63,6 @@ internal static class ApplicationConstants
 
     public static int ListLimit => 500;
 
-    public static int RemoteFolderListLimit => 2000;
-
     public static int LogMessageLimit => 2000;
 
     public static TimeSpan StopReplyGrace => TimeSpan.FromMilliseconds(200);

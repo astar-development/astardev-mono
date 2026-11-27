@@ -13,7 +13,8 @@
             <TreeDataTemplate x:DataType="vm:FolderNodeViewModel" ItemsSource="{Binding Children}">
                 <StackPanel Orientation="Horizontal" Spacing="4">
                     <CheckBox IsChecked="{Binding IsSelected, Mode=TwoWay}" IsVisible="{Binding CanSelect}" MinWidth="0" Padding="0" />
-                    <TextBlock Text="{Binding Text}" VerticalAlignment="Center" />
+                    <TextBlock Text="{Binding Text}" IsVisible="{Binding !IsMore}" VerticalAlignment="Center" />
+                    <Button Content="{Binding Text}" Command="{Binding LoadMoreCommand}" IsVisible="{Binding IsMore}" />
                 </StackPanel>
             </TreeDataTemplate>
         </TreeView.ItemTemplate>

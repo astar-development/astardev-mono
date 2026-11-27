@@ -107,7 +107,7 @@ public sealed class ConnectionViewModelShould
     public async Task load_the_dead_letters_on_connect()
     {
         var dead = new DeadLetterView(Guid.NewGuid(), Guid.NewGuid(), "UploadFile", 5, "access denied", DateTimeOffset.UnixEpoch);
-        var client = new FakeIpcClient([], available: true) { DeadLettersReply = new Ok<DeadLettersView>(new DeadLettersView([dead])) };
+        var client = new FakeIpcClient([], available: true) { DeadLettersReply = new Ok<DeadLettersView>(new DeadLettersView(1, [dead])) };
         var viewModel = Create(client);
         using var source = CancellationTokenSource.CreateLinkedTokenSource(Token);
 
@@ -158,6 +158,35 @@ public sealed class ConnectionViewModelShould
     }
 
     [Fact]
+    public async Task count_a_detected_conflict_beyond_the_loaded_pages_without_listing_it_and_not_count_a_resolution_twice()
+    {
+        var job = new SyncJobView(Guid.NewGuid(), Guid.NewGuid(), "A", "/a", SyncBootstrapMode.Merge);
+        var stamp = new DateTimeOffset(2026, 11, 22, 9, 0, 0, TimeSpan.Zero);
+        var loaded = new ConflictView(Guid.NewGuid(), job.Id, Guid.NewGuid(), "ModifyModify", stamp, "Open", "a.txt", null, null);
+        var detected = loaded with { ConflictId = Guid.NewGuid(), Path = "c.txt", DetectedUtc = stamp.AddHours(2) };
+        var client = new FakeIpcClient([], available: true)
+        {
+            JobsReply = new Ok<SyncJobsView>(new SyncJobsView([job])),
+            ConflictsReply = _ => new Ok<ConflictsView>(new ConflictsView(2, [loaded]))
+        };
+        var viewModel = Create(client);
+        using var source = CancellationTokenSource.CreateLinkedTokenSource(Token);
+
+        var run = viewModel.RunAsync(source.Token);
+        await WaitForAsync(() => viewModel.Conflicts.Count == 1);
+        client.Raise(new ConflictDetected(detected));
+        var afterDetected = (viewModel.Conflicts.Count, viewModel.ConflictsTotal);
+        viewModel.ReplaceConflicts(new Dictionary<Guid, ConflictsView> { [job.Id] = new(2, [detected]) });
+        client.Raise(new ConflictResolved(loaded.ConflictId, job.Id, loaded.ItemId, "KeepLocal", stamp.AddHours(3)));
+        await source.CancelAsync();
+        await Should.ThrowAsync<OperationCanceledException>(() => run);
+
+        afterDetected.ShouldBe((1, 3));
+        viewModel.Conflicts.ShouldBe([detected]);
+        viewModel.ConflictsTotal.ShouldBe(2);
+    }
+
+    [Fact]
     public async Task load_the_conflicts_of_every_job_on_connect_oldest_first_and_follow_changes()
     {
         var first = new SyncJobView(Guid.NewGuid(), Guid.NewGuid(), "A", "/a", SyncBootstrapMode.Merge);
@@ -168,7 +197,7 @@ public sealed class ConnectionViewModelShould
         var client = new FakeIpcClient([], available: true)
         {
             JobsReply = new Ok<SyncJobsView>(new SyncJobsView([first, second])),
-            ConflictsReply = query => new Ok<ConflictsView>(new ConflictsView(query.SyncJobId == first.Id ? [newer] : [older]))
+            ConflictsReply = query => new Ok<ConflictsView>(new ConflictsView(1, query.SyncJobId == first.Id ? [newer] : [older]))
         };
         var viewModel = Create(client);
         using var source = CancellationTokenSource.CreateLinkedTokenSource(Token);

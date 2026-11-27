@@ -55,6 +55,24 @@ internal sealed class EventJournalStore(IDbContextFactory<CloudSyncDbContext> co
     }
 
     /// <inheritdoc/>
+    public async Task<Result<Page<JournalEntry>, StoreError>> PageAsync(DateTimeOffset fromUtc, DateTimeOffset toUtc, IReadOnlyList<string> eventTypes, int skip, int take, CancellationToken cancellationToken)
+    {
+        var from = fromUtc.ToUniversalTime();
+        var to = toUtc.ToUniversalTime();
+        var outcome = await Try.RunAsync<Page<JournalEntry>>(async token =>
+        {
+            await using var context = await contextFactory.CreateDbContextAsync(token).ConfigureAwait(false);
+            var matching = context.EventJournal.AsNoTracking().Where(row => row.OccurredUtc >= from && row.OccurredUtc <= to && (eventTypes.Count == 0 || eventTypes.Contains(row.EventType)));
+            var total = await matching.CountAsync(token).ConfigureAwait(false);
+            var rows = await matching.OrderByDescending(row => row.OccurredUtc).ThenByDescending(row => row.Id).Skip(skip).Take(take).ToListAsync(token).ConfigureAwait(false);
+
+            return new Page<JournalEntry>(total, [.. rows.Select(row => row.ToEntry())]);
+        }, cancellationToken).ConfigureAwait(false);
+
+        return outcome.ToResult(ToStorageFailure);
+    }
+
+    /// <inheritdoc/>
     public async Task<Result<int, StoreError>> PruneAsync(DateTimeOffset olderThanUtc, CancellationToken cancellationToken)
     {
         var outcome = await Try.RunAsync<int>(async token =>

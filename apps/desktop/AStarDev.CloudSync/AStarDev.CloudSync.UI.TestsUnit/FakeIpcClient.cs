@@ -15,7 +15,7 @@ internal sealed class FakeIpcClient(List<string> calls, bool available) : IIpcCl
 
     public Result<AccountsView, IpcError> AccountsReply { get; init; } = new Ok<AccountsView>(new AccountsView([]));
 
-    public Func<GetRemoteFolders, Result<RemoteFoldersView, IpcError>> FoldersReply { get; init; } = _ => new Ok<RemoteFoldersView>(new RemoteFoldersView([]));
+    public Func<GetRemoteFolders, Result<RemoteFoldersView, IpcError>> FoldersReply { get; init; } = _ => new Ok<RemoteFoldersView>(new RemoteFoldersView(0, []));
 
     public Result<SyncJobsView, IpcError> JobsReply { get; init; } = new Ok<SyncJobsView>(new SyncJobsView([]));
 
@@ -29,9 +29,9 @@ internal sealed class FakeIpcClient(List<string> calls, bool available) : IIpcCl
 
     public Result<QueueView, IpcError> QueueReply { get; set; } = new Ok<QueueView>(new QueueView(0, 0, 0, 0, []));
 
-    public Result<DeadLettersView, IpcError> DeadLettersReply { get; set; } = new Ok<DeadLettersView>(new DeadLettersView([]));
+    public Result<DeadLettersView, IpcError> DeadLettersReply { get; set; } = new Ok<DeadLettersView>(new DeadLettersView(0, []));
 
-    public Func<GetConflicts, Result<ConflictsView, IpcError>> ConflictsReply { get; set; } = _ => new Ok<ConflictsView>(new ConflictsView([]));
+    public Func<GetConflicts, Result<ConflictsView, IpcError>> ConflictsReply { get; set; } = _ => new Ok<ConflictsView>(new ConflictsView(0, []));
 
     public Func<GetLogs, Result<LogsView, IpcError>> LogsReply { get; set; } = _ => new Ok<LogsView>(new LogsView([]));
 
@@ -53,7 +53,7 @@ internal sealed class FakeIpcClient(List<string> calls, bool available) : IIpcCl
 
     public Result<ProvidersView, IpcError> ProvidersReply { get; set; } = new Ok<ProvidersView>(new ProvidersView([], []));
 
-    public Func<GetAudit, Result<AuditView, IpcError>> AuditReply { get; set; } = _ => new Ok<AuditView>(new AuditView([]));
+    public Func<GetAudit, Result<AuditView, IpcError>> AuditReply { get; set; } = _ => new Ok<AuditView>(new AuditView(0, []));
 
     public Func<IQuery<ExportView>, Result<ExportView, IpcError>> ExportReply { get; set; } = _ => new Ok<ExportView>(new ExportView(""));
 

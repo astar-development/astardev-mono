@@ -1,10 +1,10 @@
-using System.Collections.Specialized;
+using System.ComponentModel;
 using AStarDev.CloudSync.UI.ViewModels;
 
 namespace AStarDev.CloudSync.UI.Tray;
 
 /// <summary>
-/// Keeps the tray in step with <see cref="ConnectionViewModel.Conflicts"/>: the count follows every conflict added or removed, and the icon reads <see cref="TrustLevel.Attention"/> while any wait
+/// Keeps the tray in step with <see cref="ConnectionViewModel.ConflictsTotal"/>: the count follows every conflict detected or resolved, loaded or not, and the icon reads <see cref="TrustLevel.Attention"/> while any wait
 /// and <see cref="TrustLevel.Healthy"/> when none do. Constructing it starts the listening, so resolve it once at startup.
 /// </summary>
 internal sealed class TrayConflictBadge
@@ -19,15 +19,18 @@ internal sealed class TrayConflictBadge
     {
         this.connection = connection;
         this.tray = tray;
-        connection.Conflicts.CollectionChanged += OnConflictsChanged;
+        connection.PropertyChanged += OnConnectionChanged;
         Apply();
     }
 
-    private void OnConflictsChanged(object? sender, NotifyCollectionChangedEventArgs args) => Apply();
+    private void OnConnectionChanged(object? sender, PropertyChangedEventArgs args)
+    {
+        if (args.PropertyName == nameof(ConnectionViewModel.ConflictsTotal)) Apply();
+    }
 
     private void Apply()
     {
-        var count = connection.Conflicts.Count;
+        var count = connection.ConflictsTotal;
         tray.SetIconState(count > 0 ? TrustLevel.Attention : TrustLevel.Healthy);
         tray.SetConflictCount(count);
     }

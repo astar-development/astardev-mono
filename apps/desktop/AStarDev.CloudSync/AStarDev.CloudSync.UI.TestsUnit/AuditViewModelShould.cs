@@ -28,7 +28,7 @@ public sealed class AuditViewModelShould
         var older = new AuditEntryView(Guid.NewGuid(), Now.AddHours(-2), "SyncScopeAdded", Guid.NewGuid(), "{}");
         var newer = new AuditEntryView(Guid.NewGuid(), Now.AddMinutes(-5), "ConflictResolved", Guid.NewGuid(), "{\"choice\":\"KeepLocal\"}");
         GetAudit? asked = null;
-        var client = new FakeIpcClient([], available: true) { AuditReply = query => { asked = query; return new Ok<AuditView>(new AuditView([older, newer])); } };
+        var client = new FakeIpcClient([], available: true) { AuditReply = query => { asked = query; return new Ok<AuditView>(new AuditView(2, [newer, older])); } };
         var (host, screen) = Create(client);
         using var lifetime = host;
 
@@ -58,7 +58,7 @@ public sealed class AuditViewModelShould
     [Fact]
     public async Task keep_the_entries_and_say_why_when_the_daemon_fails()
     {
-        var reachable = new FakeIpcClient([], available: true) { AuditReply = _ => new Ok<AuditView>(new AuditView([new AuditEntryView(Guid.NewGuid(), Now, "SyncScopeAdded", Guid.NewGuid(), "{}")])) };
+        var reachable = new FakeIpcClient([], available: true) { AuditReply = _ => new Ok<AuditView>(new AuditView(1, [new AuditEntryView(Guid.NewGuid(), Now, "SyncScopeAdded", Guid.NewGuid(), "{}")])) };
         var (host, screen) = Create(reachable);
         using var lifetime = host;
         await screen.RefreshAsync(Token);
@@ -79,5 +79,34 @@ public sealed class AuditViewModelShould
         await cancelled.CancelAsync();
 
         await Should.ThrowAsync<OperationCanceledException>(() => screen.RefreshAsync(cancelled.Token));
+    }
+
+    [Fact]
+    public async Task load_older_entries_below_those_shown_until_none_remain()
+    {
+        var entries = Enumerable.Range(0, 3).Select(index => new AuditEntryView(Guid.NewGuid(), Now.AddMinutes(-index), "SyncScopeAdded", Guid.NewGuid(), $"{{\"n\":{index}}}")).ToList();
+        var asked = new List<GetAudit>();
+        var client = new FakeIpcClient([], available: true) { AuditReply = query => { asked.Add(query); return new Ok<AuditView>(new AuditView(3, [.. entries.Skip(query.Skip).Take(2)])); } };
+        var (host, screen) = Create(client);
+        using var lifetime = host;
+        await screen.RefreshAsync(Token);
+        screen.CanLoadMore.ShouldBeTrue();
+
+        await screen.LoadMoreCommand.ExecuteAsync(null);
+
+        asked.Select(query => query.Skip).ShouldBe([0, 2]);
+        screen.Entries.Select(row => row.Message).ShouldBe(["{\"n\":0}", "{\"n\":1}", "{\"n\":2}"]);
+        screen.CanLoadMore.ShouldBeFalse();
+    }
+
+    [Fact]
+    public async Task honour_cancellation_when_loading_more()
+    {
+        var (host, screen) = Create(new FakeIpcClient([], available: true));
+        using var lifetime = host;
+        using var cancelled = new CancellationTokenSource();
+        await cancelled.CancelAsync();
+
+        await Should.ThrowAsync<OperationCanceledException>(() => screen.LoadAsync(false, cancelled.Token));
     }
 }

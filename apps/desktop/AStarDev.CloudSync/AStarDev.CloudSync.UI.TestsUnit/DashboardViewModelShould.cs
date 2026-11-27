@@ -180,13 +180,13 @@ public sealed class DashboardViewModelShould
         dashboard.ConflictsText.ShouldBe("Conflicts : 0");
 
         var conflict = new IPC.ConflictView(Guid.NewGuid(), Guid.NewGuid(), Guid.NewGuid(), "ModifyModify", Moment, "Open", "a.txt", null, null);
-        connection.Conflicts.Add(conflict);
-        connection.Conflicts.Add(conflict with { ConflictId = Guid.NewGuid(), Status = "Deferred" });
+        var deferred = conflict with { ConflictId = Guid.NewGuid(), Status = "Deferred" };
+        connection.ReplaceConflicts(ConflictPages.Of(conflict, deferred));
 
         dashboard.ConflictsText.ShouldBe("Conflicts : 2");
         changed.ShouldContain(nameof(DashboardViewModel.ConflictsText));
 
-        connection.Conflicts.RemoveAt(0);
+        connection.ReplaceConflicts(ConflictPages.Of(deferred));
 
         dashboard.ConflictsText.ShouldBe("Conflicts : 1");
     }

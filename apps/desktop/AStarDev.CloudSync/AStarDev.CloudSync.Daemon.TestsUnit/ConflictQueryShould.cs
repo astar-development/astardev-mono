@@ -44,6 +44,23 @@ public sealed class ConflictQueryShould : IDisposable
     }
 
     [Fact]
+    public async Task list_one_page_of_the_conflicts_oldest_first_with_how_many_the_job_has()
+    {
+        await using var host = DaemonTestHost.CreateWith(new StubCloudProvider());
+        var job = await NewJobAsync(host);
+        var store = host.Services.GetRequiredService<IConflictStore>();
+        var conflicts = Enumerable.Range(0, 3).Select(minutes => new Conflict(new ConflictId(Guid.NewGuid()), job.Id, new ItemId(Guid.NewGuid()), ConflictType.ModifyModify, ConflictStatus.Open, Stamp.AddMinutes(minutes))).ToList();
+        foreach (var conflict in conflicts)
+            await store.AddAsync(conflict, Token);
+
+        var result = await host.Services.GetRequiredService<ConflictsQuery>().HandleAsync(new GetConflicts(job.Id.Value, 1, 1), Token);
+
+        var page = result.Value.ShouldBeOfType<Ok<ConflictsView>>().Value;
+        page.Total.ShouldBe(3);
+        page.Conflicts.ShouldHaveSingleItem().ConflictId.ShouldBe(conflicts[1].Id.Value);
+    }
+
+    [Fact]
     public async Task list_a_deferred_conflict_with_its_status()
     {
         await using var host = DaemonTestHost.CreateWith(new StubCloudProvider());

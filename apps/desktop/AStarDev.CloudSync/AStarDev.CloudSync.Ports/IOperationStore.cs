@@ -39,10 +39,12 @@ public interface IOperationStore
     /// <returns>Success, <see cref="OperationNotRunning"/> when it is missing or not running, or <see cref="StorageFailed"/>.</returns>
     Task<Result<Unit, StoreError>> FailAsync(OperationId id, string error, DateTimeOffset? retryAtUtc, CancellationToken cancellationToken);
 
-    /// <summary>Lists the operations that gave up after their retries and are waiting for a decision.</summary>
+    /// <summary>Reads one page of the operations that gave up after their retries and are waiting for a decision.</summary>
+    /// <param name="skip">How many operations to pass over, in claim order. Zero or more.</param>
+    /// <param name="take">The most operations to return. At least one.</param>
     /// <param name="cancellationToken">Cancelling abandons the read.</param>
-    /// <returns>The <see cref="OperationStatus.DeadLetter"/> operations in claim order (priority, then age); empty when there are none. <see cref="StorageFailed"/> on a database failure.</returns>
-    Task<Result<IReadOnlyList<Operation>, StoreError>> ListDeadLettersAsync(CancellationToken cancellationToken);
+    /// <returns>The page of <see cref="OperationStatus.DeadLetter"/> operations in claim order (priority, then age) with how many there are in all; an empty page with a total of zero when there are none. <see cref="StorageFailed"/> on a database failure.</returns>
+    Task<Result<Page<Operation>, StoreError>> ListDeadLettersAsync(int skip, int take, CancellationToken cancellationToken);
 
     /// <summary>Puts a dead-lettered operation back to <see cref="OperationStatus.Pending"/> with its attempts reset to zero, so it is claimed again. Its last error is kept until the next failure replaces it.</summary>
     /// <param name="id">The operation to requeue.</param>

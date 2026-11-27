@@ -10,26 +10,28 @@ public sealed class AuditQueryShould
     private static CancellationToken Token => TestContext.Current.CancellationToken;
 
     [Fact]
-    public async Task list_recorded_entries()
+    public async Task list_recorded_entries_newest_first()
     {
         await using var host = await SeededHostAsync(("ConflictResolved", -1), ("SyncScopeAdded", -2));
 
         var result = await host.Services.GetRequiredService<AuditQuery>().HandleAsync(Everything([]), Token);
 
-        result.Value.ShouldBeOfType<Ok<AuditView>>().Value.Entries.Select(entry => entry.EventType).ShouldBe(["SyncScopeAdded", "ConflictResolved"]);
+        result.Value.ShouldBeOfType<Ok<AuditView>>().Value.Entries.Select(entry => entry.EventType).ShouldBe(["ConflictResolved", "SyncScopeAdded"]);
     }
 
     [Fact]
-    public async Task list_only_the_newest_entries_oldest_first()
+    public async Task list_at_most_one_page_newest_first_with_the_total_so_the_answer_fits_an_ipc_frame()
     {
         var total = ApplicationConstants.ListLimit + 5;
         await using var host = await SeededHostAsync([.. Enumerable.Range(0, total).Select(index => ("ConflictResolved", -1 - (index % 80)))]);
+        var query = host.Services.GetRequiredService<AuditQuery>();
 
-        var result = await host.Services.GetRequiredService<AuditQuery>().HandleAsync(Everything([]), Token);
+        var first = (await query.HandleAsync(Everything([]) with { Take = 10_000 }, Token)).Value.ShouldBeOfType<Ok<AuditView>>().Value;
+        var rest = (await query.HandleAsync(Everything([]) with { Skip = ApplicationConstants.ListLimit }, Token)).Value.ShouldBeOfType<Ok<AuditView>>().Value;
 
-        var entries = result.Value.ShouldBeOfType<Ok<AuditView>>().Value.Entries;
-        entries.Count.ShouldBe(ApplicationConstants.ListLimit);
-        entries.Select(entry => entry.OccurredUtc).ShouldBeInOrder();
+        (first.Total, first.Entries.Count, rest.Entries.Count).ShouldBe((total, ApplicationConstants.ListLimit, 5));
+        first.Entries.Concat(rest.Entries).Select(entry => entry.OccurredUtc).ShouldBeInOrder(SortDirection.Descending);
+        first.Entries.Concat(rest.Entries).Select(entry => entry.Id).Distinct().Count().ShouldBe(total);
     }
 
     [Fact]
@@ -41,6 +43,17 @@ public sealed class AuditQueryShould
         var result = await host.Services.GetRequiredService<ExportQuery>().HandleAsync(new ExportAudit(Everything([])), Token);
 
         result.Value.ShouldBeOfType<Ok<ExportView>>().Value.Csv.Split("\r\n", StringSplitOptions.RemoveEmptyEntries).Length.ShouldBe(total + 1);
+    }
+
+    [Fact]
+    public async Task export_newest_first_like_the_screen()
+    {
+        await using var host = await SeededHostAsync(("SyncScopeAdded", -2), ("ConflictResolved", -1));
+
+        var result = await host.Services.GetRequiredService<ExportQuery>().HandleAsync(new ExportAudit(Everything([])), Token);
+
+        var rows = result.Value.ShouldBeOfType<Ok<ExportView>>().Value.Csv.Split("\r\n", StringSplitOptions.RemoveEmptyEntries).Skip(1);
+        rows.Select(row => row.Split(',')[2]).ShouldBe(["ConflictResolved", "SyncScopeAdded"]);
     }
 
     [Fact]

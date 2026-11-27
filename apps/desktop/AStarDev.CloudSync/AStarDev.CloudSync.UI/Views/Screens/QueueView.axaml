@@ -42,6 +42,7 @@
                     </DataTemplate>
                 </ItemsControl.ItemTemplate>
             </ItemsControl>
+            <Button Content="{Binding MoreText}" Command="{Binding LoadMoreCommand}" IsVisible="{Binding CanLoadMore}" />
         </StackPanel>
         <TextBlock DockPanel.Dock="Top" Text="{Binding ErrorMessage}" IsVisible="{Binding ErrorMessage, Converter={x:Static ObjectConverters.IsNotNull}}" TextWrapping="Wrap" Foreground="{DynamicResource Trust.Degraded.Brush}" Margin="0,8,0,0" />
         <views:OperationListView />

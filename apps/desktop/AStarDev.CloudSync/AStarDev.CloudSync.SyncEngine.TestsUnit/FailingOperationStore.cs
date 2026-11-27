@@ -17,7 +17,7 @@ internal sealed class FailingOperationStore : IOperationStore
 
     public Task<Result<Unit, StoreError>> FailAsync(OperationId id, string error, DateTimeOffset? retryAtUtc, CancellationToken cancellationToken) => throw new NotSupportedException();
 
-    public Task<Result<IReadOnlyList<Operation>, StoreError>> ListDeadLettersAsync(CancellationToken cancellationToken) => throw new NotSupportedException();
+    public Task<Result<Page<Operation>, StoreError>> ListDeadLettersAsync(int skip, int take, CancellationToken cancellationToken) => throw new NotSupportedException();
 
     public Task<Result<Unit, StoreError>> RequeueDeadLetterAsync(OperationId id, CancellationToken cancellationToken) => throw new NotSupportedException();
 

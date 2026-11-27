@@ -15,7 +15,7 @@ public sealed class QueueViewModelShould
 
     private static DeadLetterView DeadLetter(string error) => new(Guid.NewGuid(), Guid.NewGuid(), "UploadFile", 5, error, Created);
 
-    private static Result<DeadLettersView, IpcError> Reply(params DeadLetterView[] views) => new Ok<DeadLettersView>(new DeadLettersView(views));
+    private static Result<DeadLettersView, IpcError> Reply(params DeadLetterView[] views) => new Ok<DeadLettersView>(new DeadLettersView(views.Length, views));
 
     [Fact]
     public void show_a_real_count_per_status_and_the_pending_and_running_operations()
@@ -126,5 +126,34 @@ public sealed class QueueViewModelShould
         await Should.ThrowAsync<OperationCanceledException>(() => queue.IgnoreAsync(dead.OperationId, cancelled.Token));
 
         client.Sent.ShouldBeEmpty();
+    }
+
+    [Fact]
+    public async Task add_the_next_page_of_dead_letters_below_those_shown()
+    {
+        var first = DeadLetter("access denied");
+        var second = DeadLetter("corrupt file");
+        var client = new FakeIpcClient([], available: true) { DeadLettersReply = new Ok<DeadLettersView>(new DeadLettersView(2, [second])) };
+        using var host = OperationScreensHost.Create(client);
+        var queue = host.Screen<QueueViewModel>();
+        host.Services.GetRequiredService<ConnectionViewModel>().ReplaceDeadLetters(new DeadLettersView(2, [first]));
+        queue.CanLoadMore.ShouldBeTrue();
+
+        await queue.LoadMoreCommand.ExecuteAsync(null);
+
+        queue.DeadLetters.Select(row => row.OperationId).ShouldBe([first.OperationId, second.OperationId]);
+        queue.CanLoadMore.ShouldBeFalse();
+        queue.ErrorMessage.ShouldBeNull();
+    }
+
+    [Fact]
+    public async Task honour_cancellation_when_loading_more()
+    {
+        using var host = OperationScreensHost.Create(new FakeIpcClient([], available: true));
+        var queue = host.Screen<QueueViewModel>();
+        using var cancelled = new CancellationTokenSource();
+        await cancelled.CancelAsync();
+
+        await Should.ThrowAsync<OperationCanceledException>(() => queue.LoadMoreAsync(cancelled.Token));
     }
 }

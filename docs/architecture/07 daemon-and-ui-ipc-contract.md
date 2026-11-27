@@ -242,7 +242,8 @@ Telemetry:           GetLogs, GetTraces, GetMetrics, GetDiagnostics
 - `StartReclassify` answers at once and the run goes on in the background; it is `Rejected` while a run is active. `GetReclassifyStatus` says whether a run is active, how far it has got, and when the last one finished.
 - The classification commands answer `ValidationError` when the text given is blank, `Rejected` with a message for the user when the daemon cannot do it (a name already taken, a category that still holds terms, a file or term that is gone), and `Accepted` once done. `AssignTerm`, `PromoteSuggestion`, `IgnoreSuggestion` and `CreateTerm` are safe to send twice. A term the user edits becomes a user term; an ignored term is kept, never deleted, so it never comes back as a suggestion. Every change drops the daemon's cached vocabulary, and the new vocabulary applies to files classified from then on; a reclassify applies it to the rest.
 - `ExportHistory` and `ExportAudit` take the same filter as `GetHistory` and `GetAudit` and return `ExportView(Csv)`: RFC 4180 with a header row, and a leading `'` on any cell that starts with `=`, `+`, `-` or `@`.
-- `GetAudit` first prunes entries older than the `retention.audit-days` setting (default 90).
+- `GetAudit` first prunes entries older than the `retention.audit-days` setting (default 90), then returns one page of the entries in the range, newest first. `ExportAudit` writes every entry, also newest first.
+- `GetAudit`, `GetConflicts`, `GetDeadLetters` and `GetRemoteFolders` page the same way, so one answer fits the 1 MiB frame: each query takes `Skip` (a negative value counts as zero) and `Take` (default 200, brought into 1 to 500), and each view carries `Total`, the number of items in all. The UI asks for `Skip` equal to the items shown and offers "Load more" while fewer than `Total` are shown. Audit, conflicts and dead letters are paged in SQL. The provider cannot page by name, so `GetRemoteFolders` reads every child, sorts the subfolders by name and cuts the page in the daemon.
 - `GetLogs`, `GetTraces` and `GetMetrics` read the separate `telemetry.db` (kept `retention.telemetry-days`, default 7). Logs and spans are stored with e-mail addresses and paths replaced; metric tags are not stored. `GetDiagnostics` returns only the name and status of each health check, never its description.
 - `GetActivities` and `GetDashboardSnapshot` share one job-level rate and time-left, worked out in the daemon over a 60 second window; both are empty while the job waits to retry.
 - `GetQueue` lists pending and running operations with a count per status; `Failed` includes dead-lettered operations.
@@ -345,7 +346,7 @@ Publish ConflictDetected
 ```text
 Connect
       ↓
-GetConflicts(SyncJobId)
+GetConflicts(SyncJobId) first page per job
       ↓
 Follow ConflictDetected / ConflictResolved
       ↓
@@ -361,12 +362,14 @@ Send ResolveConflict Command
 Query:
 
 ```csharp
-public sealed record GetConflicts(Guid SyncJobId) : IQuery<ConflictsView>;
+public sealed record GetConflicts(Guid SyncJobId, int Skip = 0, int Take = 200) : IQuery<ConflictsView>;
 
-public sealed record ConflictsView(IReadOnlyList<ConflictView> Conflicts);
+public sealed record ConflictsView(int Total, IReadOnlyList<ConflictView> Conflicts);
 ```
 
-`ConflictsView` lists the job's open and deferred conflicts, oldest first. An unknown job lists none. A conflict that cannot be read fails the query with `HandlerFailed` and a message fit for display.
+`ConflictsView` holds one page of the job's open and deferred conflicts, oldest first, and `Total`, how many the job has in all. An unknown job lists none, with a `Total` of zero.
+
+The UI keeps a total per job. A `ConflictDetected` conflict whose job still has pages to load raises that total but is not added to the list, so the next page starts in the right place. The tray badge and the dashboard show the sum of the totals, not the number of conflicts loaded. A conflict that cannot be read fails the query with `HandlerFailed` and a message fit for display.
 
 Projection:
 

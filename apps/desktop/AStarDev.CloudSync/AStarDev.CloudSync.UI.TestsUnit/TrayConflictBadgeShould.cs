@@ -29,7 +29,7 @@ public sealed class TrayConflictBadgeShould
         var shell = new FakeShell();
         var tray = new TrayLifecycle(shell, new NavigationService(Enum.GetValues<ScreenId>().Select(id => new FakeScreen(id))), shell);
         var connection = new ConnectionViewModel(() => new FakeIpcClient([], available: false), TimeSpan.FromSeconds(1), TimeSpan.FromSeconds(1));
-        foreach (var conflict in existing) connection.Conflicts.Add(conflict);
+        connection.ReplaceConflicts(ConflictPages.Of(existing));
         _ = new TrayConflictBadge(connection, tray);
 
         return (connection, tray);
@@ -59,12 +59,13 @@ public sealed class TrayConflictBadgeShould
         var (connection, tray) = Create();
         var first = Conflict();
 
-        connection.Conflicts.Add(first);
-        connection.Conflicts.Add(Conflict());
+        var second = Conflict();
+
+        connection.ReplaceConflicts(ConflictPages.Of(first, second));
         tray.ConflictCount.ShouldBe(2);
-        connection.Conflicts.Remove(first);
+        connection.ReplaceConflicts(ConflictPages.Of(second));
         tray.ConflictCount.ShouldBe(1);
-        connection.Conflicts.Clear();
+        connection.ReplaceConflicts(ConflictPages.Of());
 
         tray.ConflictCount.ShouldBe(0);
         tray.IconState.ShouldBe(TrustLevel.Healthy);
@@ -77,7 +78,7 @@ public sealed class TrayConflictBadgeShould
         var raised = 0;
         tray.IconStateChanged += (_, _) => raised++;
 
-        connection.Conflicts.Add(Conflict());
+        connection.ReplaceConflicts(ConflictPages.Of(Conflict()));
 
         raised.ShouldBeGreaterThan(0);
     }
