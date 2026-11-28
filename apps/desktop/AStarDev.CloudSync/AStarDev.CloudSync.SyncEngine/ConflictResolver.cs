@@ -59,6 +59,7 @@ public sealed class ConflictResolver
         var outcomes = new List<Result<Unit, ResolutionError>>(conflictIds.Count);
 
         foreach (var id in conflictIds) outcomes.Add(await ResolveOneAsync(id, choice, cancellationToken));
+        if (choice != ConflictResolution.Defer && conflictIds.Count > 0) await SyncMetrics.Shared.RefreshOpenConflictsAsync(conflictStore, cancellationToken);
 
         return outcomes;
     }
@@ -122,7 +123,6 @@ public sealed class ConflictResolver
         if (status.Value is Fail<StoreError> statusFailure) return Stored(statusFailure.Error);
 
         SyncMetrics.Shared.ConflictResolved(choice.ToString());
-        await SyncMetrics.Shared.RefreshOpenConflictsAsync(conflictStore, cancellationToken);
         SyncLog.ConflictResolved(logger, conflict.Id.Value, conflict.ItemId.Value, conflict.SyncJobId.Value, choice.ToString());
         var recorded = await RecordAsync(conflict with { Status = ConflictStatus.Resolved }, choice, copy, cancellationToken);
         if (copy is not null) await ReplanAsync(conflict.SyncJobId, cancellationToken);

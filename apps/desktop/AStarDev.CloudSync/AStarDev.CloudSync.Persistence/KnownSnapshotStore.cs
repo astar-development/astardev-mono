@@ -81,7 +81,8 @@ internal sealed class KnownSnapshotStore(IDbContextFactory<CloudSyncDbContext> c
         return outcome.ToResult(ToStorageFailure);
     }
 
-    private static async Task RemoveBaselineAndRowsAsync(CloudSyncDbContext context, SyncJobId jobId, ItemId itemId, CancellationToken cancellationToken)
+    /// <summary>Marks the baseline of an item and the item rows its identity left behind, including a local-only row at the baseline path, for deletion on the next save of the context.</summary>
+    internal static async Task RemoveBaselineAndRowsAsync(CloudSyncDbContext context, SyncJobId jobId, ItemId itemId, CancellationToken cancellationToken)
     {
         var current = await context.KnownSnapshots.SingleOrDefaultAsync(row => row.ItemId == itemId, cancellationToken).ConfigureAwait(false);
         var localOnly = new RemoteItemId(string.Empty);
@@ -94,7 +95,8 @@ internal sealed class KnownSnapshotStore(IDbContextFactory<CloudSyncDbContext> c
         context.Items.RemoveRange(rows);
     }
 
-    private static StagedKnownEntity ToStaged(SyncJobId jobId, OperationId operationId, ItemId itemId, KnownSnapshot? target)
+    /// <summary>The staged row for an operation; a <see langword="null"/> target becomes a row that removes the baseline.</summary>
+    internal static StagedKnownEntity ToStaged(SyncJobId jobId, OperationId operationId, ItemId itemId, KnownSnapshot? target)
         => target is null
             ? new StagedKnownEntity { OperationId = operationId, SyncJobId = jobId, ItemId = itemId, Remove = true, Path = new RelativePath(string.Empty) }
             : new StagedKnownEntity { OperationId = operationId, SyncJobId = jobId, ItemId = itemId, Path = target.Path, Size = target.Size, ModifiedUtc = target.ModifiedUtc, ETag = target.ETag, Hash = target.Fingerprint?.Value };
