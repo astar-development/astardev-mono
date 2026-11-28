@@ -14,7 +14,7 @@ internal sealed class ItemStateStore(IDbContextFactory<CloudSyncDbContext> conte
 
     /// <inheritdoc/>
     public Task<Result<IReadOnlyList<StoredItem>, StoreError>> ListAsync(SyncJobId jobId, IReadOnlyCollection<ItemId> itemIds, CancellationToken cancellationToken)
-        => ListWhereAsync(context => context.Items.Where(row => row.SyncJobId == jobId && row.ItemType == ItemType.File && itemIds.Contains(row.Id)), cancellationToken);
+        => ListWhereAsync(context => context.Items.Where(row => row.SyncJobId == jobId && row.ItemType == ItemType.File && EF.Parameter(itemIds).Contains(row.Id)), cancellationToken);
 
     private async Task<Result<IReadOnlyList<StoredItem>, StoreError>> ListWhereAsync(Func<CloudSyncDbContext, IQueryable<ItemEntity>> files, CancellationToken cancellationToken)
     {

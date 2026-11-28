@@ -12,6 +12,19 @@ public sealed class KnownSnapshotStoreShould
     private static CancellationToken Token => TestContext.Current.CancellationToken;
 
     [Fact]
+    public async Task list_baselines_for_more_item_ids_than_sqlite_allows_parameters()
+    {
+        await using var host = await PersistenceTestHost.CreateInitialisedAsync(Token);
+        var job = (await SyncJobStoreShould.AddAccountAndJobAsync(host, BootstrapMode.Merge)).Id;
+        var wanted = await CommitAsync(host, job, "a.txt");
+        ItemId[] itemIds = [.. Enumerable.Range(0, 40_000).Select(_ => new ItemId(Guid.NewGuid())), wanted.ItemId];
+
+        var listed = await host.Services.GetRequiredService<IKnownSnapshotStore>().ListAsync(job, itemIds, Token);
+
+        listed.Value.ShouldBeOfType<Ok<IReadOnlyList<KnownEntry>>>().Value.ShouldBe([wanted]);
+    }
+
+    [Fact]
     public async Task list_only_the_baselines_of_the_requested_items()
     {
         await using var host = await PersistenceTestHost.CreateInitialisedAsync(Token);
