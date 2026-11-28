@@ -9,12 +9,19 @@ namespace AStarDev.CloudSync.Persistence;
 internal sealed class KnownSnapshotStore(IDbContextFactory<CloudSyncDbContext> contextFactory) : IKnownSnapshotStore
 {
     /// <inheritdoc/>
-    public async Task<Result<IReadOnlyList<KnownEntry>, StoreError>> ListAsync(SyncJobId jobId, CancellationToken cancellationToken)
+    public Task<Result<IReadOnlyList<KnownEntry>, StoreError>> ListAsync(SyncJobId jobId, CancellationToken cancellationToken)
+        => ListWhereAsync(context => context.KnownSnapshots.Where(row => row.SyncJobId == jobId), cancellationToken);
+
+    /// <inheritdoc/>
+    public Task<Result<IReadOnlyList<KnownEntry>, StoreError>> ListAsync(SyncJobId jobId, IReadOnlyCollection<ItemId> itemIds, CancellationToken cancellationToken)
+        => ListWhereAsync(context => context.KnownSnapshots.Where(row => row.SyncJobId == jobId && itemIds.Contains(row.ItemId)), cancellationToken);
+
+    private async Task<Result<IReadOnlyList<KnownEntry>, StoreError>> ListWhereAsync(Func<CloudSyncDbContext, IQueryable<KnownSnapshotEntity>> baselines, CancellationToken cancellationToken)
     {
         var outcome = await Try.RunAsync<IReadOnlyList<KnownEntry>>(async token =>
         {
             await using var context = await contextFactory.CreateDbContextAsync(token).ConfigureAwait(false);
-            var rows = await context.KnownSnapshots.AsNoTracking().Where(row => row.SyncJobId == jobId).ToListAsync(token).ConfigureAwait(false);
+            var rows = await baselines(context).AsNoTracking().ToListAsync(token).ConfigureAwait(false);
 
             return rows.Select(row => new KnownEntry(row.ItemId, row.ToSnapshot())).ToList();
         }, cancellationToken).ConfigureAwait(false);

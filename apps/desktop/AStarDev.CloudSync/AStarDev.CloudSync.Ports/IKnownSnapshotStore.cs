@@ -15,6 +15,13 @@ public interface IKnownSnapshotStore
     /// <returns>One entry per item that was ever reconciled; empty when none; or <see cref="StorageFailed"/>.</returns>
     Task<Result<IReadOnlyList<KnownEntry>, StoreError>> ListAsync(SyncJobId jobId, CancellationToken cancellationToken);
 
+    /// <summary>Lists the baselines of only the given items of a job, so describing a few items does not read the whole job.</summary>
+    /// <param name="jobId">The job whose baselines to read.</param>
+    /// <param name="itemIds">The items to read. An item that was never reconciled is skipped.</param>
+    /// <param name="cancellationToken">Cancelling abandons the read.</param>
+    /// <returns>One entry per requested item that has a baseline; empty when none or when <paramref name="itemIds"/> is empty; or <see cref="StorageFailed"/>.</returns>
+    Task<Result<IReadOnlyList<KnownEntry>, StoreError>> ListAsync(SyncJobId jobId, IReadOnlyCollection<ItemId> itemIds, CancellationToken cancellationToken);
+
     /// <summary>Records what the baseline of an item becomes once an operation succeeds. The baseline itself does not change yet.</summary>
     /// <param name="jobId">The job the operation belongs to.</param>
     /// <param name="operationId">The operation whose success applies the change. Staging again for the same operation replaces the earlier change.</param>

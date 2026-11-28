@@ -66,9 +66,9 @@ internal sealed class DashboardSnapshotQuery(IOperationStore operations, IConfli
     private async Task<Result<IReadOnlyList<DashboardOperationView>, StoreError>> RunningAsync(IReadOnlyList<Operation> running, CancellationToken cancellationToken)
     {
         var paths = new Dictionary<ItemId, string>();
-        foreach (var jobId in running.Select(operation => operation.SyncJobId).Distinct())
+        foreach (var job in running.GroupBy(operation => operation.SyncJobId))
         {
-            var read = await states.ReadAsync(jobId, cancellationToken);
+            var read = await states.ReadAsync(job.Key, job.Select(operation => operation.ItemId).ToHashSet(), cancellationToken);
             if (read.Value is Fail<StoreError> failure) return failure;
 
             foreach (var state in ((Ok<IReadOnlyList<CanonicalItemState>>)read.Value).Value) paths[state.ItemId] = state.Remote?.Path.Value ?? state.Local?.Path.Value ?? state.Known?.Path.Value ?? string.Empty;
