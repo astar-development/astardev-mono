@@ -17,14 +17,13 @@ internal sealed class LocalObservationStore(IDbContextFactory<CloudSyncDbContext
             var items = ItemsUnder(context, jobId, subtree);
             var rows = await (from snapshot in context.ItemSnapshots.AsNoTracking()
                               join item in items.AsNoTracking() on snapshot.ItemId equals item.Id
-                              where snapshot.SnapshotSource == SnapshotSource.Local && snapshot.Size != ILocalObservationStore.DeletedSize
-                              where !(from newer in context.ItemSnapshots
-                                      join sibling in context.Items on newer.ItemId equals sibling.Id
-                                      where sibling.SyncJobId == item.SyncJobId && sibling.LocalPath == item.LocalPath && newer.SnapshotSource == SnapshotSource.Local && newer.ObservedUtc > snapshot.ObservedUtc
-                                      select newer.Id).Any()
+                              where snapshot.SnapshotSource == SnapshotSource.Local
                               select new { item.LocalPath, Snapshot = snapshot }).ToListAsync(token).ConfigureAwait(false);
 
-            return rows.Select(row => new LocalSnapshot(row.LocalPath, row.Snapshot.Size, row.Snapshot.ModifiedUtc, row.Snapshot.LocalIdentity is { } identity ? new LocalIdentity(identity) : null, row.Snapshot.Hash is { } hash ? new ContentFingerprint(hash) : null))
+            return rows.GroupBy(row => row.LocalPath)
+                .Select(group => group.MaxBy(row => row.Snapshot.ObservedUtc)!)
+                .Where(row => row.Snapshot.Size != ILocalObservationStore.DeletedSize)
+                .Select(row => new LocalSnapshot(row.LocalPath, row.Snapshot.Size, row.Snapshot.ModifiedUtc, row.Snapshot.LocalIdentity is { } identity ? new LocalIdentity(identity) : null, row.Snapshot.Hash is { } hash ? new ContentFingerprint(hash) : null))
                 .ToList();
         }, cancellationToken).ConfigureAwait(false);
 
