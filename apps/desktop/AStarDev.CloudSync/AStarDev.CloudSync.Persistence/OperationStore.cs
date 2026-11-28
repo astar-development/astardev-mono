@@ -187,6 +187,48 @@ internal sealed class OperationStore(IDbContextFactory<CloudSyncDbContext> conte
         return outcome.ToResult(ToStorageFailure);
     }
 
+    /// <inheritdoc/>
+    public async Task<Result<IReadOnlyList<Operation>, StoreError>> ListNewestAsync(IReadOnlyCollection<OperationStatus> statuses, int take, CancellationToken cancellationToken)
+    {
+        var outcome = await Try.RunAsync<IReadOnlyList<Operation>>(async token =>
+        {
+            await using var context = await contextFactory.CreateDbContextAsync(token).ConfigureAwait(false);
+            var rows = await context.Operations.AsNoTracking().Where(row => statuses.Contains(row.Status)).OrderByDescending(row => row.CreatedUtc).ThenBy(row => row.Priority).Take(Math.Max(take, 0)).ToListAsync(token).ConfigureAwait(false);
+
+            return rows.Select(row => row.ToOperation()).ToList();
+        }, cancellationToken).ConfigureAwait(false);
+
+        return outcome.ToResult(ToStorageFailure);
+    }
+
+    /// <inheritdoc/>
+    public async Task<Result<IReadOnlyDictionary<SyncJobId, IReadOnlyDictionary<OperationStatus, int>>, StoreError>> CountByJobAndStatusAsync(CancellationToken cancellationToken)
+    {
+        var outcome = await Try.RunAsync<IReadOnlyDictionary<SyncJobId, IReadOnlyDictionary<OperationStatus, int>>>(async token =>
+        {
+            await using var context = await contextFactory.CreateDbContextAsync(token).ConfigureAwait(false);
+            var rows = await context.Operations.AsNoTracking().GroupBy(row => new { row.SyncJobId, row.Status }).Select(group => new { group.Key.SyncJobId, group.Key.Status, Count = group.Count() }).ToListAsync(token).ConfigureAwait(false);
+
+            return rows.GroupBy(row => row.SyncJobId).ToDictionary(job => job.Key, job => (IReadOnlyDictionary<OperationStatus, int>)job.ToDictionary(row => row.Status, row => row.Count));
+        }, cancellationToken).ConfigureAwait(false);
+
+        return outcome.ToResult(ToStorageFailure);
+    }
+
+    /// <inheritdoc/>
+    public async Task<Result<int, StoreError>> PruneCompletedAsync(DateTimeOffset createdBeforeUtc, CancellationToken cancellationToken)
+    {
+        var outcome = await Try.RunAsync(async token =>
+        {
+            await using var context = await contextFactory.CreateDbContextAsync(token).ConfigureAwait(false);
+            var cutoff = createdBeforeUtc.ToUniversalTime();
+
+            return await context.Operations.Where(row => row.Status == OperationStatus.Completed && row.CreatedUtc < cutoff).ExecuteDeleteAsync(token).ConfigureAwait(false);
+        }, cancellationToken).ConfigureAwait(false);
+
+        return outcome.ToResult(ToStorageFailure);
+    }
+
     private static long ToStored(DateTimeOffset value) => (long)TimeConverter.ConvertToProvider(value.ToUniversalTime())!;
 
     private static Result<Unit, StoreError> Flatten(Exceptional<Result<Unit, StoreError>> outcome)

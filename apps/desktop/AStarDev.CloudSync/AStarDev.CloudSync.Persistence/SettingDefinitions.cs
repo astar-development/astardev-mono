@@ -16,7 +16,8 @@ internal static class SettingDefinitions
         [SettingNames.NotifyOnError] = ("true", Booleans.Contains),
         [SettingNames.NotifyOnCompletion] = ("false", Booleans.Contains),
         [SettingNames.AuditRetentionDays] = ("90", IsPositiveWholeNumber),
-        [SettingNames.TelemetryRetentionDays] = ("7", IsPositiveWholeNumber)
+        [SettingNames.TelemetryRetentionDays] = ("7", IsPositiveWholeNumber),
+        [SettingNames.OperationRetentionDays] = ("30", IsPositiveWholeNumber)
     };
 
     /// <summary>The default of every known setting, by name.</summary>

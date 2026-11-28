@@ -29,4 +29,10 @@ internal sealed class FailingOperationStore : IOperationStore
 
     public Task<Result<IReadOnlyDictionary<OperationStatus, int>, StoreError>> CountByStatusAsync(CancellationToken cancellationToken)
         => Task.FromResult<Result<IReadOnlyDictionary<OperationStatus, int>, StoreError>>(new Fail<StoreError>(Down));
+
+    public Task<Result<IReadOnlyList<Operation>, StoreError>> ListNewestAsync(IReadOnlyCollection<OperationStatus> statuses, int take, CancellationToken cancellationToken) => throw new NotSupportedException();
+
+    public Task<Result<IReadOnlyDictionary<SyncJobId, IReadOnlyDictionary<OperationStatus, int>>, StoreError>> CountByJobAndStatusAsync(CancellationToken cancellationToken) => throw new NotSupportedException();
+
+    public Task<Result<int, StoreError>> PruneCompletedAsync(DateTimeOffset createdBeforeUtc, CancellationToken cancellationToken) => throw new NotSupportedException();
 }

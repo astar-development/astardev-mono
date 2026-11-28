@@ -22,7 +22,7 @@ internal sealed class ProvidersQuery(ICloudProvider provider, IAccountStore acco
         var jobList = await jobs.ListAsync(cancellationToken);
         if (jobList.Value is Fail<StoreError> jobsFailure) return Failure(jobsFailure.Error, "sync jobs");
 
-        var queue = await operations.ListAsync(cancellationToken);
+        var queue = await operations.CountByJobAndStatusAsync(cancellationToken);
         if (queue.Value is Fail<StoreError> queueFailure) return Failure(queueFailure.Error, "operation queue");
 
         var synced = await states.ListLastSyncAsync(cancellationToken);
@@ -30,11 +30,11 @@ internal sealed class ProvidersQuery(ICloudProvider provider, IAccountStore acco
 
         var known = ((Ok<IReadOnlyList<Account>>)accountList.Value).Value;
         var jobsByAccount = ((Ok<IReadOnlyList<SyncJob>>)jobList.Value).Value.ToLookup(job => job.AccountId);
-        var operationList = ((Ok<IReadOnlyList<Operation>>)queue.Value).Value;
+        var counts = ((Ok<IReadOnlyDictionary<SyncJobId, IReadOnlyDictionary<OperationStatus, int>>>)queue.Value).Value;
         var lastSyncs = ((Ok<IReadOnlyDictionary<SyncJobId, DateTimeOffset>>)synced.Value).Value;
 
         var insights = new List<ProviderInsightsView>();
-        foreach (var account in known) insights.Add(InsightsOf(account, jobsByAccount[account.Id].Select(job => job.Id).ToHashSet(), operationList, lastSyncs, await DriveAsync(account, cancellationToken)));
+        foreach (var account in known) insights.Add(InsightsOf(account, jobsByAccount[account.Id].Select(job => job.Id).ToHashSet(), counts, lastSyncs, await DriveAsync(account, cancellationToken)));
 
         return new Ok<ProvidersView>(new ProvidersView([new ProviderView(ApplicationConstants.OneDriveProviderType, [.. provider.Features.SelectMany(CapabilitiesOf)])], insights));
     }
@@ -49,20 +49,22 @@ internal sealed class ProvidersQuery(ICloudProvider provider, IAccountStore acco
         return info.Value is Ok<ProviderDriveInfo> ok ? Option.Some(ok.Value) : Option.None<ProviderDriveInfo>();
     }
 
-    private static ProviderInsightsView InsightsOf(Account account, HashSet<SyncJobId> accountJobs, IReadOnlyList<Operation> operationList, IReadOnlyDictionary<SyncJobId, DateTimeOffset> lastSyncs, Option<ProviderDriveInfo> drive)
+    private static ProviderInsightsView InsightsOf(Account account, HashSet<SyncJobId> accountJobs, IReadOnlyDictionary<SyncJobId, IReadOnlyDictionary<OperationStatus, int>> counts, IReadOnlyDictionary<SyncJobId, DateTimeOffset> lastSyncs, Option<ProviderDriveInfo> drive)
     {
-        var own = operationList.Where(operation => accountJobs.Contains(operation.SyncJobId)).ToList();
+        var own = accountJobs.Where(counts.ContainsKey).Select(job => counts[job]).ToList();
         var synced = accountJobs.Where(lastSyncs.ContainsKey).Select(job => (DateTimeOffset?)lastSyncs[job]).Max();
         return new ProviderInsightsView(
             account.Id.Value,
             synced,
             drive.Value is Some<ProviderDriveInfo> used ? used.Value.UsedBytes : null,
             drive.Value is Some<ProviderDriveInfo> total ? total.Value.TotalBytes : null,
-            own.Count(operation => operation.Status == OperationStatus.Pending),
-            own.Count(operation => operation.Status == OperationStatus.Running),
-            own.Count(operation => operation.Status is OperationStatus.Failed or OperationStatus.DeadLetter),
-            own.Count(operation => operation.Status == OperationStatus.Completed));
+            Count(own, OperationStatus.Pending),
+            Count(own, OperationStatus.Running),
+            Count(own, OperationStatus.Failed) + Count(own, OperationStatus.DeadLetter),
+            Count(own, OperationStatus.Completed));
     }
+
+    private static int Count(IReadOnlyList<IReadOnlyDictionary<OperationStatus, int>> perJob, OperationStatus status) => perJob.Sum(counts => counts.GetValueOrDefault(status));
 
     private static IEnumerable<ProviderCapability> CapabilitiesOf(ProviderFeature feature) => Enum.TryParse<ProviderCapability>(feature.ToString(), out var capability) ? [capability] : [];
 

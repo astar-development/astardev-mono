@@ -64,6 +64,13 @@ public interface IOperationStore
     /// <returns>The operations in claim order (priority, then age), or <see cref="StorageFailed"/>.</returns>
     Task<Result<IReadOnlyList<Operation>, StoreError>> ListAsync(CancellationToken cancellationToken);
 
+    /// <summary>Lists the newest operations in the given statuses, so a view of the queue or the history reads only the rows it shows instead of every operation ever stored.</summary>
+    /// <param name="statuses">The statuses to keep. Empty lists nothing.</param>
+    /// <param name="take">The most operations to return. Zero or less returns none.</param>
+    /// <param name="cancellationToken">Cancelling abandons the read.</param>
+    /// <returns>The operations newest first by <see cref="Operation.CreatedUtc"/>, then in priority order; empty when none matches. <see cref="StorageFailed"/> on a database failure.</returns>
+    Task<Result<IReadOnlyList<Operation>, StoreError>> ListNewestAsync(IReadOnlyCollection<OperationStatus> statuses, int take, CancellationToken cancellationToken);
+
     /// <summary>Puts every operation left <see cref="OperationStatus.Running"/> back to <see cref="OperationStatus.Pending"/> for the daemon to run again after a restart. The attempt already counted stays counted and the next attempt time is kept, which is already past because the operation was claimed.</summary>
     /// <param name="reason">Kept as <see cref="Operation.LastError"/> of each requeued operation.</param>
     /// <param name="cancellationToken">Cancelling before the write completes requeues nothing.</param>
@@ -74,4 +81,15 @@ public interface IOperationStore
     /// <param name="cancellationToken">Cancelling abandons the read.</param>
     /// <returns>The count per status; a status with no operation is absent. <see cref="StorageFailed"/> on a database failure.</returns>
     Task<Result<IReadOnlyDictionary<OperationStatus, int>, StoreError>> CountByStatusAsync(CancellationToken cancellationToken);
+
+    /// <summary>Counts the stored operations of each job by status, so per-account figures need no read of the operations themselves.</summary>
+    /// <param name="cancellationToken">Cancelling abandons the read.</param>
+    /// <returns>The counts per status for every job that has an operation; a job with none, or a status with none, is absent. <see cref="StorageFailed"/> on a database failure.</returns>
+    Task<Result<IReadOnlyDictionary<SyncJobId, IReadOnlyDictionary<OperationStatus, int>>, StoreError>> CountByJobAndStatusAsync(CancellationToken cancellationToken);
+
+    /// <summary>Deletes the <see cref="OperationStatus.Completed"/> operations created before <paramref name="createdBeforeUtc"/>, so finished work does not pile up for ever. Pending, running, failed and dead-lettered operations are never deleted. Safe to call again; a second call deletes nothing new.</summary>
+    /// <param name="createdBeforeUtc">Completed operations created strictly before this time are deleted.</param>
+    /// <param name="cancellationToken">Cancelling before the write completes deletes nothing.</param>
+    /// <returns>How many operations were deleted, zero when none was old enough, or <see cref="StorageFailed"/>.</returns>
+    Task<Result<int, StoreError>> PruneCompletedAsync(DateTimeOffset createdBeforeUtc, CancellationToken cancellationToken);
 }
