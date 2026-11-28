@@ -24,6 +24,7 @@ public sealed class IpcHostedServiceShould
             services.GetRequiredService<RemoteFoldersQuery>(),
             services.GetRequiredService<CreateSyncJobHandler>(),
             services.GetRequiredService<AddSyncScopeHandler>(),
+            services.GetRequiredService<AddLocalFolderScopeHandler>(),
             services.GetRequiredService<RemoveSyncScopeHandler>(),
             services.GetRequiredService<SyncJobsQuery>(),
             services.GetRequiredService<SyncScopesQuery>(),

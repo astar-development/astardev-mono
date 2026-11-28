@@ -62,6 +62,7 @@ internal static class DaemonServiceCollectionExtensions
         services.AddSingleton<AccountsQuery>();
         services.AddSingleton<CreateSyncJobHandler>();
         services.AddSingleton<AddSyncScopeHandler>();
+        services.AddSingleton<AddLocalFolderScopeHandler>();
         services.AddSingleton<RemoveSyncScopeHandler>();
         services.AddSingleton<SyncJobsQuery>();
         services.AddSingleton<SyncScopesQuery>();

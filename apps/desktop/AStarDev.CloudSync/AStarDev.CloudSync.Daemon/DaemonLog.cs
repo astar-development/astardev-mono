@@ -49,6 +49,9 @@ internal static partial class DaemonLog
     [LoggerMessage(EventId = 6015, Level = LogLevel.Warning, Message = "Changing an account's concurrent operations failed: {Message} ({ErrorCode})")]
     internal static partial void SetAccountConcurrencyFailed(ILogger logger, string message, ErrorCode errorCode);
 
+    [LoggerMessage(EventId = 6016, Level = LogLevel.Warning, Message = "Adding a local folder as a sync scope failed: {Message} ({ErrorCode})")]
+    internal static partial void AddLocalFolderScopeFailed(ILogger logger, string message, ErrorCode errorCode);
+
     [LoggerMessage(EventId = 6030, Level = LogLevel.Warning, Message = "The drive information of the providers screen could not be read: {Message} ({ErrorCode})")]
     internal static partial void DriveInfoUnavailable(ILogger logger, string message, ErrorCode errorCode);
 

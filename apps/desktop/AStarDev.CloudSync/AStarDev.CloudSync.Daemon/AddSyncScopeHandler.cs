@@ -26,11 +26,16 @@ internal sealed class AddSyncScopeHandler(ISyncScopeStore store, IJobAccounts jo
     private async Task<Result<CommandResult, IpcError>> FindPathAsync(string account, AddSyncScope command, CancellationToken cancellationToken)
         => await RemoteFolderPaths.FindAsync(provider, account, new RemoteItemId(command.RemoteRootId), cancellationToken) switch
         {
-            Ok<RelativePath> path => await StoreAsync(command, path.Value, cancellationToken),
+            Ok<RelativePath> path => await AddAtPathAsync(command, path.Value, cancellationToken),
             Fail<ProviderError> fail => Reject(ProviderErrorMessages.Describe(fail.Error), ErrorInfo.CodeOf(fail.Error.Value))
         };
 
-    private async Task<Result<CommandResult, IpcError>> StoreAsync(AddSyncScope command, RelativePath path, CancellationToken cancellationToken)
+    /// <summary>Stores the folder as a scope of the job with a path already known, skipping the walk of the drive; used when the daemon has just created the folder at that path.</summary>
+    /// <param name="command">The job and the folder's provider id.</param>
+    /// <param name="path">The folder's path from the drive root.</param>
+    /// <param name="cancellationToken">Cancelling abandons the request and surfaces as <see cref="OperationCanceledException"/>.</param>
+    /// <returns><see cref="CommandOutcome.Accepted"/> as for <see cref="HandleAsync"/>, or <see cref="CommandOutcome.Rejected"/> with a message for the user when the job already holds the folder or the store, crawl or observation start fails.</returns>
+    public async Task<Result<CommandResult, IpcError>> AddAtPathAsync(AddSyncScope command, RelativePath path, CancellationToken cancellationToken)
         => await store.AddAsync(new SyncScope(new SyncJobId(command.SyncJobId), new RemoteItemId(command.RemoteRootId), path), cancellationToken) switch
         {
             Ok<Unit> => await StartAsync(command, cancellationToken),

@@ -22,6 +22,10 @@ internal sealed class StubCloudProvider : ICloudProvider
 
     public Result<ProviderDriveInfo, ProviderError> DriveInfoResult { get; init; } = new Ok<ProviderDriveInfo>(new ProviderDriveInfo(0, 0, 0, Option.None<long>()));
 
+    public Result<RemoteItemId, ProviderError> CreateFolderResult { get; init; } = new Ok<RemoteItemId>(new RemoteItemId("created"));
+
+    public List<(string Account, RelativePath Path)> CreatedFolders { get; } = [];
+
     public int DeltaCalls { get; private set; }
 
     public List<string> AccountsCalled { get; } = [];
@@ -96,6 +100,14 @@ internal sealed class StubCloudProvider : ICloudProvider
         cancellationToken.ThrowIfCancellationRequested();
 
         return Task.FromResult<Result<Unit, ProviderError>>(new Ok<Unit>(default));
+    }
+
+    public Task<Result<RemoteItemId, ProviderError>> CreateFolderAsync(string accountIdentifier, RelativePath path, CancellationToken cancellationToken)
+    {
+        cancellationToken.ThrowIfCancellationRequested();
+        CreatedFolders.Add((accountIdentifier, path));
+
+        return Task.FromResult(CreateFolderResult);
     }
 
     public Task<Result<Unit, ProviderError>> RenameAsync(string accountIdentifier, RemoteItemId itemId, RelativePath path, CancellationToken cancellationToken)

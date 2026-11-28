@@ -217,6 +217,9 @@ Answered with a `CommandResult` (`Accepted`, `Rejected` or `ValidationError`, an
 ```text
 ConnectAccount, DisconnectAccount
 CreateSyncJob, AddSyncScope, RemoveSyncScope
+AddLocalFolderScope   (one name from GetSyncScopes' UnsyncedFolders: the daemon creates the remote
+                       folder of that name at the top of the job account's drive, reusing one already
+                       there, then adds it as AddSyncScope does)
 StartSync, StopSync
 StopDaemon
 ResolveConflict, RetryOperation, IgnoreOperation

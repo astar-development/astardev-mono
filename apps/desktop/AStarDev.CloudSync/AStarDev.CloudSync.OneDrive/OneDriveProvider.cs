@@ -84,6 +84,11 @@ internal sealed class OneDriveProvider(IOptions<OneDriveSettings> settings, ITok
         => ObserveAuthorisedAsync("Upload", accountIdentifier, null, token => accounts.For(accountIdentifier).Transfer.UploadAsync(request, token), cancellationToken);
 
     /// <inheritdoc/>
+    /// <remarks>Posts the folder to its parent's children with Graph's conflict behaviour <c>fail</c>; Graph's 409 means the name is taken, so the item at the path is read and its id returned when it is a folder. Graph answers 404, so <see cref="Permanent"/>, when the parent folder does not exist.</remarks>
+    public Task<Result<RemoteItemId, ProviderError>> CreateFolderAsync(string accountIdentifier, RelativePath path, CancellationToken cancellationToken)
+        => ObserveAuthorisedAsync("CreateFolder", accountIdentifier, null, token => accounts.For(accountIdentifier).Transfer.CreateFolderAsync(path, token), cancellationToken);
+
+    /// <inheritdoc/>
     /// <remarks>Sends the new name and the new parent folder path in one request. Graph answers 404, so <see cref="Permanent"/>, when the parent folder does not exist.</remarks>
     public Task<Result<Unit, ProviderError>> RenameAsync(string accountIdentifier, RemoteItemId itemId, RelativePath path, CancellationToken cancellationToken)
         => ObserveAuthorisedAsync("Rename", accountIdentifier, itemId.Value, token => accounts.For(accountIdentifier).Transfer.RenameAsync(itemId, path, token), cancellationToken);

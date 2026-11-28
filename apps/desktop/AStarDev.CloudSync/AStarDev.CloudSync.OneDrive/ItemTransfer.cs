@@ -7,7 +7,7 @@ using AStarDev.FunctionalParadigm;
 
 namespace AStarDev.CloudSync.OneDrive;
 
-/// <summary>Moves content and changes one drive item at a time through Graph: download, upload, rename and delete.</summary>
+/// <summary>Moves content and changes one drive item at a time through Graph: download, upload, folder creation, rename and delete.</summary>
 /// <param name="graph">Authorised client whose base address is the Graph root, such as <c>https://graph.microsoft.com/v1.0/</c>.</param>
 /// <param name="uploads">Client for the pre-authenticated upload session URLs, which must not carry the bearer token.</param>
 /// <param name="chunkSize">Bytes per upload session request. Graph needs a multiple of 320 KiB.</param>
@@ -22,6 +22,7 @@ internal sealed class ItemTransfer(HttpClient graph, HttpClient uploads, int chu
 
     private const string RootParent = "/drive/root";
     private const string ReplaceExisting = "replace";
+    private const string FailOnExisting = "fail";
 
     /// <summary>Opens the content of one item.</summary>
     /// <returns>The content stream, which the caller disposes, or the <see cref="ProviderError"/> met. Cancellation propagates as <see cref="OperationCanceledException"/>.</returns>
@@ -38,6 +39,11 @@ internal sealed class ItemTransfer(HttpClient graph, HttpClient uploads, int chu
     public Task<Result<Unit, ProviderError>> RenameAsync(RemoteItemId itemId, RelativePath path, CancellationToken cancellationToken)
         => GuardAsync(token => PatchAsync(ItemUrl(itemId), new { name = NameOf(path), parentReference = new { path = ParentOf(path) } }, token), cancellationToken);
 
+    /// <summary>Creates a folder at a path, asking Graph to fail rather than rename on a clash, and reuses the folder already there when Graph reports one.</summary>
+    /// <returns>The folder's id, new or existing; <see cref="Permanent"/> when a file holds the name or the parent folder is missing; or the other <see cref="ProviderError"/> met. Cancellation propagates as <see cref="OperationCanceledException"/>.</returns>
+    public Task<Result<RemoteItemId, ProviderError>> CreateFolderAsync(RelativePath path, CancellationToken cancellationToken)
+        => GuardAsync(token => MakeFolderAsync(path, token), cancellationToken);
+
     /// <summary>Deletes an item.</summary>
     /// <returns>Success, also when Graph answers 404 because the item is already gone, or the <see cref="ProviderError"/> met. Cancellation propagates as <see cref="OperationCanceledException"/>.</returns>
     public Task<Result<Unit, ProviderError>> DeleteAsync(RemoteItemId itemId, CancellationToken cancellationToken)
@@ -46,6 +52,13 @@ internal sealed class ItemTransfer(HttpClient graph, HttpClient uploads, int chu
     private static string ItemUrl(RemoteItemId itemId) => $"me/drive/items/{Uri.EscapeDataString(itemId.Value)}";
 
     private static string PathUrl(RelativePath path) => $"me/drive/root:/{string.Join('/', path.Value.Split('/').Select(Uri.EscapeDataString))}";
+
+    private static string ChildrenUrl(RelativePath path)
+    {
+        var slash = path.Value.LastIndexOf('/');
+
+        return slash < 0 ? "me/drive/root/children" : $"{PathUrl(new RelativePath(path.Value[..slash]))}:/children";
+    }
 
     private static string NameOf(RelativePath path) => path.Value[(path.Value.LastIndexOf('/') + 1)..];
 
@@ -132,6 +145,42 @@ internal sealed class ItemTransfer(HttpClient graph, HttpClient uploads, int chu
         }
 
         return Done();
+    }
+
+    private async Task<Result<RemoteItemId, ProviderError>> MakeFolderAsync(RelativePath path, CancellationToken cancellationToken)
+    {
+        var folder = new Dictionary<string, object>
+        {
+            ["name"] = NameOf(path),
+            ["folder"] = new { },
+            ["@microsoft.graph.conflictBehavior"] = FailOnExisting
+        };
+        using var response = await graph.PostAsJsonAsync(ChildrenUrl(path), folder, GraphJson.Options, cancellationToken).ConfigureAwait(false);
+
+        return response.StatusCode == HttpStatusCode.Conflict
+            ? await FindFolderAsync(path, cancellationToken).ConfigureAwait(false)
+            : await FolderIdOfAsync(response, cancellationToken).ConfigureAwait(false);
+    }
+
+    private async Task<Result<RemoteItemId, ProviderError>> FindFolderAsync(RelativePath path, CancellationToken cancellationToken)
+    {
+        using var response = await graph.GetAsync(PathUrl(path), cancellationToken).ConfigureAwait(false);
+
+        return await FolderIdOfAsync(response, cancellationToken).ConfigureAwait(false);
+    }
+
+    private static async Task<Result<RemoteItemId, ProviderError>> FolderIdOfAsync(HttpResponseMessage response, CancellationToken cancellationToken)
+    {
+        if (!response.IsSuccessStatusCode) return new Fail<ProviderError>(GraphErrors.From(response));
+
+        var item = await response.Content.ReadFromJsonAsync<GraphDriveItem>(GraphJson.Options, cancellationToken).ConfigureAwait(false);
+
+        return item switch
+        {
+            null => new Fail<ProviderError>(new Permanent("Graph did not describe the folder.")),
+            { Folder: null } => new Fail<ProviderError>(new Permanent("A file already has the folder's name.")),
+            { } folder => new Ok<RemoteItemId>(new RemoteItemId(folder.Id))
+        };
     }
 
     private async Task<Result<Unit, ProviderError>> PatchAsync(string url, object body, CancellationToken cancellationToken)
