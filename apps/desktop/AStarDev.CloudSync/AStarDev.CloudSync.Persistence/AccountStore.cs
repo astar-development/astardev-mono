@@ -97,8 +97,13 @@ internal sealed class AccountStore(IDbContextFactory<CloudSyncDbContext> context
             var entity = await context.Accounts.SingleOrDefaultAsync(account => account.Id == id, token).ConfigureAwait(false);
             if (entity is null) return false;
 
+            await using var transaction = await context.Database.BeginTransactionAsync(token).ConfigureAwait(false);
+            var jobs = context.SyncJobs.Where(job => job.AccountId == id).Select(job => job.Id);
+            await context.Items.Where(item => jobs.Contains(item.SyncJobId)).ExecuteUpdateAsync(setters => setters.SetProperty(item => item.ParentItemId, (ItemId?)null), token).ConfigureAwait(false);
+            await context.SyncJobs.Where(job => job.AccountId == id).ExecuteDeleteAsync(token).ConfigureAwait(false);
             context.Accounts.Remove(entity);
             await context.SaveChangesAsync(token).ConfigureAwait(false);
+            await transaction.CommitAsync(token).ConfigureAwait(false);
 
             return true;
         }, cancellationToken).ConfigureAwait(false);

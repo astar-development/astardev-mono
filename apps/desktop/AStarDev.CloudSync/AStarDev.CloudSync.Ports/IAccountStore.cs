@@ -40,9 +40,9 @@ public interface IAccountStore
     /// <returns>Success, <see cref="AccountNotFound"/> when there is no such account, or <see cref="StorageFailed"/>.</returns>
     Task<Result<Unit, StoreError>> UpdateConcurrencyAsync(AccountId id, int maxConcurrentOperations, CancellationToken cancellationToken);
 
-    /// <summary>Deletes an account.</summary>
+    /// <summary>Deletes an account together with its sync jobs and everything stored for them; files on disk and in the cloud are left alone.</summary>
     /// <param name="id">The account to delete.</param>
-    /// <param name="cancellationToken">Cancelling before the write completes leaves the account stored.</param>
-    /// <returns>Success, <see cref="AccountNotFound"/> when there is no such account, or <see cref="StorageFailed"/>, for example while sync jobs still use the account.</returns>
+    /// <param name="cancellationToken">Cancelling before the write completes leaves the account and its jobs stored.</param>
+    /// <returns>Success, <see cref="AccountNotFound"/> when there is no such account, or <see cref="StorageFailed"/> when the database fails, in which case nothing is deleted.</returns>
     Task<Result<Unit, StoreError>> RemoveAsync(AccountId id, CancellationToken cancellationToken);
 }

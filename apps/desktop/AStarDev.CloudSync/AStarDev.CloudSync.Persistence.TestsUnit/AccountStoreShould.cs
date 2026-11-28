@@ -1,6 +1,7 @@
 using AStarDev.CloudSync.Domain;
 using AStarDev.CloudSync.Ports;
 using AStarDev.FunctionalParadigm;
+using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.DependencyInjection;
 
 namespace AStarDev.CloudSync.Persistence.TestsUnit;
@@ -146,6 +147,49 @@ public sealed class AccountStoreShould
     }
 
     [Fact]
+    public async Task forget_a_removed_account_and_its_sync_job()
+    {
+        await using var host = await PersistenceTestHost.CreateInitialisedAsync(Token);
+        var job = await SyncJobStoreShould.AddAccountAndJobAsync(host, BootstrapMode.Merge);
+
+        var removed = await host.Services.GetRequiredService<IAccountStore>().RemoveAsync(job.AccountId, Token);
+        var found = await host.Services.GetRequiredService<ISyncJobStore>().GetAsync(job.Id, Token);
+
+        removed.Value.ShouldBeOfType<Ok<Unit>>();
+        found.Value.ShouldBeOfType<Fail<StoreError>>();
+    }
+
+    [Fact]
+    public async Task forget_a_removed_account_whose_job_indexes_nested_items()
+    {
+        await using var host = await PersistenceTestHost.CreateInitialisedAsync(Token);
+        var job = await SyncJobStoreShould.AddAccountAndJobAsync(host, BootstrapMode.Merge);
+        await AddNestedItemsAsync(host, job.Id);
+
+        var removed = await host.Services.GetRequiredService<IAccountStore>().RemoveAsync(job.AccountId, Token);
+
+        removed.Value.ShouldBeOfType<Ok<Unit>>();
+        await using var context = await host.Services.GetRequiredService<IDbContextFactory<CloudSyncDbContext>>().CreateDbContextAsync(Token);
+        (await context.Items.CountAsync(Token)).ShouldBe(0);
+    }
+
+    [Fact]
+    public async Task keep_the_sync_jobs_of_other_accounts()
+    {
+        await using var host = await PersistenceTestHost.CreateInitialisedAsync(Token);
+        var removedJob = await SyncJobStoreShould.AddAccountAndJobAsync(host, BootstrapMode.Merge);
+        var other = NewAccount("acct-2");
+        await host.Services.GetRequiredService<IAccountStore>().AddAsync(other, Token);
+        var keptJob = SyncJobStoreShould.NewJob(other.Id, BootstrapMode.Merge);
+        await host.Services.GetRequiredService<ISyncJobStore>().AddAsync(keptJob, Token);
+
+        await host.Services.GetRequiredService<IAccountStore>().RemoveAsync(removedJob.AccountId, Token);
+        var found = await host.Services.GetRequiredService<ISyncJobStore>().GetAsync(keptJob.Id, Token);
+
+        found.Value.ShouldBeOfType<Ok<SyncJob>>().Value.ShouldBe(keptJob);
+    }
+
+    [Fact]
     public async Task report_an_unknown_account_when_removing()
     {
         await using var host = await PersistenceTestHost.CreateInitialisedAsync(Token);
@@ -182,6 +226,16 @@ public sealed class AccountStoreShould
         await Should.ThrowAsync<OperationCanceledException>(() => store.UpdateStatusAsync(new AccountId(Guid.NewGuid()), AccountStatus.Connected, cancelled.Token));
         await Should.ThrowAsync<OperationCanceledException>(() => store.UpdateConcurrencyAsync(new AccountId(Guid.NewGuid()), 2, cancelled.Token));
         await Should.ThrowAsync<OperationCanceledException>(() => store.RemoveAsync(new AccountId(Guid.NewGuid()), cancelled.Token));
+    }
+
+    private static async Task AddNestedItemsAsync(PersistenceTestHost host, SyncJobId jobId)
+    {
+        var now = DateTimeOffset.UtcNow;
+        var folder = new ItemEntity { Id = new ItemId(Guid.NewGuid()), SyncJobId = jobId, ItemType = ItemType.Folder, RemoteItemId = new RemoteItemId("folder"), LocalPath = new RelativePath("Docs"), CreatedUtc = now, UpdatedUtc = now };
+        var file = new ItemEntity { Id = new ItemId(Guid.NewGuid()), SyncJobId = jobId, ParentItemId = folder.Id, ItemType = ItemType.File, RemoteItemId = new RemoteItemId("file"), LocalPath = new RelativePath("Docs/a.txt"), CreatedUtc = now, UpdatedUtc = now };
+        await using var context = await host.Services.GetRequiredService<IDbContextFactory<CloudSyncDbContext>>().CreateDbContextAsync(Token);
+        context.Items.AddRange(folder, file);
+        await context.SaveChangesAsync(Token);
     }
 
     private static Account NewAccount(string identifier)
