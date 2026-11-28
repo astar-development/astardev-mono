@@ -16,6 +16,21 @@ public sealed class LocalObservationStoreShould
     private static CancellationToken Token => TestContext.Current.CancellationToken;
 
     [Fact]
+    public async Task record_more_files_than_sqlite_allows_parameters_twice()
+    {
+        await using var host = await PersistenceTestHost.CreateInitialisedAsync(Token);
+        var job = await SyncJobStoreShould.AddAccountAndJobAsync(host, BootstrapMode.Merge);
+        var store = host.Services.GetRequiredService<ILocalObservationStore>();
+        var present = Enumerable.Range(0, 40_000).Select(index => new LocalSnapshot(new RelativePath($"f{index}.txt"), index, Stamp, null, null)).ToList();
+
+        var first = await store.RecordAsync(job.Id, present, [], Stamp, Token);
+        var second = await store.RecordAsync(job.Id, present, [], Stamp.AddSeconds(1), Token);
+
+        first.Value.ShouldBeOfType<Ok<Unit>>();
+        second.Value.ShouldBeOfType<Ok<Unit>>();
+    }
+
+    [Fact]
     public async Task round_trip_the_local_identity()
     {
         await using var host = await PersistenceTestHost.CreateInitialisedAsync(Token);

@@ -8,7 +8,7 @@ internal static class ItemSnapshotRows
 {
     /// <summary>Loads the tracked snapshot on <paramref name="source"/> of each of <paramref name="itemIds"/>, keyed by item; an item never observed on that side has no entry.</summary>
     public static Task<Dictionary<ItemId, ItemSnapshotEntity>> LoadAsync(CloudSyncDbContext context, IReadOnlyCollection<ItemId> itemIds, SnapshotSource source, CancellationToken cancellationToken)
-        => context.ItemSnapshots.Where(row => row.SnapshotSource == source && itemIds.Contains(row.ItemId)).ToDictionaryAsync(row => row.ItemId, cancellationToken);
+        => context.ItemSnapshots.Where(row => row.SnapshotSource == source && EF.Parameter(itemIds).Contains(row.ItemId)).ToDictionaryAsync(row => row.ItemId, cancellationToken);
 
     /// <summary>Records an observation of <paramref name="itemId"/>: adds its row when none exists, otherwise overwrites the row only when size, modified time, hash or identity differ, so <see cref="ItemSnapshotEntity.ObservedUtc"/> is when the item was last seen to change.</summary>
     public static void Observe(CloudSyncDbContext context, Dictionary<ItemId, ItemSnapshotEntity> snapshots, ItemId itemId, SnapshotSource source, long size, DateTimeOffset modifiedUtc, string? hash, string? identity, DateTimeOffset observedUtc)

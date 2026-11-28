@@ -97,7 +97,7 @@ internal sealed class ItemIndexStore(IDbContextFactory<CloudSyncDbContext> conte
     {
         var remoteIds = ids.Distinct().ToList();
 
-        return (await context.Items.Where(row => row.SyncJobId == jobId && remoteIds.Contains(row.RemoteItemId)).ToListAsync(cancellationToken).ConfigureAwait(false))
+        return (await context.Items.Where(row => row.SyncJobId == jobId && EF.Parameter(remoteIds).Contains(row.RemoteItemId)).ToListAsync(cancellationToken).ConfigureAwait(false))
             .GroupBy(row => row.RemoteItemId)
             .ToDictionary(group => group.Key, group => group.First());
     }
