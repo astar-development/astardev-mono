@@ -3,6 +3,7 @@ using AStarDev.CloudSync.Ports;
 using AStarDev.CloudSync.Persistence;
 using AStarDev.FunctionalParadigm;
 using Microsoft.Extensions.DependencyInjection;
+using Microsoft.Extensions.Logging;
 
 namespace AStarDev.CloudSync.Daemon.TestsUnit;
 
@@ -42,6 +43,7 @@ public sealed class InfrastructureInitialisationStageShould
         await File.WriteAllTextAsync(blocker, "a file where a folder is needed", Token);
         var databasePath = Path.Combine(blocker, "cloudsync.db");
         var builder = Microsoft.Extensions.Hosting.Host.CreateApplicationBuilder();
+        builder.Logging.ClearProviders();
         builder.Configuration["Database:Path"] = databasePath;
         builder.Configuration["Telemetry:Database:Path"] = Path.Combine(blocker, "telemetry.db");
         builder.Services.AddCloudSyncDaemon();

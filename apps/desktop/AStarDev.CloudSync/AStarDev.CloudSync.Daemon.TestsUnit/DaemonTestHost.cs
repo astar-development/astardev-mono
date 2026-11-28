@@ -4,6 +4,7 @@ using AStarDev.CloudSync.Ports;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.DependencyInjection.Extensions;
 using Microsoft.Extensions.Hosting;
+using Microsoft.Extensions.Logging;
 
 namespace AStarDev.CloudSync.Daemon.TestsUnit;
 
@@ -21,6 +22,7 @@ internal sealed class DaemonTestHost(IHost host, string socketPath, string datab
         var databasePath = Path.Combine(Path.GetTempPath(), $"cloudsync-daemon-{Guid.NewGuid():N}", "cloudsync.db");
         seedDatabase?.Invoke(databasePath);
         var builder = Host.CreateApplicationBuilder();
+        builder.Logging.ClearProviders();
         builder.Configuration[$"{ApplicationConstants.IpcConfigurationSection}:{nameof(IpcOptions.SocketPath)}"] = socketPath;
         builder.Configuration[$"{DatabaseOptions.ConfigurationSection}:{nameof(DatabaseOptions.Path)}"] = databasePath;
         builder.Configuration[$"{TelemetryDatabaseOptions.ConfigurationSection}:{nameof(TelemetryDatabaseOptions.Path)}"] = Path.Combine(Path.GetDirectoryName(databasePath)!, "telemetry.db");

@@ -1,8 +1,9 @@
 using System.Diagnostics;
+using AStarDev.CloudSync.Daemon;
 using AStarDev.CloudSync.IPC;
 using AStarDev.FunctionalParadigm;
 
-namespace AStarDev.CloudSync.Daemon.TestsUnit;
+namespace AStarDev.CloudSync.TestsIntegration.DaemonTests;
 
 public sealed class DaemonProcessShould : IDisposable
 {

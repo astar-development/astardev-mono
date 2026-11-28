@@ -1,4 +1,5 @@
 using System.Diagnostics;
+using AStarDev.CloudSync.Daemon;
 using AStarDev.CloudSync.Daemon.Startup;
 using AStarDev.CloudSync.IPC;
 using AStarDev.CloudSync.Persistence;
@@ -13,7 +14,7 @@ using OpenTelemetry.Logs;
 using OpenTelemetry.Resources;
 using OpenTelemetry.Trace;
 
-namespace AStarDev.CloudSync.Daemon.TestsUnit;
+namespace AStarDev.CloudSync.TestsIntegration.DaemonTests;
 
 public sealed class DaemonServiceCollectionExtensionsShould
 {
@@ -179,7 +180,7 @@ public sealed class DaemonServiceCollectionExtensionsShould
     [Fact]
     public async Task keep_serving_status_in_recovery_mode_and_report_the_database_unhealthy()
     {
-        await using var host = DaemonTestHost.Create(InfrastructureInitialisationStageShould.CorruptDatabaseAt);
+        await using var host = DaemonTestHost.Create(CorruptDatabaseAt);
         await using var client = UnixSocketIpc.CreateClient(host.SocketPath);
 
         await host.StartAsync(Token);
@@ -191,5 +192,11 @@ public sealed class DaemonServiceCollectionExtensionsShould
         status.Value.ShouldBeOfType<Ok<DaemonStatusView>>();
         host.Services.GetRequiredService<IDatabaseState>().Mode.ShouldBe(DatabaseMode.Recovery);
         report.Entries["database"].Status.ShouldBe(HealthStatus.Unhealthy);
+    }
+
+    private static void CorruptDatabaseAt(string path)
+    {
+        Directory.CreateDirectory(Path.GetDirectoryName(path)!);
+        File.WriteAllText(path, new string('x', 8192));
     }
 }
