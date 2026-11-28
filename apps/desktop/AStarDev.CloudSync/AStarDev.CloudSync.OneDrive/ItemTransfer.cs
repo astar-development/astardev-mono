@@ -1,3 +1,4 @@
+using System.Buffers;
 using System.Net;
 using System.Net.Http.Headers;
 using System.Net.Http.Json;
@@ -128,12 +129,25 @@ internal sealed class ItemTransfer(HttpClient graph, HttpClient uploads, int chu
 
     private async Task<Result<Unit, ProviderError>> SendChunksAsync(string uploadUrl, Stream content, CancellationToken cancellationToken)
     {
+        var buffer = ArrayPool<byte>.Shared.Rent(chunkSize);
+
+        try
+        {
+            return await SendChunksAsync(uploadUrl, content, buffer, cancellationToken).ConfigureAwait(false);
+        }
+        finally
+        {
+            ArrayPool<byte>.Shared.Return(buffer);
+        }
+    }
+
+    private async Task<Result<Unit, ProviderError>> SendChunksAsync(string uploadUrl, Stream content, byte[] buffer, CancellationToken cancellationToken)
+    {
         var total = content.Length;
-        var buffer = new byte[chunkSize];
 
         for (long offset = 0; offset < total;)
         {
-            var read = await content.ReadAtLeastAsync(buffer, (int)Math.Min(chunkSize, total - offset), false, cancellationToken).ConfigureAwait(false);
+            var read = await content.ReadAtLeastAsync(buffer.AsMemory(0, chunkSize), (int)Math.Min(chunkSize, total - offset), false, cancellationToken).ConfigureAwait(false);
             if (read == 0) return new Fail<ProviderError>(new Permanent("The file ended before its announced length."));
 
             using var chunk = new ByteArrayContent(buffer, 0, read);
