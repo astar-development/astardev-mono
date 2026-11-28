@@ -18,6 +18,7 @@ internal sealed class ClassificationSuggestionsViewModel : ViewModelBase
     private CategoryRowViewModel? category;
     private bool isLoaded;
     private int total;
+    private int version;
     private string? errorMessage;
 
     /// <summary>Creates the tab with no suggestions until the first load.</summary>
@@ -28,6 +29,7 @@ internal sealed class ClassificationSuggestionsViewModel : ViewModelBase
         this.localisation = localisation;
         this.createClient = createClient;
         RefreshCommand = new AsyncRelayCommand(LoadAsync);
+        LoadMoreCommand = new AsyncRelayCommand(LoadMoreAsync);
         PromoteCommand = new AsyncRelayCommand<SuggestionRowViewModel>(PromoteAsync);
         IgnoreCommand = new AsyncRelayCommand<SuggestionRowViewModel>(IgnoreAsync);
     }
@@ -67,6 +69,12 @@ internal sealed class ClassificationSuggestionsViewModel : ViewModelBase
     /// <summary>Scans the file paths again.</summary>
     public IAsyncRelayCommand RefreshCommand { get; }
 
+    /// <summary>Reads the next page of less common words and adds it below those shown. The view offers it while <see cref="IsCut"/> is true.</summary>
+    public IAsyncRelayCommand LoadMoreCommand { get; }
+
+    /// <summary>Label of the button that loads less common words.</summary>
+    public string MoreText => localisation.Get("Classifications.Suggestions.More");
+
     /// <summary>Makes the row's word an active term in <see cref="Category"/>.</summary>
     public IAsyncRelayCommand<SuggestionRowViewModel> PromoteCommand { get; }
 
@@ -88,20 +96,34 @@ internal sealed class ClassificationSuggestionsViewModel : ViewModelBase
     /// <summary>Text above the category picker.</summary>
     public string CategoryText => localisation.Get("Classifications.Suggestions.Category");
 
-    /// <summary>Reads the suggestions from the daemon. A failure keeps the words shown and lands in <see cref="ErrorMessage"/>.</summary>
+    /// <summary>Reads the first page of suggestions from the daemon, replacing the words shown. A failure keeps the words shown and lands in <see cref="ErrorMessage"/>.</summary>
     /// <param name="cancellationToken">Cancelling abandons the wait and surfaces as <see cref="OperationCanceledException"/>.</param>
-    public async Task LoadAsync(CancellationToken cancellationToken)
+    public Task LoadAsync(CancellationToken cancellationToken) => LoadPageAsync(true, cancellationToken);
+
+    /// <summary>Reads the page of less common words after those shown and adds it below them. A reply that a newer <see cref="LoadAsync"/> has replaced is dropped; a failure keeps the words shown and lands in <see cref="ErrorMessage"/>.</summary>
+    /// <param name="cancellationToken">Cancelling abandons the wait and surfaces as <see cref="OperationCanceledException"/>.</param>
+    public Task LoadMoreAsync(CancellationToken cancellationToken) => LoadPageAsync(false, cancellationToken);
+
+    private async Task LoadPageAsync(bool restart, CancellationToken cancellationToken)
     {
+        var asked = restart ? ++version : version;
+        var skip = restart ? 0 : Rows.Count;
         await using var client = createClient();
 
-        switch (await ConnectAsync(client, cancellationToken) switch
+        var result = await ConnectAsync(client, cancellationToken) switch
         {
-            Ok<Unit> => await ScanAsync(client, cancellationToken),
+            Ok<Unit> => await ScanAsync(client, skip, cancellationToken),
             Fail<ConnectFailure> fail => fail
-        })
+        };
+        if (asked == version) Show(result, restart);
+    }
+
+    private void Show(Result<ClassificationSuggestionsView, ConnectFailure> result, bool restart)
+    {
+        switch (result)
         {
             case Ok<ClassificationSuggestionsView> ok:
-                Rows.Clear();
+                if (restart) Rows.Clear();
                 foreach (var suggestion in ok.Value.Suggestions) Rows.Add(Row(suggestion));
 
                 isLoaded = true;
@@ -125,8 +147,8 @@ internal sealed class ClassificationSuggestionsViewModel : ViewModelBase
             Fail<IpcError> fail => new Fail<ConnectFailure>(ConnectFailure.From(fail.Error))
         };
 
-    private static async Task<Result<ClassificationSuggestionsView, ConnectFailure>> ScanAsync(IIpcClient client, CancellationToken cancellationToken)
-        => await client.QueryAsync(new GetClassificationSuggestions(), cancellationToken) switch
+    private static async Task<Result<ClassificationSuggestionsView, ConnectFailure>> ScanAsync(IIpcClient client, int skip, CancellationToken cancellationToken)
+        => await client.QueryAsync(new GetClassificationSuggestions(skip), cancellationToken) switch
         {
             Ok<ClassificationSuggestionsView> ok => ok,
             Fail<IpcError> fail => new Fail<ConnectFailure>(ConnectFailure.From(fail.Error))
