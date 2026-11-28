@@ -15,6 +15,7 @@
   "Settings.Providers.Open": "Open Providers",
   "Settings.Synchronisation.Heading": "Synchronisation",
   "Settings.Synchronisation.NotSynced": "Local folders not synced",
+  "Settings.Synchronisation.AddFolder": "Sync this folder",
   "Settings.Synchronisation.Description": "Choose which remote folders are synchronised and where they are stored on this computer.",
   "Settings.Synchronisation.Concurrency": "Operations at once",
   "Settings.Synchronisation.ConcurrencyNote": "How many uploads, downloads, deletes and moves run at once for this account. Lower it if the provider keeps slowing the account down.",

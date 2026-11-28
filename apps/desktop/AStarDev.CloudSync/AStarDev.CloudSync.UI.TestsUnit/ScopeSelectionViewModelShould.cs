@@ -233,6 +233,69 @@ public sealed class ScopeSelectionViewModelShould
     }
 
     [Fact]
+    public async Task add_an_unsynced_folder_as_a_scope_of_the_managed_account_and_reload()
+    {
+        var other = new SyncJobView(Guid.NewGuid(), Guid.NewGuid(), "Other", "/home/bob/OneDrive", SyncBootstrapMode.Download);
+        var added = false;
+        var client = new FakeIpcClient([], available: true)
+        {
+            JobsReply = new Ok<SyncJobsView>(new SyncJobsView([other, Job])),
+            ScopesReply = _ => new Ok<SyncScopesView>(added ? new SyncScopesView([new SyncScopeView("photos-1")], []) : new SyncScopesView([], ["Photos"]))
+        };
+        var viewModel = new ScopeSelectionViewModel(() => client, new FakeFolderPicker(null)) { AccountId = Account.Id };
+        await viewModel.RefreshAsync(Token);
+        added = true;
+
+        await viewModel.AddUnsyncedFolderAsync("Photos", Token);
+
+        client.Sent.ShouldBe([new AddLocalFolderScope(Job.Id, "Photos")]);
+        viewModel.UnsyncedFolders.ShouldBeEmpty();
+        viewModel.SelectedFolderIds.ShouldBe(["photos-1"]);
+        viewModel.StatusMessage.ShouldBeNull();
+    }
+
+    [Fact]
+    public async Task show_the_reason_when_the_daemon_rejects_an_unsynced_folder()
+    {
+        var client = new FakeIpcClient([], available: true)
+        {
+            JobsReply = new Ok<SyncJobsView>(new SyncJobsView([Job])),
+            ScopesReply = _ => new Ok<SyncScopesView>(new SyncScopesView([], ["Photos"])),
+            CommandReply = new Ok<CommandResult>(new CommandResult(CommandOutcome.Rejected, "OneDrive could not be reached; try again."))
+        };
+        var viewModel = new ScopeSelectionViewModel(() => client, new FakeFolderPicker(null));
+        await viewModel.RefreshAsync(Token);
+
+        await viewModel.AddUnsyncedFolderAsync("Photos", Token);
+
+        viewModel.StatusMessage.ShouldBe("OneDrive could not be reached; try again.");
+        viewModel.UnsyncedFolders.ShouldBe(["Photos"]);
+    }
+
+    [Fact]
+    public async Task send_nothing_for_an_unsynced_folder_while_no_job_exists()
+    {
+        var client = new FakeIpcClient([], available: true);
+        var viewModel = new ScopeSelectionViewModel(() => client, new FakeFolderPicker(null));
+
+        await viewModel.AddUnsyncedFolderAsync("Photos", Token);
+
+        client.Sent.ShouldBeEmpty();
+    }
+
+    [Fact]
+    public async Task honour_cancellation_when_adding_an_unsynced_folder()
+    {
+        var client = new FakeIpcClient([], available: true) { JobsReply = new Ok<SyncJobsView>(new SyncJobsView([Job])) };
+        var viewModel = new ScopeSelectionViewModel(() => client, new FakeFolderPicker(null));
+        await viewModel.RefreshAsync(Token);
+        using var cancelled = new CancellationTokenSource();
+        await cancelled.CancelAsync();
+
+        await Should.ThrowAsync<OperationCanceledException>(() => viewModel.AddUnsyncedFolderAsync("Photos", cancelled.Token));
+    }
+
+    [Fact]
     public async Task show_an_error_when_the_daemon_is_not_running()
     {
         var viewModel = new ScopeSelectionViewModel(() => new FakeIpcClient([], available: false), new FakeFolderPicker(null));

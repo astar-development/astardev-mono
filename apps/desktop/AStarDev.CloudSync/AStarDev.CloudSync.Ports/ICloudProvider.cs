@@ -76,6 +76,13 @@ public interface ICloudProvider
     /// <returns>Success, or the reason the upload failed. Small files go in one request, larger ones in chunks of one upload session. A failed upload leaves the earlier remote content in place; repeating the call starts the upload again from the beginning.</returns>
     Task<Result<Unit, ProviderError>> UploadAsync(string accountIdentifier, UploadRequest request, CancellationToken cancellationToken);
 
+    /// <summary>Creates a remote folder at a path, so a local folder can become a scope before anything in it is uploaded; uploads are path-based and leave no folder id to select.</summary>
+    /// <param name="accountIdentifier">The account whose drive is used, as <see cref="ProviderAccount.AccountIdentifier"/> reported it. An account that is not signed in is <see cref="AuthenticationFailed"/>; one account's call never carries another account's sign-in.</param>
+    /// <param name="path">The folder's path from the drive root. The folder it sits in must exist.</param>
+    /// <param name="cancellationToken">Cancelling abandons the call and surfaces as <see cref="OperationCanceledException"/>, never as a <see cref="ProviderError"/>.</param>
+    /// <returns>The provider's id of the folder. A folder already at the path is reused, not renamed or replaced, so calling twice is safe and gives the same id. <see cref="Permanent"/> when the parent folder is missing or a file already holds the name; or the other <see cref="ProviderError"/> met.</returns>
+    Task<Result<RemoteItemId, ProviderError>> CreateFolderAsync(string accountIdentifier, RelativePath path, CancellationToken cancellationToken);
+
     /// <summary>Renames or moves a remote item to a new path.</summary>
     /// <param name="accountIdentifier">The account whose drive is used, as <see cref="ProviderAccount.AccountIdentifier"/> reported it. An account that is not signed in is <see cref="AuthenticationFailed"/>; one account's call never carries another account's sign-in.</param>
     /// <param name="itemId">The item to move.</param>

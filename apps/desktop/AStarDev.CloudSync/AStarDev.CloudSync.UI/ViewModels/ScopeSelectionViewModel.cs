@@ -238,6 +238,32 @@ public sealed partial class ScopeSelectionViewModel(Func<IIpcClient> createClien
     [RelayCommand(AllowConcurrentExecutions = true)]
     private Task Apply(ScopeChange change) => ApplyAsync(change, CancellationToken.None);
 
+    /// <summary>
+    /// Asks the daemon to create the remote folder for one of <see cref="UnsyncedFolders"/> in the drive of <see cref="AccountId"/> and sync it, then reads the selection back so the folder moves from the unsynced list to the ticks.
+    /// Does nothing while no job exists. A refusal lands in <see cref="StatusMessage"/> and the lists stay as they were. Exposed to the view as <c>AddUnsyncedFolderCommand</c>, taking the folder name as its parameter.
+    /// </summary>
+    /// <param name="folderName">The name as listed in <see cref="UnsyncedFolders"/>.</param>
+    /// <param name="cancellationToken">Cancelling abandons the wait and surfaces as <see cref="OperationCanceledException"/>; the daemon may still finish the request.</param>
+    public async Task AddUnsyncedFolderAsync(string folderName, CancellationToken cancellationToken)
+    {
+        if (job is not { } current) return;
+
+        StatusMessage = null;
+        await using var client = createClient();
+
+        var sent = await ConnectAsync(client, cancellationToken) switch
+        {
+            Ok<Unit> => AnswerOf(await client.SendAsync(new AddLocalFolderScope(current.Id, folderName), cancellationToken)),
+            Fail<ConnectFailure> fail => fail
+        };
+
+        if (sent is Fail<ConnectFailure> failure) StatusMessage = failure.Error.Message;
+        else await RefreshAsync(cancellationToken);
+    }
+
+    [RelayCommand]
+    private Task AddUnsyncedFolder(string folderName) => AddUnsyncedFolderAsync(folderName, CancellationToken.None);
+
     private static async Task<Result<Unit, ConnectFailure>> ConnectAsync(IIpcClient client, CancellationToken cancellationToken)
         => await client.ConnectAsync(cancellationToken) switch
         {
@@ -297,7 +323,10 @@ public sealed partial class ScopeSelectionViewModel(Func<IIpcClient> createClien
     }
 
     private static async Task<Result<Unit, ConnectFailure>> SendScopeChangeAsync(IIpcClient client, SyncJobView target, ScopeChange change, CancellationToken cancellationToken)
-        => await client.SendAsync(change.Selected ? new AddSyncScope(target.Id, change.FolderId) : new RemoveSyncScope(target.Id, change.FolderId), cancellationToken) switch
+        => AnswerOf(await client.SendAsync(change.Selected ? new AddSyncScope(target.Id, change.FolderId) : new RemoveSyncScope(target.Id, change.FolderId), cancellationToken));
+
+    private static Result<Unit, ConnectFailure> AnswerOf(Result<CommandResult, IpcError> reply)
+        => reply switch
         {
             Ok<CommandResult> { Value.Outcome: CommandOutcome.Accepted } => new Ok<Unit>(default),
             Ok<CommandResult> rejected => new Fail<ConnectFailure>(new ConnectFailure(rejected.Value.Message ?? ApplicationConstants.RequestRejectedText)),

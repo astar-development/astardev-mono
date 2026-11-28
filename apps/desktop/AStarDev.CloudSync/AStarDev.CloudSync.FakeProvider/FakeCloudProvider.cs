@@ -41,6 +41,9 @@ internal sealed class FakeCloudProvider(int pageSize) : ICloudProvider
 
     public List<RemoteItemId> Deletes { get; } = [];
 
+    /// <summary>Every folder <see cref="CreateFolderAsync"/> created, by path. A path created again keeps its first id.</summary>
+    public Dictionary<RelativePath, RemoteItemId> CreatedFolders { get; } = [];
+
     public int PagesServed { get; private set; }
 
     public int ItemsServed { get; private set; }
@@ -199,6 +202,19 @@ internal sealed class FakeCloudProvider(int pageSize) : ICloudProvider
         Uploads.Add((request.Path, copy.ToArray(), request.ModifiedUtc));
 
         return new Ok<Unit>(default);
+    }
+
+    /// <inheritdoc/>
+    /// <remarks>Consumes the next scripted failure first. The id is <c>folder-</c> followed by the path; nothing is added to the listed tree.</remarks>
+    public Task<Result<RemoteItemId, ProviderError>> CreateFolderAsync(string accountIdentifier, RelativePath path, CancellationToken cancellationToken)
+    {
+        cancellationToken.ThrowIfCancellationRequested();
+
+        if (scriptedFailures.TryDequeue(out var failure)) return Task.FromResult<Result<RemoteItemId, ProviderError>>(new Fail<ProviderError>(failure));
+
+        if (!CreatedFolders.TryGetValue(path, out var folder)) CreatedFolders[path] = folder = new RemoteItemId($"folder-{path.Value}");
+
+        return Task.FromResult<Result<RemoteItemId, ProviderError>>(new Ok<RemoteItemId>(folder));
     }
 
     public Task<Result<Unit, ProviderError>> RenameAsync(string accountIdentifier, RemoteItemId itemId, RelativePath path, CancellationToken cancellationToken)
