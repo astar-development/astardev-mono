@@ -80,12 +80,10 @@ internal sealed class EventJournalStore(IDbContextFactory<CloudSyncDbContext> co
         return outcome.ToResult(ToStorageFailure);
     }
 
-    /// <summary>The entries that occurred in <c>[fromUtc, toUtc]</c> and, unless <paramref name="eventTypes"/> is empty, have one of its types, filtered in SQL. Both bounds become UTC first, because the stored binary form of a <see cref="DateTimeOffset"/> orders by instant only at a zero offset; the type filter is left out rather than made optional in SQL, so an <c>(EventType, OccurredUtc)</c> index can serve it.</summary>
+    /// <summary>The entries that occurred in <c>[fromUtc, toUtc]</c> and, unless <paramref name="eventTypes"/> is empty, have one of its types, filtered in SQL. Bounds in any offset compare by instant, because timestamps are stored as UTC ticks. The type filter is left out rather than made optional in SQL, so an <c>(EventType, OccurredUtc)</c> index can serve it.</summary>
     internal static IQueryable<JournalEntryEntity> Matching(CloudSyncDbContext context, DateTimeOffset fromUtc, DateTimeOffset toUtc, IReadOnlyList<string> eventTypes)
     {
-        var from = fromUtc.ToUniversalTime();
-        var to = toUtc.ToUniversalTime();
-        var inRange = context.EventJournal.AsNoTracking().Where(row => row.OccurredUtc >= from && row.OccurredUtc <= to);
+        var inRange = context.EventJournal.AsNoTracking().Where(row => row.OccurredUtc >= fromUtc && row.OccurredUtc <= toUtc);
 
         return eventTypes.Count == 0 ? inRange : inRange.Where(row => eventTypes.Contains(row.EventType));
     }

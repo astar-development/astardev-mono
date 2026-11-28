@@ -57,7 +57,7 @@ internal sealed class Reconciler : IReconciler
         var changes = local.Path == known.Path ? ChangeSet.None : ChangeSet.Renamed;
         var contentChanged = known.Fingerprint is { } knownFingerprint && local.Fingerprint is { } localFingerprint
             ? knownFingerprint != localFingerprint
-            : local.Size != known.Size || local.ModifiedUtc != known.ModifiedUtc;
+            : local.Size != known.Size || !ModifiedTimes.Same(local.ModifiedUtc, known.ModifiedUtc);
 
         return contentChanged ? changes | ChangeSet.Modified : changes;
     }
@@ -68,7 +68,7 @@ internal sealed class Reconciler : IReconciler
         var changes = remote.Path == known.Path ? ChangeSet.None : ChangeSet.Renamed;
         var contentChanged = known.ETag is { } knownETag
             ? knownETag != remote.ETag
-            : remote.Size != known.Size || remote.ModifiedUtc != known.ModifiedUtc;
+            : remote.Size != known.Size || !ModifiedTimes.Same(remote.ModifiedUtc, known.ModifiedUtc);
 
         return contentChanged ? changes | ChangeSet.Modified : changes;
     }

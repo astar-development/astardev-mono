@@ -51,6 +51,16 @@ public sealed class ReconcilerShould
     }
 
     [Fact]
+    public void treat_a_local_file_whose_time_differs_only_below_storage_precision_as_unchanged()
+    {
+        var local = ReconcilerStates.Local(modified: ReconcilerStates.Stamp.AddTicks(999));
+
+        var decision = new Reconciler().Reconcile(ReconcilerStates.State(ReconcilerStates.Known(), local, ReconcilerStates.Remote()));
+
+        Describe(decision).ShouldBe("NoOp");
+    }
+
+    [Fact]
     public void merge_a_rename_with_a_content_change()
     {
         var deleted = new DeletedItem(ReconcilerStates.ItemId, new RenameEvidence(new RelativePath(ReconcilerStates.KnownPath), 10, ReconcilerStates.Stamp, null, "inode-1"));

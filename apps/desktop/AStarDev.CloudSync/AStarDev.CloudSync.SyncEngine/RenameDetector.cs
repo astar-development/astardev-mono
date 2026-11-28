@@ -51,5 +51,5 @@ internal static class RenameDetector
             && known.Fingerprint is { } fingerprint
             && fingerprint == current.Fingerprint
             && known.Size == current.Size
-            && known.ModifiedUtc == current.ModifiedUtc;
+            && ModifiedTimes.Same(known.ModifiedUtc, current.ModifiedUtc);
 }

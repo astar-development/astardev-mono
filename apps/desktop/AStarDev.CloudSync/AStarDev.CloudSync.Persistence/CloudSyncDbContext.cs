@@ -1,6 +1,5 @@
 using AStarDev.CloudSync.Domain;
 using Microsoft.EntityFrameworkCore;
-using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 
 namespace AStarDev.CloudSync.Persistence;
 
@@ -78,7 +77,7 @@ internal sealed class CloudSyncDbContext(DbContextOptions<CloudSyncDbContext> op
     }
 
     protected override void ConfigureConventions(ModelConfigurationBuilder configurationBuilder)
-        => configurationBuilder.Properties<DateTimeOffset>().HaveConversion<DateTimeOffsetToBinaryConverter>();
+        => configurationBuilder.Properties<DateTimeOffset>().HaveConversion<UtcTicksConverter>();
 
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
