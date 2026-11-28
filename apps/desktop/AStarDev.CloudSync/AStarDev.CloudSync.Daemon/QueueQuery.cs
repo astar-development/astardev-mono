@@ -1,15 +1,17 @@
 using AStarDev.CloudSync.Domain;
 using AStarDev.CloudSync.IPC;
+using AStarDev.CloudSync.Persistence;
 using AStarDev.CloudSync.Ports;
 using AStarDev.FunctionalParadigm;
 
 namespace AStarDev.CloudSync.Daemon;
 
 /// <summary>Answers <see cref="GetQueue"/> from the <see cref="IOperationStore"/>, the job and account stores and the item state, and publishes <see cref="QueueChanged"/> when the answer changes.</summary>
-internal sealed class QueueQuery(IOperationStore operations, OperationLookup lookup, IIpcServer server)
+internal sealed class QueueQuery(IOperationStore operations, OperationLookup lookup, IIpcServer server, IDatabaseWrites writes)
 {
     private static readonly OperationStatus[] Open = [OperationStatus.Pending, OperationStatus.Running];
 
+    private readonly StoreReadCache<QueueView> reads = new(writes);
     private readonly object gate = new();
     private Option<QueueView> published = Option.None<QueueView>();
 
@@ -32,10 +34,10 @@ internal sealed class QueueQuery(IOperationStore operations, OperationLookup loo
         };
     }
 
-    /// <summary>Publishes <see cref="QueueChanged"/> when the queue differs from the one published last. The first call always publishes.</summary>
+    /// <summary>Publishes <see cref="QueueChanged"/> when the queue differs from the one published last. The first call always publishes. Reads nothing while no write was committed since the last read, since every value of the queue comes from the database.</summary>
     /// <returns>Success when nothing needed publishing or the event went out; otherwise the read or publish failure. Cancellation propagates as <see cref="OperationCanceledException"/>.</returns>
     public async Task<Result<Unit, IpcError>> PublishIfChangedAsync(CancellationToken cancellationToken)
-        => await HandleAsync(new GetQueue(), cancellationToken) switch
+        => await reads.ReadAsync(token => HandleAsync(new GetQueue(), token), cancellationToken) switch
         {
             Ok<QueueView> queue => HasChanged(queue.Value) ? await server.PublishAsync(new QueueChanged(queue.Value), cancellationToken) : new Ok<Unit>(default),
             Fail<IpcError> fail => fail

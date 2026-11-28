@@ -10,7 +10,7 @@ namespace AStarDev.CloudSync.Persistence;
 public static class PersistenceServiceCollectionExtensions
 {
     /// <summary>
-    /// Registers <see cref="DatabaseOptions"/>, the EF Core context factory, <see cref="IDatabaseInitialiser"/>, <see cref="IDatabaseState"/>, <see cref="IAccountStore"/>, <see cref="IJobAccounts"/>
+    /// Registers <see cref="DatabaseOptions"/>, the EF Core context factory, <see cref="IDatabaseInitialiser"/>, <see cref="IDatabaseState"/>, <see cref="IDatabaseWrites"/>, <see cref="IAccountStore"/>, <see cref="IJobAccounts"/>
     /// the telemetry store on its own <c>telemetry.db</c> (<see cref="TelemetryDatabaseOptions"/>, <see cref="ITelemetryStore"/>, <see cref="ITelemetryWriter"/>, a batching writer and an hourly pruning service), an hourly pruning service for completed operations
     /// and a health check named <c>database</c>. Nothing touches the file until <see cref="IDatabaseInitialiser.InitialiseAsync"/> runs.
     /// </summary>
@@ -25,7 +25,9 @@ public static class PersistenceServiceCollectionExtensions
     public static IServiceCollection AddCloudSyncPersistence(this IServiceCollection services)
     {
         services.AddOptions<DatabaseOptions>().BindConfiguration(DatabaseOptions.ConfigurationSection);
-        services.AddDbContextFactory<CloudSyncDbContext>((provider, builder) => builder.UseSqlite($"Data Source={provider.GetRequiredService<IOptions<DatabaseOptions>>().Value.Path}"));
+        services.AddSingleton<DatabaseWriteCounter>();
+        services.AddSingleton<IDatabaseWrites>(provider => provider.GetRequiredService<DatabaseWriteCounter>());
+        services.AddDbContextFactory<CloudSyncDbContext>((provider, builder) => builder.UseSqlite($"Data Source={provider.GetRequiredService<IOptions<DatabaseOptions>>().Value.Path}").AddInterceptors(provider.GetRequiredService<DatabaseWriteCounter>()));
         services.AddSingleton<DatabaseState>();
         services.AddSingleton<IDatabaseState>(provider => provider.GetRequiredService<DatabaseState>());
         services.AddSingleton<IDatabaseInitialiser, DatabaseInitialiser>();
