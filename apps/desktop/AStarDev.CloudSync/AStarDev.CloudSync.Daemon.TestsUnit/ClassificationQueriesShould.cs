@@ -104,6 +104,35 @@ public sealed class ClassificationQueriesShould
     }
 
     [Fact]
+    public async Task return_the_requested_page_of_suggestions_in_the_same_order_as_the_whole_list()
+    {
+        await using var host = await SeededHostAsync(Token);
+        await SaveFilesAsync(host, Token, "Zorblax/Plimbus/Quexo.jpg", "Zorblax/Plimbus.jpg", "Zorblax.jpg");
+        var query = host.Services.GetRequiredService<SuggestionsQuery>();
+        var whole = (await query.HandleAsync(new GetClassificationSuggestions(), Token)).Value.ShouldBeOfType<Ok<ClassificationSuggestionsView>>().Value;
+
+        var page = (await query.HandleAsync(new GetClassificationSuggestions(1, 1), Token)).Value.ShouldBeOfType<Ok<ClassificationSuggestionsView>>().Value;
+
+        whole.Suggestions.Take(3).Select(suggestion => suggestion.Word).ShouldBe(["zorblax", "plimbus", "quexo"]);
+        page.Suggestions.ShouldBe([whole.Suggestions[1]]);
+        page.Total.ShouldBe(whole.Total);
+    }
+
+    [Fact]
+    public async Task bring_a_suggestions_page_outside_the_limits_into_range()
+    {
+        await using var host = await SeededHostAsync(Token);
+        await SaveFilesAsync(host, Token, "Zorblax/Plimbus/Quexo.jpg");
+        var query = host.Services.GetRequiredService<SuggestionsQuery>();
+
+        var wide = (await query.HandleAsync(new GetClassificationSuggestions(-5, 100000), Token)).Value.ShouldBeOfType<Ok<ClassificationSuggestionsView>>().Value;
+        var empty = (await query.HandleAsync(new GetClassificationSuggestions(0, 0), Token)).Value.ShouldBeOfType<Ok<ClassificationSuggestionsView>>().Value;
+
+        wide.Suggestions.Count.ShouldBe(wide.Total);
+        empty.Suggestions.Count.ShouldBe(1);
+    }
+
+    [Fact]
     public async Task honour_cancellation()
     {
         await using var host = await SeededHostAsync(Token);
@@ -112,6 +141,6 @@ public sealed class ClassificationQueriesShould
 
         await Should.ThrowAsync<OperationCanceledException>(() => host.Services.GetRequiredService<TermsQuery>().HandleAsync(new GetClassificationTerms(), cancelled.Token));
         await Should.ThrowAsync<OperationCanceledException>(() => host.Services.GetRequiredService<TermFilesQuery>().HandleAsync(new GetTermFiles(Guid.NewGuid(), 0, 10), cancelled.Token));
-        await Should.ThrowAsync<OperationCanceledException>(() => host.Services.GetRequiredService<SuggestionsQuery>().HandleAsync(new GetClassificationSuggestions(), cancelled.Token));
+        await Should.ThrowAsync<OperationCanceledException>(() => host.Services.GetRequiredService<SuggestionsQuery>().HandleAsync(new GetClassificationSuggestions(0, 10), cancelled.Token));
     }
 }

@@ -26,6 +26,7 @@
             <TextBlock DockPanel.Dock="Top" Text="{Binding ErrorMessage}" IsVisible="{Binding ErrorMessage, Converter={x:Static ObjectConverters.IsNotNull}}" TextWrapping="Wrap" Foreground="{DynamicResource Trust.Degraded.Brush}" />
             <TextBlock DockPanel.Dock="Top" Text="{Binding EmptyText}" IsVisible="{Binding IsEmpty}" Foreground="{DynamicResource Text.Secondary.Brush}" />
             <TextBlock DockPanel.Dock="Top" Text="{Binding SummaryText}" IsVisible="{Binding IsCut}" Margin="0,0,0,8" Foreground="{DynamicResource Text.Secondary.Brush}" />
+            <Button DockPanel.Dock="Bottom" Content="{Binding MoreText}" Command="{Binding LoadMoreCommand}" IsVisible="{Binding IsCut}" Margin="0,8,0,0" />
             <ScrollViewer>
                 <ItemsControl ItemsSource="{Binding Rows}">
                     <ItemsControl.ItemTemplate>

@@ -10,7 +10,7 @@ public sealed class ClassificationMessagesShould
         var terms = new GetClassificationTerms("red", ClassificationTermSort.Files, true, 400, 200);
         IpcJson.FromElement<GetClassificationTerms>(IpcJson.ToElement(terms).ShouldSucceed()).ShouldSucceed().ShouldBe(terms);
         IpcJson.FromElement<GetTermFiles>(IpcJson.ToElement(new GetTermFiles(termId, 5, 100)).ShouldSucceed()).ShouldSucceed().ShouldBe(new GetTermFiles(termId, 5, 100));
-        IpcJson.FromElement<GetClassificationSuggestions>(IpcJson.ToElement(new GetClassificationSuggestions()).ShouldSucceed()).ShouldSucceed().ShouldBe(new GetClassificationSuggestions());
+        IpcJson.FromElement<GetClassificationSuggestions>(IpcJson.ToElement(new GetClassificationSuggestions(400, 200)).ShouldSucceed()).ShouldSucceed().ShouldBe(new GetClassificationSuggestions(400, 200));
         IpcJson.FromElement<StartReclassify>(IpcJson.ToElement(new StartReclassify()).ShouldSucceed()).ShouldSucceed().ShouldBe(new StartReclassify());
         IpcJson.FromElement<GetReclassifyStatus>(IpcJson.ToElement(new GetReclassifyStatus()).ShouldSucceed()).ShouldSucceed().ShouldBe(new GetReclassifyStatus());
     }

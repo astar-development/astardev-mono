@@ -125,7 +125,7 @@ public sealed class ClassificationEditingShould
     public async Task scan_for_suggestions_when_the_tab_is_shown_and_when_the_screen_is_opened_on_it()
     {
         var client = Client();
-        client.SuggestionsReply = new Ok<ClassificationSuggestionsView>(new ClassificationSuggestionsView([new ClassificationSuggestionView("zorblax", 4, false), new ClassificationSuggestionView("jennifer", 2, true)], 2));
+        client.SuggestionsReply = _ => new Ok<ClassificationSuggestionsView>(new ClassificationSuggestionsView([new ClassificationSuggestionView("zorblax", 4, false), new ClassificationSuggestionView("jennifer", 2, true)], 2));
         var (host, screen) = Create(client);
         using var lifetime = host;
 
@@ -134,7 +134,7 @@ public sealed class ClassificationEditingShould
 
         screen.Suggestions.Rows.Select(row => (row.Word, row.Detail)).ShouldBe([("zorblax", "in 4 files"), ("jennifer", "in 2 files  ·  looks like a first name")]);
 
-        client.SuggestionsReply = new Ok<ClassificationSuggestionsView>(new ClassificationSuggestionsView([new ClassificationSuggestionView("plimbus", 1, false)], 1));
+        client.SuggestionsReply = _ => new Ok<ClassificationSuggestionsView>(new ClassificationSuggestionsView([new ClassificationSuggestionView("plimbus", 1, false)], 1));
         screen.OnNavigatedTo(null);
         await screen.LoadSuggestionsCommand.ExecutionTask!;
 
@@ -145,7 +145,7 @@ public sealed class ClassificationEditingShould
     public async Task promote_and_ignore_a_word_into_the_chosen_category_and_drop_it_from_the_list()
     {
         var client = Client();
-        client.SuggestionsReply = new Ok<ClassificationSuggestionsView>(new ClassificationSuggestionsView([new ClassificationSuggestionView("zorblax", 4, false), new ClassificationSuggestionView("plimbus", 2, false)], 2));
+        client.SuggestionsReply = _ => new Ok<ClassificationSuggestionsView>(new ClassificationSuggestionsView([new ClassificationSuggestionView("zorblax", 4, false), new ClassificationSuggestionView("plimbus", 2, false)], 2));
         var (host, screen) = Create(client);
         using var lifetime = host;
         await screen.RefreshAsync(Token);
@@ -165,7 +165,7 @@ public sealed class ClassificationEditingShould
     public async Task ask_for_a_category_before_promoting()
     {
         var client = Client();
-        client.SuggestionsReply = new Ok<ClassificationSuggestionsView>(new ClassificationSuggestionsView([new ClassificationSuggestionView("zorblax", 4, false)], 1));
+        client.SuggestionsReply = _ => new Ok<ClassificationSuggestionsView>(new ClassificationSuggestionsView([new ClassificationSuggestionView("zorblax", 4, false)], 1));
         var (host, screen) = Create(client);
         using var lifetime = host;
         await screen.Suggestions.LoadAsync(Token);
@@ -232,7 +232,7 @@ public sealed class ClassificationEditingShould
     public async Task say_when_the_daemon_listed_only_the_most_common_words()
     {
         var client = Client();
-        client.SuggestionsReply = new Ok<ClassificationSuggestionsView>(new ClassificationSuggestionsView([new ClassificationSuggestionView("zorblax", 4, false)], 9000));
+        client.SuggestionsReply = _ => new Ok<ClassificationSuggestionsView>(new ClassificationSuggestionsView([new ClassificationSuggestionView("zorblax", 4, false)], 9000));
         var (host, screen) = Create(client);
         using var lifetime = host;
 
@@ -240,5 +240,40 @@ public sealed class ClassificationEditingShould
 
         screen.Suggestions.IsCut.ShouldBeTrue();
         screen.Suggestions.SummaryText.ShouldBe("Showing the 1 most common of 9,000 words");
+    }
+
+    [Fact]
+    public async Task load_more_suggestions_below_those_shown_until_none_remain()
+    {
+        var words = new[] { "zorblax", "plimbus", "quexo" };
+        var asked = new List<GetClassificationSuggestions>();
+        var client = Client();
+        client.SuggestionsReply = query =>
+        {
+            asked.Add(query);
+
+            return new Ok<ClassificationSuggestionsView>(new ClassificationSuggestionsView([.. words.Skip(query.Skip).Take(2).Select(word => new ClassificationSuggestionView(word, 1, false))], 3));
+        };
+        var (host, screen) = Create(client);
+        using var lifetime = host;
+        await screen.Suggestions.LoadAsync(Token);
+        screen.Suggestions.IsCut.ShouldBeTrue();
+
+        await screen.Suggestions.LoadMoreCommand.ExecuteAsync(null);
+
+        asked.Select(query => query.Skip).ShouldBe([0, 2]);
+        screen.Suggestions.Rows.Select(row => row.Word).ShouldBe(words);
+        screen.Suggestions.IsCut.ShouldBeFalse();
+    }
+
+    [Fact]
+    public async Task honour_cancellation_when_loading_more_suggestions()
+    {
+        var (host, screen) = Create(Client());
+        using var lifetime = host;
+        using var cancelled = new CancellationTokenSource();
+        await cancelled.CancelAsync();
+
+        await Should.ThrowAsync<OperationCanceledException>(() => screen.Suggestions.LoadMoreAsync(cancelled.Token));
     }
 }
