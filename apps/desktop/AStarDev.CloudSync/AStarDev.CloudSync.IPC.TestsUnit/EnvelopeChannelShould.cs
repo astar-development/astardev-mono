@@ -38,4 +38,16 @@ public sealed class EnvelopeChannelShould
 
         (await channel.ReceiveAsync(Token)).ShouldSucceed().ShouldBe(sent);
     }
+
+    [Fact]
+    public async Task refuse_an_envelope_whose_payload_makes_the_frame_larger_than_the_maximum()
+    {
+        using var stream = new MemoryStream();
+        await using var channel = new EnvelopeChannel(stream);
+
+        var failure = (await channel.SendAsync(new ResponseEnvelope(7, new string('x', FrameCodec.MaxFrameSize)), Token)).ShouldFail();
+
+        failure.Value.ShouldBeOfType<FrameTooLarge>().MaxSize.ShouldBe(FrameCodec.MaxFrameSize);
+        stream.Length.ShouldBe(0);
+    }
 }
