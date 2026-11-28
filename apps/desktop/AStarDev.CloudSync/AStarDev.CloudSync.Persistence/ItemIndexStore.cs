@@ -105,11 +105,15 @@ internal sealed class ItemIndexStore(IDbContextFactory<CloudSyncDbContext> conte
     private static async Task UpsertItemsAsync(CloudSyncDbContext context, SyncJobId jobId, IReadOnlyList<ProviderItem> items, DateTimeOffset observedUtc, CancellationToken cancellationToken)
     {
         var known = await LoadKnownAsync(context, jobId, items.Select(item => item.RemoteItemId), cancellationToken).ConfigureAwait(false);
+        var snapshots = await RemoteSnapshotsAsync(context, known, cancellationToken).ConfigureAwait(false);
 
-        foreach (var item in items) Upsert(context, jobId, known, item, observedUtc);
+        foreach (var item in items) Upsert(context, jobId, known, snapshots, item, observedUtc);
     }
 
-    private static void Upsert(CloudSyncDbContext context, SyncJobId jobId, Dictionary<RemoteItemId, ItemEntity> known, ProviderItem item, DateTimeOffset observedUtc)
+    private static Task<Dictionary<ItemId, ItemSnapshotEntity>> RemoteSnapshotsAsync(CloudSyncDbContext context, Dictionary<RemoteItemId, ItemEntity> known, CancellationToken cancellationToken)
+        => ItemSnapshotRows.LoadAsync(context, [.. known.Values.Select(item => item.Id)], SnapshotSource.Remote, cancellationToken);
+
+    private static void Upsert(CloudSyncDbContext context, SyncJobId jobId, Dictionary<RemoteItemId, ItemEntity> known, Dictionary<ItemId, ItemSnapshotEntity> snapshots, ProviderItem item, DateTimeOffset observedUtc)
     {
         if (known.TryGetValue(item.RemoteItemId, out var existing))
         {
@@ -123,12 +127,13 @@ internal sealed class ItemIndexStore(IDbContextFactory<CloudSyncDbContext> conte
             context.Items.Add(existing);
         }
 
-        context.ItemSnapshots.Add(new ItemSnapshotEntity { Id = new SnapshotId(Guid.NewGuid()), ItemId = existing.Id, Size = item.Size, ModifiedUtc = item.ModifiedUtc, ObservedUtc = observedUtc, SnapshotSource = SnapshotSource.Remote });
+        ItemSnapshotRows.Observe(context, snapshots, existing.Id, SnapshotSource.Remote, item.Size, item.ModifiedUtc, null, null, observedUtc);
     }
 
     private static async Task ApplyChangesAsync(CloudSyncDbContext context, SyncJobId jobId, IReadOnlyList<ProviderChange> changes, DateTimeOffset observedUtc, CancellationToken cancellationToken)
     {
         var known = await LoadKnownAsync(context, jobId, changes.Select(change => change.RemoteItemId), cancellationToken).ConfigureAwait(false);
+        var snapshots = await RemoteSnapshotsAsync(context, known, cancellationToken).ConfigureAwait(false);
 
         foreach (var change in changes)
         {
@@ -136,7 +141,7 @@ internal sealed class ItemIndexStore(IDbContextFactory<CloudSyncDbContext> conte
             {
                 case ChangeKind.Created:
                 case ChangeKind.Modified:
-                    if (change.Item is { } changed) Upsert(context, jobId, known, changed, observedUtc);
+                    if (change.Item is { } changed) Upsert(context, jobId, known, snapshots, changed, observedUtc);
                     break;
                 case ChangeKind.Renamed:
                     if (change.Item is not { } renamed) break;
@@ -145,7 +150,7 @@ internal sealed class ItemIndexStore(IDbContextFactory<CloudSyncDbContext> conte
                         existing.LocalPath = renamed.Path;
                         existing.UpdatedUtc = observedUtc;
                     }
-                    else Upsert(context, jobId, known, renamed, observedUtc);
+                    else Upsert(context, jobId, known, snapshots, renamed, observedUtc);
                     break;
                 case ChangeKind.Deleted:
                     if (known.Remove(change.RemoteItemId, out var gone)) await RemoveWithDescendantsAsync(context, known, gone, cancellationToken).ConfigureAwait(false);
