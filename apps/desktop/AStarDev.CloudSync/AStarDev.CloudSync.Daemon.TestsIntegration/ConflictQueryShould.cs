@@ -5,7 +5,7 @@ using AStarDev.CloudSync.SyncEngine;
 using AStarDev.FunctionalParadigm;
 using Microsoft.Extensions.DependencyInjection;
 
-namespace AStarDev.CloudSync.Daemon.TestsUnit;
+namespace AStarDev.CloudSync.Daemon.TestsIntegration;
 
 public sealed class ConflictQueryShould : IDisposable
 {

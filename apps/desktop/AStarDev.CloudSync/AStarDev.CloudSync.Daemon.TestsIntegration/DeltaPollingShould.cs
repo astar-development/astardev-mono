@@ -5,7 +5,7 @@ using AStarDev.FunctionalParadigm;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.DependencyInjection.Extensions;
 
-namespace AStarDev.CloudSync.Daemon.TestsUnit;
+namespace AStarDev.CloudSync.Daemon.TestsIntegration;
 
 public sealed class DeltaPollingShould : IDisposable
 {

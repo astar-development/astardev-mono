@@ -1,6 +1,7 @@
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting;
+using Microsoft.Extensions.Logging;
 
 namespace AStarDev.CloudSync.Persistence.TestsUnit;
 
@@ -14,6 +15,7 @@ internal sealed class PersistenceTestHost(IHost host, string databasePath) : IAs
     {
         var databasePath = Path.Combine(Path.GetTempPath(), $"cloudsync-persistence-{Guid.NewGuid():N}", "cloudsync.db");
         var builder = Host.CreateApplicationBuilder();
+        builder.Logging.ClearProviders();
         builder.Configuration[$"{DatabaseOptions.ConfigurationSection}:{nameof(DatabaseOptions.Path)}"] = databasePath;
         builder.Configuration[$"{TelemetryDatabaseOptions.ConfigurationSection}:{nameof(TelemetryDatabaseOptions.Path)}"] = Path.Combine(Path.GetDirectoryName(databasePath)!, "telemetry.db");
         configure?.Invoke(builder.Configuration);

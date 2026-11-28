@@ -3,7 +3,7 @@ using AStarDev.CloudSync.Domain;
 using AStarDev.CloudSync.Ports;
 using Microsoft.Extensions.DependencyInjection;
 
-namespace AStarDev.CloudSync.Daemon.TestsUnit;
+namespace AStarDev.CloudSync.Daemon.TestsIntegration;
 
 internal static class ClassificationDaemonTestData
 {

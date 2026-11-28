@@ -19,6 +19,7 @@
 
   <ItemGroup>
     <InternalsVisibleTo Include="AStarDev.CloudSync.Daemon.TestsUnit" />
+    <InternalsVisibleTo Include="AStarDev.CloudSync.Daemon.TestsIntegration" />
     <InternalsVisibleTo Include="AStarDev.CloudSync.TestsArchitecture" />
     <InternalsVisibleTo Include="AStarDev.CloudSync.TestsIntegration" />
   </ItemGroup>
