@@ -93,6 +93,42 @@ public sealed class ItemTransferShould
     }
 
     [Fact]
+    public async Task send_every_chunk_but_the_last_at_exactly_the_chunk_size()
+    {
+        var handler = new FakeGraphHandler(request => request.RequestUri!.Host == "upload.test"
+            ? FakeGraphHandler.Json("{}", HttpStatusCode.Accepted)
+            : FakeGraphHandler.Json("""{ "uploadUrl": "https://upload.test/session-1" }"""));
+        using var client = Client(handler);
+        const int chunkSize = 3 * 1024 * 1024;
+        await using var content = new MemoryStream(new byte[chunkSize * 5 / 2]);
+
+        var result = await new ItemTransfer(client, client, chunkSize).UploadAsync(new UploadRequest(new RelativePath("big.bin"), content, Modified), Token);
+
+        result.Value.ShouldBeOfType<Ok<Unit>>();
+        handler.Calls.Skip(1).Select(call => call.ContentRange).ShouldBe(["bytes 0-3145727/7864320", "bytes 3145728-6291455/7864320", "bytes 6291456-7864319/7864320"]);
+    }
+
+    [Fact]
+    public async Task propagate_cancellation_raised_between_chunks()
+    {
+        using var cancellation = CancellationTokenSource.CreateLinkedTokenSource(Token);
+        var handler = new FakeGraphHandler(request =>
+        {
+            if (request.RequestUri!.Host != "upload.test") return FakeGraphHandler.Json("""{ "uploadUrl": "https://upload.test/session-1" }""");
+
+            cancellation.Cancel();
+
+            return FakeGraphHandler.Json("{}", HttpStatusCode.Accepted);
+        });
+        using var client = Client(handler);
+        await using var content = new MemoryStream(new byte[ItemTransfer.SimpleUploadLimit + 1]);
+        var transfer = new ItemTransfer(client, client, 3 * 1024 * 1024);
+
+        await Should.ThrowAsync<OperationCanceledException>(() => transfer.UploadAsync(new UploadRequest(new RelativePath("big.bin"), content, Modified), cancellation.Token));
+        handler.Calls.Count(call => call.Uri.Host == "upload.test").ShouldBe(1);
+    }
+
+    [Fact]
     public async Task map_a_failed_chunk_to_a_provider_error()
     {
         var handler = new FakeGraphHandler(request => request.RequestUri!.Host == "upload.test"
