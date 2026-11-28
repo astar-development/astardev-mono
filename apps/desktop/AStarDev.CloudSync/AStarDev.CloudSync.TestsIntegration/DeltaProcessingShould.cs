@@ -34,8 +34,8 @@ public sealed class DeltaProcessingShould
 
         outcome.Value.ShouldBeOfType<Ok<int>>().Value.ShouldBe(4);
         Query(host, "SELECT RemoteItemId || '=' || LocalPath FROM Items ORDER BY RemoteItemId").ShouldBe(["a=a.txt", "c=moved/c.txt", "d=d.txt", "e=e.txt"]);
-        Query(host, "SELECT s.Size FROM ItemSnapshots s JOIN Items i ON i.Id = s.ItemId WHERE i.RemoteItemId = 'a' AND s.SnapshotSource = 'Remote' ORDER BY s.Size").ShouldBe(["1", "99"]);
-        Query(host, "SELECT COUNT(*) FROM ItemSnapshots").ShouldBe(["5"]);
+        Query(host, "SELECT s.Size FROM ItemSnapshots s JOIN Items i ON i.Id = s.ItemId WHERE i.RemoteItemId = 'a' AND s.SnapshotSource = 'Remote' ORDER BY s.Size").ShouldBe(["99"]);
+        Query(host, "SELECT COUNT(*) FROM ItemSnapshots").ShouldBe(["4"]);
         (await TokenAsync(host, job)).ShouldBe(new DeltaToken("delta-docs-1"));
     }
 

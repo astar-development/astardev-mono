@@ -67,7 +67,7 @@ public sealed class LocalObservationShould : IDisposable
         await WaitAsync(host, "SELECT s.Size FROM ItemSnapshots s JOIN Items i ON i.Id = s.ItemId WHERE i.LocalPath = 'new.txt' ORDER BY s.ObservedUtc DESC LIMIT 1", "-1");
 
         Query(host, "SELECT COUNT(*) FROM Items WHERE LocalPath = 'new.txt'").ShouldBe(["1"]);
-        Query(host, "SELECT COUNT(*) FROM ItemSnapshots s JOIN Items i ON i.Id = s.ItemId WHERE i.LocalPath = 'new.txt' AND s.SnapshotSource = 'Local'").ShouldBe(["3"]);
+        Query(host, "SELECT COUNT(*) FROM ItemSnapshots s JOIN Items i ON i.Id = s.ItemId WHERE i.LocalPath = 'new.txt' AND s.SnapshotSource = 'Local'").ShouldBe(["1"]);
         await cancellation.CancelAsync();
         await Should.ThrowAsync<OperationCanceledException>(async () => await run);
     }

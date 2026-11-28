@@ -171,6 +171,7 @@ internal sealed class CloudSyncDbContext(DbContextOptions<CloudSyncDbContext> op
             snapshot.ToTable("ItemSnapshots").HasKey(entity => entity.Id);
             snapshot.Property(entity => entity.SnapshotSource).HasConversion<string>();
             snapshot.HasOne<ItemEntity>().WithMany().HasForeignKey(entity => entity.ItemId).OnDelete(DeleteBehavior.Cascade);
+            snapshot.HasIndex(entity => new { entity.ItemId, entity.SnapshotSource }).IsUnique();
         });
 
         modelBuilder.Entity<ProviderStateEntity>(state =>

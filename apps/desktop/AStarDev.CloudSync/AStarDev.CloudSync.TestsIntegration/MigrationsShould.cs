@@ -51,6 +51,20 @@ public sealed class MigrationsShould
     }
 
     [Fact]
+    public async Task keep_only_the_latest_snapshot_per_item_and_source_when_applied_to_an_existing_database()
+    {
+        await using var host = DatabaseTestHost.Create();
+        var initialiser = host.Services.GetRequiredService<IDatabaseInitialiser>();
+        await initialiser.InitialiseAsync(Token);
+        await ExecuteAsync(host.DatabasePath, $"DROP INDEX IX_ItemSnapshots_ItemId_SnapshotSource; CREATE INDEX IX_ItemSnapshots_ItemId ON ItemSnapshots (ItemId); DELETE FROM __EFMigrationsHistory WHERE MigrationId LIKE '%KeepLatestItemSnapshot'; {SnapshotInsert}");
+
+        var result = await initialiser.InitialiseAsync(Token);
+
+        result.Value.ShouldBeOfType<Ok<Unit>>();
+        (await QueryAsync(host.DatabasePath, "SELECT ItemId || '|' || SnapshotSource || '|' || Size FROM ItemSnapshots ORDER BY ItemId, SnapshotSource")).ShouldBe(["A|Local|3", "A|Remote|2", "B|Local|5"]);
+    }
+
+    [Fact]
     public async Task honour_cancellation()
     {
         await using var host = DatabaseTestHost.Create();
@@ -58,6 +72,27 @@ public sealed class MigrationsShould
         await cancelled.CancelAsync();
 
         await Should.ThrowAsync<OperationCanceledException>(() => host.Services.GetRequiredService<IDatabaseInitialiser>().InitialiseAsync(cancelled.Token));
+    }
+
+    private const string SnapshotInsert = "PRAGMA foreign_keys = OFF; INSERT INTO ItemSnapshots (Id, ItemId, Size, ModifiedUtc, ObservedUtc, SnapshotSource) VALUES "
+        + "('1', 'A', 1, '2026-01-01 00:00:00+00:00', '2026-01-01 00:00:00+00:00', 'Local'), "
+        + "('2', 'A', 3, '2026-01-01 00:00:00+00:00', '2026-01-03 00:00:00+00:00', 'Local'), "
+        + "('3', 'A', 2, '2026-01-01 00:00:00+00:00', '2026-01-02 00:00:00+00:00', 'Local'), "
+        + "('4', 'A', 1, '2026-01-01 00:00:00+00:00', '2026-01-01 00:00:00+00:00', 'Remote'), "
+        + "('5', 'A', 2, '2026-01-01 00:00:00+00:00', '2026-01-02 00:00:00+00:00', 'Remote'), "
+        + "('6', 'B', 5, '2026-01-01 00:00:00+00:00', '2026-01-01 00:00:00+00:00', 'Local');";
+
+    private static async Task<List<string>> QueryAsync(string databasePath, string sql)
+    {
+        await using var connection = new SqliteConnection($"Data Source={databasePath};Pooling=False");
+        await connection.OpenAsync(Token);
+        await using var command = connection.CreateCommand();
+        command.CommandText = sql;
+        var rows = new List<string>();
+        await using var reader = await command.ExecuteReaderAsync(Token);
+        while (await reader.ReadAsync(Token)) rows.Add(reader.GetString(0));
+
+        return rows;
     }
 
     private static async Task ExecuteAsync(string databasePath, string sql)
