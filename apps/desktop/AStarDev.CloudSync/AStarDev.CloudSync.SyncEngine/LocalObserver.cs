@@ -14,6 +14,7 @@ namespace AStarDev.CloudSync.SyncEngine;
 internal sealed class LocalObserver(ILocalFileSystem fileSystem, ILocalObservationStore store, ISyncScopeStore scopes, IOptions<LocalObservationOptions> options, TimeProvider timeProvider, ILogger<LocalObserver> logger)
 {
     private const int BatchSize = 500;
+    private const int MaxFingerprintParallelism = 4;
     private static readonly TimeSpan TimestampTolerance = TimeSpan.FromMilliseconds(1);
 
     /// <summary>Observes the job until cancelled.</summary>
@@ -114,11 +115,16 @@ internal sealed class LocalObserver(ILocalFileSystem fileSystem, ILocalObservati
 
     private async Task<List<LocalSnapshot>> FingerprintChangedAsync(SyncJob job, IReadOnlyList<LocalFile> disk, Dictionary<RelativePath, LocalSnapshot> stored, CancellationToken cancellationToken)
     {
+        var changed = disk.Where(file => !stored.TryGetValue(file.Path, out var last) || last.Size != file.Size || !SameInstant(last.ModifiedUtc, file.ModifiedUtc) || last.Identity != file.Identity).ToList();
+        var fingerprints = new Result<ContentFingerprint, LocalObservationError>[changed.Count];
+        var parallel = new ParallelOptions { MaxDegreeOfParallelism = Parallelism(options.Value), CancellationToken = cancellationToken };
+        await Parallel.ForAsync(0, changed.Count, parallel, async (index, token) => fingerprints[index] = await fileSystem.FingerprintAsync(job.LocalRootPath, changed[index].Path, token));
         var present = new List<LocalSnapshot>();
 
-        foreach (var file in disk.Where(file => !stored.TryGetValue(file.Path, out var last) || last.Size != file.Size || !SameInstant(last.ModifiedUtc, file.ModifiedUtc) || last.Identity != file.Identity))
+        for (var index = 0; index < changed.Count; index++)
         {
-            switch (await fileSystem.FingerprintAsync(job.LocalRootPath, file.Path, cancellationToken))
+            var file = changed[index];
+            switch (fingerprints[index])
             {
                 case Ok<ContentFingerprint> ok:
                     present.Add(new LocalSnapshot(file.Path, file.Size, file.ModifiedUtc, file.Identity, ok.Value));
@@ -131,6 +137,8 @@ internal sealed class LocalObserver(ILocalFileSystem fileSystem, ILocalObservati
 
         return present;
     }
+
+    private static int Parallelism(LocalObservationOptions observation) => Math.Clamp(observation.FingerprintParallelism, 1, MaxFingerprintParallelism);
 
     private async Task<Result<Unit, LocalObservationError>> RecordAsync(SyncJob job, List<LocalSnapshot> present, List<RelativePath> deleted, CancellationToken cancellationToken)
     {
