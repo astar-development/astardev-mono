@@ -23,16 +23,16 @@ internal sealed class OperationLookup(ISyncJobStore jobs, IAccountStore accounts
         return new Ok<IReadOnlyDictionary<SyncJobId, string>>(((Ok<IReadOnlyList<SyncJob>>)allJobs.Value).Value.Where(job => typeOf.ContainsKey(job.AccountId)).ToDictionary(job => job.Id, job => typeOf[job.AccountId]));
     }
 
-    /// <summary>Reads the state of every item of the given jobs.</summary>
-    /// <param name="jobIds">The jobs whose items to read.</param>
+    /// <summary>Reads the state of the items the given operations act on, and no other item of their jobs.</summary>
+    /// <param name="operations">The operations whose items to read.</param>
     /// <param name="cancellationToken">Cancelling abandons the read and surfaces as <see cref="OperationCanceledException"/>.</param>
     /// <returns>The item states by item id, or the first store failure.</returns>
-    public async Task<Result<IReadOnlyDictionary<ItemId, CanonicalItemState>, StoreError>> ItemsAsync(IReadOnlyList<SyncJobId> jobIds, CancellationToken cancellationToken)
+    public async Task<Result<IReadOnlyDictionary<ItemId, CanonicalItemState>, StoreError>> ItemsAsync(IReadOnlyList<Operation> operations, CancellationToken cancellationToken)
     {
         var byItem = new Dictionary<ItemId, CanonicalItemState>();
-        foreach (var jobId in jobIds)
+        foreach (var job in operations.GroupBy(operation => operation.SyncJobId))
         {
-            var read = await states.ReadAsync(jobId, cancellationToken);
+            var read = await states.ReadAsync(job.Key, job.Select(operation => operation.ItemId).ToHashSet(), cancellationToken);
             if (read.Value is Fail<StoreError> failure) return failure;
 
             foreach (var state in ((Ok<IReadOnlyList<CanonicalItemState>>)read.Value).Value) byItem[state.ItemId] = state;

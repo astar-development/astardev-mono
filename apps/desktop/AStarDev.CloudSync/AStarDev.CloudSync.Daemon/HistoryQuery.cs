@@ -42,7 +42,7 @@ internal sealed class HistoryQuery(IOperationStore operations, OperationLookup l
         var providers = await lookup.ProvidersAsync(cancellationToken);
         if (providers.Value is Fail<StoreError> providersFailure) return Failure(providersFailure.Error);
 
-        var items = await lookup.ItemsAsync(finished.Select(operation => operation.SyncJobId).Distinct().ToList(), cancellationToken);
+        var items = await lookup.ItemsAsync(finished, cancellationToken);
         if (items.Value is Fail<StoreError> itemsFailure) return Failure(itemsFailure.Error);
 
         var providerOf = ((Ok<IReadOnlyDictionary<SyncJobId, string>>)providers.Value).Value;
