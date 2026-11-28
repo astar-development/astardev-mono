@@ -1,3 +1,4 @@
+using System.Text.Json;
 using AStarDev.CloudSync.Domain;
 using AStarDev.CloudSync.Ports;
 using AStarDev.FunctionalParadigm;
@@ -79,9 +80,12 @@ internal sealed class ItemIndexStore(IDbContextFactory<CloudSyncDbContext> conte
             await using var context = await contextFactory.CreateDbContextAsync(token).ConfigureAwait(false);
             if (!await context.SyncScopes.AnyAsync(row => row.SyncJobId == scope.SyncJobId && row.RemoteRootId == scope.RemoteRootId, token).ConfigureAwait(false)) return new Fail<StoreError>(new SyncScopeNotFound(scope));
 
-            await ApplyChangesAsync(context, scope.SyncJobId, changes, observedUtc, token).ConfigureAwait(false);
+            await using var transaction = await context.Database.BeginTransactionAsync(token).ConfigureAwait(false);
+            var doomed = await ApplyChangesAsync(context, scope.SyncJobId, changes, observedUtc, token).ConfigureAwait(false);
             if (newToken is { } fresh) await UpsertDeltaStateAsync(context, scope, fresh, observedUtc, token).ConfigureAwait(false);
             await context.SaveChangesAsync(token).ConfigureAwait(false);
+            await DeleteItemsAsync(context, doomed, token).ConfigureAwait(false);
+            await transaction.CommitAsync(token).ConfigureAwait(false);
 
             return new Ok<Unit>(default);
         }, cancellationToken).ConfigureAwait(false);
@@ -130,10 +134,11 @@ internal sealed class ItemIndexStore(IDbContextFactory<CloudSyncDbContext> conte
         ItemSnapshotRows.Observe(context, snapshots, existing.Id, SnapshotSource.Remote, item.Size, item.ModifiedUtc, null, null, observedUtc);
     }
 
-    private static async Task ApplyChangesAsync(CloudSyncDbContext context, SyncJobId jobId, IReadOnlyList<ProviderChange> changes, DateTimeOffset observedUtc, CancellationToken cancellationToken)
+    private static async Task<HashSet<ItemId>> ApplyChangesAsync(CloudSyncDbContext context, SyncJobId jobId, IReadOnlyList<ProviderChange> changes, DateTimeOffset observedUtc, CancellationToken cancellationToken)
     {
         var known = await LoadKnownAsync(context, jobId, changes.Select(change => change.RemoteItemId), cancellationToken).ConfigureAwait(false);
         var snapshots = await RemoteSnapshotsAsync(context, known, cancellationToken).ConfigureAwait(false);
+        var doomed = new HashSet<ItemId>();
 
         foreach (var change in changes)
         {
@@ -153,32 +158,33 @@ internal sealed class ItemIndexStore(IDbContextFactory<CloudSyncDbContext> conte
                     else Upsert(context, jobId, known, snapshots, renamed, observedUtc);
                     break;
                 case ChangeKind.Deleted:
-                    if (known.Remove(change.RemoteItemId, out var gone)) await RemoveWithDescendantsAsync(context, known, gone, cancellationToken).ConfigureAwait(false);
+                    if (known.Remove(change.RemoteItemId, out var gone)) Forget(context, snapshots, doomed, gone);
                     break;
             }
         }
+
+        return doomed;
     }
 
-    private static async Task RemoveWithDescendantsAsync(CloudSyncDbContext context, Dictionary<RemoteItemId, ItemEntity> known, ItemEntity root, CancellationToken cancellationToken)
+    private static void Forget(CloudSyncDbContext context, Dictionary<ItemId, ItemSnapshotEntity> snapshots, HashSet<ItemId> doomed, ItemEntity gone)
     {
-        var doomed = new List<ItemEntity> { root };
-        var frontier = new List<ItemId?> { root.Id };
-
-        while (frontier.Count > 0)
-        {
-            var parents = frontier;
-            var children = await context.Items.Where(row => parents.Contains(row.ParentItemId)).ToListAsync(cancellationToken).ConfigureAwait(false);
-            doomed.AddRange(children);
-            frontier = children.Select(child => (ItemId?)child.Id).ToList();
-        }
-
-        var doomedIds = doomed.Select(item => item.Id).ToHashSet();
-        foreach (var pending in context.ChangeTracker.Entries<ItemSnapshotEntity>().Where(entry => entry.State == EntityState.Added && doomedIds.Contains(entry.Entity.ItemId)).ToList()) pending.State = EntityState.Detached;
-
-        foreach (var stale in known.Where(pair => doomedIds.Contains(pair.Value.Id)).Select(pair => pair.Key).ToList()) known.Remove(stale);
-
-        context.Items.RemoveRange(doomed);
+        doomed.Add(gone.Id);
+        context.Entry(gone).State = EntityState.Detached;
+        if (snapshots.Remove(gone.Id, out var snapshot)) context.Entry(snapshot).State = EntityState.Detached;
     }
+
+    /// <summary>Deletes the items a delta page reported as deleted with set-based statements after the page's other writes.</summary>
+    /// <remarks>Children that still link to a deleted item are unlinked, not deleted, so the self-referencing restrict key cannot fail the page. Removing a deleted folder's children is tracked in #391.</remarks>
+    private static async Task DeleteItemsAsync(CloudSyncDbContext context, HashSet<ItemId> doomed, CancellationToken cancellationToken)
+    {
+        if (doomed.Count == 0) return;
+
+        var ids = StoredIds(doomed);
+        await context.Database.ExecuteSqlAsync($"UPDATE Items SET ParentItemId = NULL WHERE ParentItemId IN (SELECT value FROM json_each({ids}))", cancellationToken).ConfigureAwait(false);
+        await context.Database.ExecuteSqlAsync($"DELETE FROM Items WHERE Id IN (SELECT value FROM json_each({ids}))", cancellationToken).ConfigureAwait(false);
+    }
+
+    private static string StoredIds(IEnumerable<ItemId> ids) => JsonSerializer.Serialize(ids.Select(id => BulkSql.Text(id.Value)));
 
     private static async Task UpsertDeltaStateAsync(CloudSyncDbContext context, SyncScope scope, DeltaToken token, DateTimeOffset observedUtc, CancellationToken cancellationToken)
     {
