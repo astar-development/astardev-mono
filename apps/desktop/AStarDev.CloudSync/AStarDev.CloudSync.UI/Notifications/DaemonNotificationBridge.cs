@@ -6,13 +6,17 @@ namespace AStarDev.CloudSync.UI.Notifications;
 
 /// <summary>
 /// Turns what the daemon reports into the notifications doc 13 lists: conflict detected, authentication expired, initial crawl complete, sync scope complete and user action required.
+/// Only the first of every <see cref="ScopeCompletionsPerNotification"/> completed scopes is announced; conflicts and failures are always announced and are not counted.
 /// Every other event, and every report that repeats a state already announced, raises nothing. Constructing it starts the listening, so resolve it once at startup.
 /// </summary>
 internal sealed class DaemonNotificationBridge
 {
+    private const int ScopeCompletionsPerNotification = 10;
+
     private readonly HashSet<Guid> expiredAccounts = [];
     private readonly ConnectionViewModel connection;
     private readonly INotificationService notifications;
+    private long scopesCompleted;
 
     /// <summary>Starts listening to the daemon events and to the account list.</summary>
     /// <param name="connection">Source of daemon events and of the previous activity of a job.</param>
@@ -34,12 +38,17 @@ internal sealed class DaemonNotificationBridge
                 Raise(NotificationEventKind.ConflictDetected, detected.Conflict.ConflictId);
                 break;
             case CrawlProgressChanged { Completed: true } progress:
-                notifications.Raise(new NotificationEvent(NotificationEventKind.SyncScopeComplete, progress.RemoteRootId));
+                AnnounceScopeComplete(progress.RemoteRootId);
                 break;
             case ActivityChanged changed:
                 AnnounceActivity(changed.Activity, PreviousOf(changed.Activity));
                 break;
         }
+    }
+
+    private void AnnounceScopeComplete(string remoteRootId)
+    {
+        if (scopesCompleted++ % ScopeCompletionsPerNotification == 0) notifications.Raise(new NotificationEvent(NotificationEventKind.SyncScopeComplete, remoteRootId));
     }
 
     private ActivityView? PreviousOf(ActivityView activity) => connection.Activities.FirstOrDefault(known => known.SyncJobId == activity.SyncJobId);

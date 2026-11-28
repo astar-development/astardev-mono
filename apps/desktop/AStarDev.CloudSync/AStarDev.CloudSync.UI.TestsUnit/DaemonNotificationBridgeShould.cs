@@ -116,6 +116,35 @@ public sealed class DaemonNotificationBridgeShould
     }
 
     [Fact]
+    public async Task notify_only_the_first_of_every_ten_completed_scopes()
+    {
+        var client = new FakeIpcClient([], available: true);
+        await using var rig = await Rig.StartAsync(client);
+        var job = Guid.NewGuid();
+
+        foreach (var root in Enumerable.Range(1, 21))
+            client.Raise(new CrawlProgressChanged(job, $"root-{root}", 900, true));
+
+        rig.Presenter.Presented.Select(notification => notification.Key).ShouldBe(["SyncScopeComplete:root-1", "SyncScopeComplete:root-11", "SyncScopeComplete:root-21"]);
+    }
+
+    [Fact]
+    public async Task not_count_conflicts_towards_the_completed_scopes_left_unnotified()
+    {
+        var client = new FakeIpcClient([], available: true);
+        await using var rig = await Rig.StartAsync(client);
+        var job = Guid.NewGuid();
+        var conflict = Conflict();
+
+        client.Raise(new CrawlProgressChanged(job, "root-1", 900, true));
+        client.Raise(new ConflictDetected(conflict));
+        foreach (var root in Enumerable.Range(2, 10))
+            client.Raise(new CrawlProgressChanged(job, $"root-{root}", 900, true));
+
+        rig.Presenter.Presented.Select(notification => notification.Key).ShouldBe(["SyncScopeComplete:root-1", $"ConflictDetected:{conflict.ConflictId}", "SyncScopeComplete:root-11"]);
+    }
+
+    [Fact]
     public async Task notify_when_the_initial_crawl_of_a_job_completes()
     {
         var job = Guid.NewGuid();
