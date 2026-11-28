@@ -1,7 +1,6 @@
 using System.Collections.Concurrent;
 using System.Diagnostics;
 using System.Net.Sockets;
-using System.Text.Json;
 using AStarDev.FunctionalParadigm;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Logging.Abstractions;
@@ -14,7 +13,7 @@ namespace AStarDev.CloudSync.IPC;
 /// <param name="logger">Receives connection and failed-request logs; omit to log nothing.</param>
 internal sealed class UnixSocketIpcServer(string socketPath, Action<IpcError>? onError = null, ILogger? logger = null) : IIpcServer
 {
-    private delegate Task<Result<JsonElement, IpcError>> Handler(JsonElement payload, CancellationToken cancellationToken);
+    private delegate Task<Result<object, IpcError>> Handler(object payload, CancellationToken cancellationToken);
 
     private sealed class Connection(EnvelopeChannel channel)
     {
@@ -66,11 +65,7 @@ internal sealed class UnixSocketIpcServer(string socketPath, Action<IpcError>? o
 
         using var activity = IpcTelemetry.StartEventPublish(typeof(TEvent).Name);
 
-        return IpcJson.ToElement(@event) switch
-        {
-            Ok<JsonElement> payload => await PushAsync(IpcTelemetry.Inject(new EventEnvelope(typeof(TEvent).Name, payload.Value), activity), cancellationToken),
-            Fail<IpcError> fail => fail
-        };
+        return await PushAsync(IpcTelemetry.Inject(new EventEnvelope(typeof(TEvent).Name, @event), activity), cancellationToken);
     }
 
     /// <inheritdoc/>
@@ -102,12 +97,12 @@ internal sealed class UnixSocketIpcServer(string socketPath, Action<IpcError>? o
         lifetime?.Dispose();
     }
 
-    private static async Task<Result<JsonElement, IpcError>> RunAsync<TRequest, TResponse>(JsonElement payload, Func<TRequest, CancellationToken, Task<Result<TResponse, IpcError>>> handler, CancellationToken cancellationToken)
+    private static async Task<Result<object, IpcError>> RunAsync<TRequest, TResponse>(object payload, Func<TRequest, CancellationToken, Task<Result<TResponse, IpcError>>> handler, CancellationToken cancellationToken)
         => IpcJson.FromElement<TRequest>(payload) switch
         {
             Ok<TRequest> request => await handler(request.Value, cancellationToken) switch
             {
-                Ok<TResponse> response => IpcJson.ToElement(response.Value),
+                Ok<TResponse> response => new Ok<object>((object?)response.Value ?? IpcJson.NullPayload),
                 Fail<IpcError> handlerFailure => handlerFailure
             },
             Fail<IpcError> decodeFailure => decodeFailure
@@ -240,7 +235,7 @@ internal sealed class UnixSocketIpcServer(string socketPath, Action<IpcError>? o
 
         Envelope reply = outcome switch
         {
-            Ok<JsonElement> ok => new ResponseEnvelope(request.Id, ok.Value),
+            Ok<object> ok => new ResponseEnvelope(request.Id, ok.Value),
             Fail<IpcError> fail => new ErrorEnvelope(request.Id, fail.Error.Describe(), fail.Error.Info().Code.Value)
         };
 
@@ -251,7 +246,7 @@ internal sealed class UnixSocketIpcServer(string socketPath, Action<IpcError>? o
         }
     }
 
-    private async Task<Result<JsonElement, IpcError>> ObserveAsync(Connection connection, RequestEnvelope request, CancellationToken stopping)
+    private async Task<Result<object, IpcError>> ObserveAsync(Connection connection, RequestEnvelope request, CancellationToken stopping)
     {
         var (kind, type) = request switch
         {
@@ -263,7 +258,7 @@ internal sealed class UnixSocketIpcServer(string socketPath, Action<IpcError>? o
 
         using var activity = IpcTelemetry.StartServerRequest(kind, type, request);
         var started = Stopwatch.GetTimestamp();
-        Result<JsonElement, IpcError> outcome = request switch
+        Result<object, IpcError> outcome = request switch
         {
             CommandEnvelope command => await InvokeAsync(commands, command.Type, command.Payload, stopping),
             QueryEnvelope query => await InvokeAsync(queries, query.Type, query.Payload, stopping),
@@ -276,22 +271,22 @@ internal sealed class UnixSocketIpcServer(string socketPath, Action<IpcError>? o
         return outcome;
     }
 
-    private static async Task<Result<JsonElement, IpcError>> InvokeAsync(ConcurrentDictionary<string, Handler> handlers, string type, JsonElement payload, CancellationToken stopping)
+    private static async Task<Result<object, IpcError>> InvokeAsync(ConcurrentDictionary<string, Handler> handlers, string type, object payload, CancellationToken stopping)
     {
         if (!handlers.TryGetValue(type, out var handler))
             return new Fail<IpcError>(new HandlerFailed($"No handler is mapped for '{type}'."));
 
         return await Try.RunAsync(token => handler(payload, token), stopping) switch
         {
-            Success<Result<JsonElement, IpcError>> ok => ok.Value,
-            Failure<Result<JsonElement, IpcError>> fail => new Fail<IpcError>(IpcErrors.AsHandlerFailed(fail.Exception))
+            Success<Result<object, IpcError>> ok => ok.Value,
+            Failure<Result<object, IpcError>> fail => new Fail<IpcError>(IpcErrors.AsHandlerFailed(fail.Exception))
         };
     }
 
-    private static Result<JsonElement, IpcError> Subscribe(Connection connection)
+    private static Result<object, IpcError> Subscribe(Connection connection)
     {
         connection.Subscribed = true;
-        return IpcJson.ToElement(default(Unit));
+        return new Ok<object>(default(Unit));
     }
 
     private async Task<Result<Unit, IpcError>> PushAsync(EventEnvelope envelope, CancellationToken cancellationToken)
