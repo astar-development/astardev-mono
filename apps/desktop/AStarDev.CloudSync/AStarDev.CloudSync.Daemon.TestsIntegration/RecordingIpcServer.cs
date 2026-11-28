@@ -1,8 +1,7 @@
-using AStarDev.CloudSync.Daemon;
 using AStarDev.CloudSync.IPC;
 using AStarDev.FunctionalParadigm;
 
-namespace AStarDev.CloudSync.TestsIntegration.DaemonTests;
+namespace AStarDev.CloudSync.Daemon.TestsIntegration;
 
 internal sealed class RecordingIpcServer : IIpcServer
 {

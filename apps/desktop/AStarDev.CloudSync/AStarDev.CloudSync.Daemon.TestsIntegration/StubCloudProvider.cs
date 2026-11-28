@@ -1,9 +1,8 @@
-using AStarDev.CloudSync.Daemon;
 using AStarDev.CloudSync.Domain;
 using AStarDev.CloudSync.Ports;
 using AStarDev.FunctionalParadigm;
 
-namespace AStarDev.CloudSync.TestsIntegration.DaemonTests;
+namespace AStarDev.CloudSync.Daemon.TestsIntegration;
 
 internal sealed class StubCloudProvider : ICloudProvider
 {

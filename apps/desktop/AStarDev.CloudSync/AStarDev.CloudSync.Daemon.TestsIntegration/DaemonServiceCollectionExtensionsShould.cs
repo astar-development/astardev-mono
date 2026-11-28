@@ -1,5 +1,4 @@
 using System.Diagnostics;
-using AStarDev.CloudSync.Daemon;
 using AStarDev.CloudSync.Daemon.Startup;
 using AStarDev.CloudSync.IPC;
 using AStarDev.CloudSync.Persistence;
@@ -14,7 +13,7 @@ using OpenTelemetry.Logs;
 using OpenTelemetry.Resources;
 using OpenTelemetry.Trace;
 
-namespace AStarDev.CloudSync.TestsIntegration.DaemonTests;
+namespace AStarDev.CloudSync.Daemon.TestsIntegration;
 
 public sealed class DaemonServiceCollectionExtensionsShould
 {

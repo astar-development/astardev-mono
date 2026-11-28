@@ -1,4 +1,3 @@
-using AStarDev.CloudSync.Daemon;
 using AStarDev.CloudSync.Domain;
 using AStarDev.CloudSync.Ports;
 using AStarDev.CloudSync.SyncEngine;
@@ -6,7 +5,7 @@ using AStarDev.FunctionalParadigm;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.DependencyInjection.Extensions;
 
-namespace AStarDev.CloudSync.TestsIntegration.DaemonTests;
+namespace AStarDev.CloudSync.Daemon.TestsIntegration;
 
 public sealed class DeltaPollingShould : IDisposable
 {

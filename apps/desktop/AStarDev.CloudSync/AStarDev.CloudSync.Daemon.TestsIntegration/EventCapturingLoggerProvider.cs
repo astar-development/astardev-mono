@@ -1,12 +1,11 @@
 using System.Collections.Concurrent;
-using System.Diagnostics;
 using Microsoft.Extensions.Logging;
 
-namespace AStarDev.CloudSync.TestsIntegration.DaemonTests;
+namespace AStarDev.CloudSync.Daemon.TestsIntegration;
 
-internal sealed class TraceCapturingLoggerProvider : ILoggerProvider
+internal sealed class EventCapturingLoggerProvider : ILoggerProvider
 {
-    public ConcurrentQueue<(string Category, string Message, ActivityTraceId? TraceId)> Entries { get; } = new();
+    public ConcurrentQueue<(string Category, int EventId, string Message)> Entries { get; } = new();
 
     public ILogger CreateLogger(string categoryName) => new CapturingLogger(categoryName, Entries);
 
@@ -14,13 +13,13 @@ internal sealed class TraceCapturingLoggerProvider : ILoggerProvider
     {
     }
 
-    private sealed class CapturingLogger(string category, ConcurrentQueue<(string Category, string Message, ActivityTraceId? TraceId)> entries) : ILogger
+    private sealed class CapturingLogger(string category, ConcurrentQueue<(string Category, int EventId, string Message)> entries) : ILogger
     {
         public IDisposable? BeginScope<TState>(TState state) where TState : notnull => null;
 
         public bool IsEnabled(LogLevel logLevel) => true;
 
         public void Log<TState>(LogLevel logLevel, EventId eventId, TState state, Exception? exception, Func<TState, Exception?, string> formatter)
-            => entries.Enqueue((category, formatter(state, exception), Activity.Current?.TraceId));
+            => entries.Enqueue((category, eventId.Id, formatter(state, exception)));
     }
 }

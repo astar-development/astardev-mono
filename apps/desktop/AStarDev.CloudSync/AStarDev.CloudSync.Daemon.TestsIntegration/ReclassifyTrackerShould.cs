@@ -1,12 +1,11 @@
-using AStarDev.CloudSync.Daemon;
 using AStarDev.CloudSync.Classification;
 using AStarDev.CloudSync.IPC;
 using AStarDev.FunctionalParadigm;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.DependencyInjection.Extensions;
-using static AStarDev.CloudSync.TestsIntegration.DaemonTests.ClassificationDaemonTestData;
+using static AStarDev.CloudSync.Daemon.TestsIntegration.ClassificationDaemonTestData;
 
-namespace AStarDev.CloudSync.TestsIntegration.DaemonTests;
+namespace AStarDev.CloudSync.Daemon.TestsIntegration;
 
 public sealed class ReclassifyTrackerShould
 {

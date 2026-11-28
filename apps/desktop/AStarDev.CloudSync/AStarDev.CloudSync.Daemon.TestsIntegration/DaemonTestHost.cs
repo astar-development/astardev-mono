@@ -1,4 +1,3 @@
-using AStarDev.CloudSync.Daemon;
 using AStarDev.CloudSync.Domain;
 using AStarDev.CloudSync.Persistence;
 using AStarDev.CloudSync.Ports;
@@ -7,7 +6,7 @@ using Microsoft.Extensions.DependencyInjection.Extensions;
 using Microsoft.Extensions.Hosting;
 using Microsoft.Extensions.Logging;
 
-namespace AStarDev.CloudSync.TestsIntegration.DaemonTests;
+namespace AStarDev.CloudSync.Daemon.TestsIntegration;
 
 internal sealed class DaemonTestHost(IHost host, string socketPath, string databasePath) : IAsyncDisposable
 {
@@ -24,7 +23,7 @@ internal sealed class DaemonTestHost(IHost host, string socketPath, string datab
         seedDatabase?.Invoke(databasePath);
         var builder = Host.CreateApplicationBuilder();
         builder.Logging.ClearProviders();
-        builder.Configuration[$"{AStarDev.CloudSync.Daemon.ApplicationConstants.IpcConfigurationSection}:{nameof(IpcOptions.SocketPath)}"] = socketPath;
+        builder.Configuration[$"{ApplicationConstants.IpcConfigurationSection}:{nameof(IpcOptions.SocketPath)}"] = socketPath;
         builder.Configuration[$"{DatabaseOptions.ConfigurationSection}:{nameof(DatabaseOptions.Path)}"] = databasePath;
         builder.Configuration[$"{TelemetryDatabaseOptions.ConfigurationSection}:{nameof(TelemetryDatabaseOptions.Path)}"] = Path.Combine(Path.GetDirectoryName(databasePath)!, "telemetry.db");
         foreach (var pair in configuration ?? new Dictionary<string, string?>()) builder.Configuration[pair.Key] = pair.Value;
@@ -81,7 +80,7 @@ internal sealed class DaemonTestHost(IHost host, string socketPath, string datab
         else host.Dispose();
 
         Microsoft.Data.Sqlite.SqliteConnection.ClearAllPools();
-        File.Delete($"{socketPath}{AStarDev.CloudSync.Daemon.ApplicationConstants.InstanceNameSuffix}.lock");
+        File.Delete($"{socketPath}{ApplicationConstants.InstanceNameSuffix}.lock");
         var directory = Path.GetDirectoryName(databasePath)!;
         if (Directory.Exists(directory)) Directory.Delete(directory, recursive: true);
     }

@@ -1,11 +1,10 @@
-using AStarDev.CloudSync.Daemon;
 using AStarDev.CloudSync.Daemon.Startup;
 using AStarDev.CloudSync.Ports;
 using AStarDev.FunctionalParadigm;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting;
 
-namespace AStarDev.CloudSync.TestsIntegration.DaemonTests;
+namespace AStarDev.CloudSync.Daemon.TestsIntegration;
 
 public sealed class ClassificationReclassifyServiceShould
 {
