@@ -11,7 +11,7 @@ public static class PersistenceServiceCollectionExtensions
 {
     /// <summary>
     /// Registers <see cref="DatabaseOptions"/>, the EF Core context factory, <see cref="IDatabaseInitialiser"/>, <see cref="IDatabaseState"/>, <see cref="IAccountStore"/>, <see cref="IJobAccounts"/>
-    /// the telemetry store on its own <c>telemetry.db</c> (<see cref="TelemetryDatabaseOptions"/>, <see cref="ITelemetryStore"/>, <see cref="ITelemetryWriter"/>, a batching writer and an hourly pruning service)
+    /// the telemetry store on its own <c>telemetry.db</c> (<see cref="TelemetryDatabaseOptions"/>, <see cref="ITelemetryStore"/>, <see cref="ITelemetryWriter"/>, a batching writer and an hourly pruning service), an hourly pruning service for completed operations
     /// and a health check named <c>database</c>. Nothing touches the file until <see cref="IDatabaseInitialiser.InitialiseAsync"/> runs.
     /// </summary>
     /// <param name="services">The collection to add the persistence services to.</param>
@@ -56,6 +56,7 @@ public static class PersistenceServiceCollectionExtensions
         services.AddSingleton<ITelemetryWriter>(provider => provider.GetRequiredService<TelemetryBatchWriter>());
         services.AddHostedService(provider => provider.GetRequiredService<TelemetryBatchWriter>());
         services.AddHostedService<TelemetryPruningService>();
+        services.AddHostedService<OperationPruningService>();
         services.AddHealthChecks().AddCheck<DatabaseHealthCheck>(ApplicationConstants.DatabaseHealthCheckName);
 
         return services;

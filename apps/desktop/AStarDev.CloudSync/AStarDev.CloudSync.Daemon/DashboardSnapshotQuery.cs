@@ -36,14 +36,17 @@ internal sealed class DashboardSnapshotQuery(IOperationStore operations, IConfli
         var setup = await SetupAsync(((Ok<IReadOnlyList<Account>>)accountList.Value).Value, cancellationToken);
         if (setup.Value is Fail<StoreError> setupFailure) return Failure(setupFailure.Error, "folder selection");
 
-        var all = await operations.ListAsync(cancellationToken);
-        if (all.Value is Fail<StoreError> allFailure) return Failure(allFailure.Error, "operation queue");
+        var newest = await operations.ListNewestAsync(Enum.GetValues<OperationStatus>(), 1, cancellationToken);
+        if (newest.Value is Fail<StoreError> newestFailure) return Failure(newestFailure.Error, "operation queue");
+
+        var runningOperations = await operations.ListNewestAsync([OperationStatus.Running], int.MaxValue, cancellationToken);
+        if (runningOperations.Value is Fail<StoreError> runningOperationsFailure) return Failure(runningOperationsFailure.Error, "operation queue");
 
         var scopeEntries = await journal.ListAsync(DateTimeOffset.UnixEpoch, timeProvider.GetUtcNow().AddDays(1), ScopeEvents, cancellationToken);
         if (scopeEntries.Value is Fail<StoreError> journalFailure) return Failure(journalFailure.Error, "recent events");
 
-        var queue = ((Ok<IReadOnlyList<Operation>>)all.Value).Value;
-        var running = await RunningAsync(queue.Where(operation => operation.Status == OperationStatus.Running).ToList(), cancellationToken);
+        var queue = ((Ok<IReadOnlyList<Operation>>)newest.Value).Value;
+        var running = await RunningAsync(((Ok<IReadOnlyList<Operation>>)runningOperations.Value).Value, cancellationToken);
         if (running.Value is Fail<StoreError> runningFailure) return Failure(runningFailure.Error, "running operations");
 
         var view = ViewOf(report.Status, ((Ok<IReadOnlyDictionary<OperationStatus, int>>)counts.Value).Value, ((Ok<int>)open.Value).Value, ((Ok<IReadOnlyList<Account>>)accountList.Value).Value, queue, ((Ok<IReadOnlyList<DashboardOperationView>>)running.Value).Value, ((Ok<IReadOnlyList<JournalEntry>>)scopeEntries.Value).Value, ((Ok<DashboardSetup>)setup.Value).Value);

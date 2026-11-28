@@ -20,4 +20,7 @@ public static class SettingNames
 
     /// <summary>How many days telemetry is kept, a whole number from 1. Defaults to <c>7</c>.</summary>
     public const string TelemetryRetentionDays = "retention.telemetry-days";
+
+    /// <summary>How many days completed operations are kept for the history, a whole number from 1. Defaults to <c>30</c>. Failed and dead-lettered operations are kept until dealt with.</summary>
+    public const string OperationRetentionDays = "retention.operation-days";
 }

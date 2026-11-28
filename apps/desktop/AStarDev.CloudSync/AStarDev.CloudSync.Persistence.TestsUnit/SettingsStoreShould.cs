@@ -22,7 +22,8 @@ public sealed class SettingsStoreShould
             [SettingNames.NotifyOnError] = "true",
             [SettingNames.NotifyOnCompletion] = "false",
             [SettingNames.AuditRetentionDays] = "90",
-            [SettingNames.TelemetryRetentionDays] = "7"
+            [SettingNames.TelemetryRetentionDays] = "7",
+            [SettingNames.OperationRetentionDays] = "30"
         }, ignoreOrder: true);
     }
 

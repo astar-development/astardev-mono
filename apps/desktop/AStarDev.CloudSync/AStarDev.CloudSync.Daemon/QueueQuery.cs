@@ -8,6 +8,8 @@ namespace AStarDev.CloudSync.Daemon;
 /// <summary>Answers <see cref="GetQueue"/> from the <see cref="IOperationStore"/>, the job and account stores and the item state, and publishes <see cref="QueueChanged"/> when the answer changes.</summary>
 internal sealed class QueueQuery(IOperationStore operations, OperationLookup lookup, IIpcServer server)
 {
+    private static readonly OperationStatus[] Open = [OperationStatus.Pending, OperationStatus.Running];
+
     private readonly object gate = new();
     private Option<QueueView> published = Option.None<QueueView>();
 
@@ -20,9 +22,12 @@ internal sealed class QueueQuery(IOperationStore operations, OperationLookup loo
     {
         cancellationToken.ThrowIfCancellationRequested();
 
-        return await operations.ListAsync(cancellationToken) switch
+        var counts = await operations.CountByStatusAsync(cancellationToken);
+        if (counts.Value is Fail<StoreError> countsFailure) return Failure(countsFailure.Error);
+
+        return await operations.ListNewestAsync(Open, ApplicationConstants.QueueListLimit, cancellationToken) switch
         {
-            Ok<IReadOnlyList<Operation>> ok => await DescribeAsync(ok.Value, cancellationToken),
+            Ok<IReadOnlyList<Operation>> ok => await DescribeAsync(((Ok<IReadOnlyDictionary<OperationStatus, int>>)counts.Value).Value, ok.Value, cancellationToken),
             Fail<StoreError> fail => Failure(fail.Error)
         };
     }
@@ -36,9 +41,8 @@ internal sealed class QueueQuery(IOperationStore operations, OperationLookup loo
             Fail<IpcError> fail => fail
         };
 
-    private async Task<Result<QueueView, IpcError>> DescribeAsync(IReadOnlyList<Operation> all, CancellationToken cancellationToken)
+    private async Task<Result<QueueView, IpcError>> DescribeAsync(IReadOnlyDictionary<OperationStatus, int> counts, IReadOnlyList<Operation> open, CancellationToken cancellationToken)
     {
-        var open = all.Where(operation => operation.Status is OperationStatus.Pending or OperationStatus.Running).OrderByDescending(operation => operation.CreatedUtc).Take(ApplicationConstants.QueueListLimit).ToList();
         var providers = await lookup.ProvidersAsync(cancellationToken);
         if (providers.Value is Fail<StoreError> providersFailure) return Failure(providersFailure.Error);
 
@@ -49,10 +53,10 @@ internal sealed class QueueQuery(IOperationStore operations, OperationLookup loo
         var stateOf = ((Ok<IReadOnlyDictionary<ItemId, CanonicalItemState>>)items.Value).Value;
 
         return new Ok<QueueView>(new QueueView(
-            Count(all, OperationStatus.Pending),
-            Count(all, OperationStatus.Running),
-            Count(all, OperationStatus.Completed),
-            Count(all, OperationStatus.Failed) + Count(all, OperationStatus.DeadLetter),
+            Count(counts, OperationStatus.Pending),
+            Count(counts, OperationStatus.Running),
+            Count(counts, OperationStatus.Completed),
+            Count(counts, OperationStatus.Failed) + Count(counts, OperationStatus.DeadLetter),
             open.Select(operation => ViewOf(operation, providerOf.GetValueOrDefault(operation.SyncJobId, string.Empty), stateOf.GetValueOrDefault(operation.ItemId))).ToList()));
     }
 
@@ -71,7 +75,7 @@ internal sealed class QueueQuery(IOperationStore operations, OperationLookup loo
     private static bool Same(QueueView left, QueueView right)
         => left with { Operations = [] } == right with { Operations = [] } && left.Operations.SequenceEqual(right.Operations);
 
-    private static int Count(IReadOnlyList<Operation> all, OperationStatus status) => all.Count(operation => operation.Status == status);
+    private static int Count(IReadOnlyDictionary<OperationStatus, int> counts, OperationStatus status) => counts.GetValueOrDefault(status);
 
     private static QueuedOperationView ViewOf(Operation operation, string provider, CanonicalItemState? state)
         => new(operation.Id.Value, provider, operation.Type.ToString(), operation.Status.ToString(), OperationLookup.PathOf(state), OperationLookup.SizeOf(state), operation.CreatedUtc);

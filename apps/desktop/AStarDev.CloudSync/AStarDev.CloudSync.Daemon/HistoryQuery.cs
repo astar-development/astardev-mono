@@ -11,6 +11,7 @@ internal sealed class HistoryQuery(IOperationStore operations, OperationLookup l
 {
     private const string Completed = "Completed";
     private const string Failed = "Failed";
+    private static readonly OperationStatus[] Finished = [OperationStatus.Completed, OperationStatus.Failed, OperationStatus.DeadLetter];
 
     /// <summary>Lists the newest operations that completed or failed, at most <see cref="ApplicationConstants.HistoryListLimit"/>, newest first, narrowed by every filter the query sets, so one answer always fits an IPC frame however long the history is.</summary>
     /// <returns>
@@ -27,9 +28,9 @@ internal sealed class HistoryQuery(IOperationStore operations, OperationLookup l
     {
         cancellationToken.ThrowIfCancellationRequested();
 
-        return await operations.ListAsync(cancellationToken) switch
+        return await operations.ListNewestAsync(StatusesOf(query), IsNarrowedAfterRead(query) ? int.MaxValue : limit, cancellationToken) switch
         {
-            Ok<IReadOnlyList<Operation>> ok => await DescribeAsync(query, limit, ok.Value.Where(operation => IsFinished(operation) && Keeps(query, operation)).OrderByDescending(operation => operation.CreatedUtc).ToList(), cancellationToken),
+            Ok<IReadOnlyList<Operation>> ok => await DescribeAsync(query, limit, ok.Value.Where(operation => Keeps(query, operation)).ToList(), cancellationToken),
             Fail<StoreError> fail => Failure(fail.Error)
         };
     }
@@ -51,11 +52,16 @@ internal sealed class HistoryQuery(IOperationStore operations, OperationLookup l
         return new Ok<HistoryView>(new HistoryView(entries));
     }
 
-    private static bool IsFinished(Operation operation) => operation.Status is OperationStatus.Completed or OperationStatus.Failed or OperationStatus.DeadLetter;
+    private static OperationStatus[] StatusesOf(GetHistory query)
+        => Option.FromNullable(query.Status).Match(
+            status => Finished.Where(finished => string.Equals(status, OutcomeOf(finished), StringComparison.OrdinalIgnoreCase)).ToArray(),
+            () => Finished);
+
+    private static bool IsNarrowedAfterRead(GetHistory query)
+        => query.Type is not null || query.From is not null || query.To is not null || query.Provider is not null || Option.FromNullable(query.Path).Bind(NonBlank).Value is Some<string>;
 
     private static bool Keeps(GetHistory query, Operation operation)
         => Passes(Option.FromNullable(query.Type), type => string.Equals(type, operation.Type.ToString(), StringComparison.OrdinalIgnoreCase))
-            && Passes(Option.FromNullable(query.Status), status => string.Equals(status, OutcomeOf(operation.Status), StringComparison.OrdinalIgnoreCase))
             && Passes(Option.FromNullable(query.From), from => operation.CreatedUtc >= from)
             && Passes(Option.FromNullable(query.To), to => operation.CreatedUtc <= to);
 

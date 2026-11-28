@@ -19,4 +19,10 @@ internal static partial class PersistenceLog
 
     [LoggerMessage(EventId = 4004, Level = LogLevel.Critical, Message = "Database {Database} failed its integrity check, entering recovery mode and leaving the file untouched: {Reason} ({ErrorCode})")]
     internal static partial void DatabaseCorrupt(ILogger logger, string database, string reason, ErrorCode errorCode);
+
+    [LoggerMessage(EventId = 4005, Level = LogLevel.Warning, Message = "Operation pruning failed and will be retried: {Reason} ({ErrorCode})")]
+    internal static partial void OperationPruneFailed(ILogger logger, string reason, ErrorCode errorCode);
+
+    [LoggerMessage(EventId = 4006, Level = LogLevel.Debug, Message = "Pruned {Count} completed operations older than {Days} days")]
+    internal static partial void OperationsPruned(ILogger logger, int count, int days);
 }
