@@ -50,7 +50,7 @@ internal sealed class RootEnumerator(HttpClient client, OneDriveTelemetry teleme
     /// <summary>Fetches every page of children of one folder, asking Graph for 1000 items a page instead of its default 200; each next link already carries the page size.</summary>
     /// <returns>All children, or the first <see cref="ProviderError"/> met; items from earlier pages are dropped on failure. Cancellation propagates as <see cref="OperationCanceledException"/>.</returns>
     public Task<Result<IReadOnlyList<ProviderItem>, ProviderError>> ListChildrenAsync(RemoteItemId parent, CancellationToken cancellationToken)
-        => CollectAsync($"me/drive/items/{Uri.EscapeDataString(parent.Value)}/children?{PageSizeQuery}", [], cancellationToken);
+        => CollectAsync($"me/drive/items/{Uri.EscapeDataString(parent.Value)}/children?{PageSizeQuery}", cancellationToken);
 
     /// <summary>Reads the drive quota. Graph has no item count, so the estimate is none.</summary>
     /// <returns>The quota as drive info, or the <see cref="ProviderError"/> met. A drive without a quota reports zeros. Cancellation propagates as <see cref="OperationCanceledException"/>.</returns>
@@ -81,24 +81,25 @@ internal sealed class RootEnumerator(HttpClient client, OneDriveTelemetry teleme
         return new Ok<ProviderDriveInfo>(new ProviderDriveInfo(quota.Used, quota.Remaining, quota.Total, Option.None<long>()));
     }
 
-    private async Task<Result<IReadOnlyList<ProviderItem>, ProviderError>> CollectAsync(string url, List<ProviderItem> items, CancellationToken cancellationToken)
+    private async Task<Result<IReadOnlyList<ProviderItem>, ProviderError>> CollectAsync(string url, CancellationToken cancellationToken)
     {
-        var page = await GetPageAsync(url, cancellationToken).ConfigureAwait(false);
+        var items = new List<ProviderItem>();
+        var next = Option.Some(url);
 
-        return page switch
+        while (next.Value is Some<string> current)
         {
-            Fail<ProviderError> fail => fail,
-            Ok<GraphChildrenPage> ok => await ContinueAsync(ok.Value, items, cancellationToken).ConfigureAwait(false)
-        };
-    }
+            switch (await GetPageAsync(current.Value, cancellationToken).ConfigureAwait(false))
+            {
+                case { Value: Fail<ProviderError> fail }:
+                    return fail;
+                case { Value: Ok<GraphChildrenPage> ok }:
+                    items.AddRange((ok.Value.Value ?? []).Select(DriveItemMapping.ToProviderItem));
+                    next = Option.FromNullable(ok.Value.NextLink);
+                    break;
+            }
+        }
 
-    private async Task<Result<IReadOnlyList<ProviderItem>, ProviderError>> ContinueAsync(GraphChildrenPage page, List<ProviderItem> items, CancellationToken cancellationToken)
-    {
-        items.AddRange((page.Value ?? []).Select(DriveItemMapping.ToProviderItem));
-
-        return page.NextLink is { } next
-            ? await CollectAsync(next, items, cancellationToken).ConfigureAwait(false)
-            : new Ok<IReadOnlyList<ProviderItem>>(items);
+        return new Ok<IReadOnlyList<ProviderItem>>(items);
     }
 
     private async Task<Result<GraphChildrenPage, ProviderError>> GetPageAsync(string url, CancellationToken cancellationToken)
