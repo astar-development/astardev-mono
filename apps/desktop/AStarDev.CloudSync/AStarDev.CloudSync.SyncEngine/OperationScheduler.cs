@@ -13,6 +13,8 @@ public sealed class OperationScheduler(IOperationStore store, IOperationExecutor
 {
     private readonly object gate = new();
     private readonly QueueMetrics metrics = new();
+    private readonly HashSet<SyncJobId> held = [];
+    private readonly Dictionary<OperationId, (SyncJobId Job, TaskCompletionSource Done)> executing = [];
     private CancellationTokenSource? cancellation;
     private Task[] workers = [];
 
@@ -50,6 +52,28 @@ public sealed class OperationScheduler(IOperationStore store, IOperationExecutor
         source.Dispose();
     }
 
+/// <summary>Stops running operations of the job and waits for the ones already being executed to end, so the job can be removed. Operations of the job claimed while it is held are left running and not executed.</summary>
+    /// <param name="syncJobId">The job to hold. Holding it twice is safe.</param>
+    /// <param name="cancellationToken">Cancelling stops the waiting, not the hold; call <see cref="Release"/> to undo it.</param>
+    public async Task HoldAsync(SyncJobId syncJobId, CancellationToken cancellationToken)
+    {
+        Task[] running;
+        lock (gate)
+        {
+            held.Add(syncJobId);
+            running = [.. executing.Values.Where(entry => entry.Job == syncJobId).Select(entry => entry.Done.Task)];
+        }
+
+        await Task.WhenAll(running).WaitAsync(cancellationToken);
+    }
+
+/// <summary>Lets operations of a job held by <see cref="HoldAsync"/> run again. Safe to call for a job that is not held.</summary>
+    /// <param name="syncJobId">The job to release.</param>
+    public void Release(SyncJobId syncJobId)
+    {
+        lock (gate) held.Remove(syncJobId);
+    }
+
 /// <inheritdoc/>
     public async ValueTask DisposeAsync()
     {
@@ -74,7 +98,7 @@ public sealed class OperationScheduler(IOperationStore store, IOperationExecutor
 
         return claimed switch
         {
-            Ok<IReadOnlyList<Operation>> ok => ok.Value.Count == 0 ? new Ok<bool>(false) : await ExecuteAsync(ok.Value[0], cancellationToken),
+            Ok<IReadOnlyList<Operation>> ok => ok.Value.Count == 0 ? new Ok<bool>(false) : await ExecuteUnlessHeldAsync(ok.Value[0], cancellationToken),
             Fail<StoreError> fail => fail
         };
     }
@@ -89,6 +113,27 @@ public sealed class OperationScheduler(IOperationStore store, IOperationExecutor
             if (outcome.Value is Fail<StoreError> fail) EngineLog.QueueUnavailable(logger, fail.Error.Value, ErrorInfo.CodeOf(fail.Error.Value));
 
             await Task.Delay(options.Value.PollInterval, timeProvider, cancellationToken);
+        }
+    }
+
+    private async Task<Result<bool, StoreError>> ExecuteUnlessHeldAsync(Operation operation, CancellationToken cancellationToken)
+    {
+        var done = new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously);
+        lock (gate)
+        {
+            if (held.Contains(operation.SyncJobId)) return new Ok<bool>(true);
+
+            executing[operation.Id] = (operation.SyncJobId, done);
+        }
+
+        try
+        {
+            return await ExecuteAsync(operation, cancellationToken);
+        }
+        finally
+        {
+            lock (gate) executing.Remove(operation.Id);
+            done.SetResult();
         }
     }
 

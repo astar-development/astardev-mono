@@ -377,6 +377,93 @@ public sealed class OperationQueueShould
         Claimed(await store.ListAsync(Token)).ShouldAllBe(operation => operation.Status == OperationStatus.Completed);
     }
 
+    [Fact]
+    public async Task skip_the_claimed_operations_of_a_held_job()
+    {
+        var executor = new ScriptedOperationExecutor(_ => new Ok<Unit>(default));
+        await using var host = SchedulerHost(new ManualTimeProvider(Start), executor);
+        var job = await SeedJobAsync(host);
+        var store = host.Services.GetRequiredService<IOperationStore>();
+        await EnqueueAsync(store, NewOperation(job, new ItemId(Guid.NewGuid()), OperationPriority.Background, 0));
+        var scheduler = host.Services.GetRequiredService<OperationScheduler>();
+
+        await scheduler.HoldAsync(job, Token);
+        await RunOnceAsync(scheduler, expectProcessed: true);
+
+        executor.Executed.ShouldBeEmpty();
+    }
+
+    [Fact]
+    public async Task run_the_operations_of_a_job_again_once_released()
+    {
+        var executor = new ScriptedOperationExecutor(_ => new Ok<Unit>(default));
+        await using var host = SchedulerHost(new ManualTimeProvider(Start), executor);
+        var job = await SeedJobAsync(host);
+        var store = host.Services.GetRequiredService<IOperationStore>();
+        await EnqueueAsync(store, NewOperation(job, new ItemId(Guid.NewGuid()), OperationPriority.Background, 0));
+        var scheduler = host.Services.GetRequiredService<OperationScheduler>();
+
+        await scheduler.HoldAsync(job, Token);
+        scheduler.Release(job);
+        await RunOnceAsync(scheduler, expectProcessed: true);
+
+        executor.Executed.Count.ShouldBe(1);
+    }
+
+    [Fact]
+    public async Task wait_for_a_running_operation_of_the_job_before_holding_it()
+    {
+        using var gate = new ManualResetEventSlim();
+        var executor = new ScriptedOperationExecutor(_ =>
+        {
+            gate.Wait(Token);
+
+            return new Ok<Unit>(default);
+        });
+        await using var host = SchedulerHost(new ManualTimeProvider(Start), executor);
+        var job = await SeedJobAsync(host);
+        var store = host.Services.GetRequiredService<IOperationStore>();
+        await EnqueueAsync(store, NewOperation(job, new ItemId(Guid.NewGuid()), OperationPriority.Background, 0));
+        var scheduler = host.Services.GetRequiredService<OperationScheduler>();
+        var running = Task.Run(() => scheduler.RunOnceAsync(Token), Token);
+        while (executor.Executed.Count == 0) await Task.Delay(10, Token);
+
+        var held = scheduler.HoldAsync(job, Token);
+        await Task.Delay(100, Token);
+        var heldWhileRunning = held.IsCompleted;
+        gate.Set();
+        await held.WaitAsync(TimeSpan.FromSeconds(10), Token);
+        await running;
+
+        heldWhileRunning.ShouldBeFalse();
+        (await OnlyAsync(store)).Status.ShouldBe(OperationStatus.Completed);
+    }
+
+    [Fact]
+    public async Task honour_cancellation_while_holding_a_job()
+    {
+        using var gate = new ManualResetEventSlim();
+        var executor = new ScriptedOperationExecutor(_ =>
+        {
+            gate.Wait(Token);
+
+            return new Ok<Unit>(default);
+        });
+        await using var host = SchedulerHost(new ManualTimeProvider(Start), executor);
+        var job = await SeedJobAsync(host);
+        await EnqueueAsync(host.Services.GetRequiredService<IOperationStore>(), NewOperation(job, new ItemId(Guid.NewGuid()), OperationPriority.Background, 0));
+        var scheduler = host.Services.GetRequiredService<OperationScheduler>();
+        var running = Task.Run(() => scheduler.RunOnceAsync(Token), Token);
+        while (executor.Executed.Count == 0) await Task.Delay(10, Token);
+        using var cancelled = new CancellationTokenSource();
+        await cancelled.CancelAsync();
+
+        await Should.ThrowAsync<OperationCanceledException>(() => scheduler.HoldAsync(job, cancelled.Token));
+
+        gate.Set();
+        await running;
+    }
+
     private static DatabaseTestHost SchedulerHost(TimeProvider time, IOperationExecutor executor)
         => DatabaseTestHost.Create(services =>
         {
