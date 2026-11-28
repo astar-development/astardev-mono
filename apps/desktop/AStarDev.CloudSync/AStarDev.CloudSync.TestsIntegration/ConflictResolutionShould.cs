@@ -224,7 +224,7 @@ public sealed class ConflictResolutionShould : IDisposable
 
         results.Select(result => result.Value is Ok<Unit>).ShouldBe([false, true, true]);
         results[0].Value.ShouldBeOfType<Fail<ResolutionError>>().Error.Value.ShouldBeOfType<ConflictNotOpen>();
-        provider.Uploads.Select(upload => upload.Path.Value).Order().ShouldBe(["f1.txt", "f2.txt"]);
+        provider.Uploads.Select(upload => upload.Path.Value).Order().ShouldBe(await PathsAsync(host, job, conflicts.Skip(1)));
         (await OpenAsync(host, job)).ShouldBeEmpty();
     }
 
@@ -379,6 +379,13 @@ public sealed class ConflictResolutionShould : IDisposable
 
     private static async Task<IReadOnlyList<Conflict>> OpenAsync(DatabaseTestHost host, SyncJobId job)
         => (await host.Services.GetRequiredService<IConflictStore>().ListOpenAsync(job, Token)).Value.ShouldBeOfType<Ok<IReadOnlyList<Conflict>>>().Value;
+
+    private static async Task<IReadOnlyList<string>> PathsAsync(DatabaseTestHost host, SyncJobId job, IEnumerable<Conflict> conflicts)
+    {
+        var items = (await host.Services.GetRequiredService<IItemStateStore>().ListAsync(job, Token)).Value.ShouldBeOfType<Ok<IReadOnlyList<StoredItem>>>().Value;
+
+        return [.. conflicts.Select(conflict => items.Single(item => item.ItemId == conflict.ItemId).Path.Value).Order()];
+    }
 
     private static async Task<ConflictStatus> StatusAsync(DatabaseTestHost host, ConflictId id)
         => (await host.Services.GetRequiredService<IConflictStore>().GetAsync(id, Token)).Value.ShouldBeOfType<Ok<Conflict>>().Value.Status;

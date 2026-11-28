@@ -6,6 +6,7 @@ namespace AStarDev.CloudSync.Ports;
 /// <summary>
 /// The durable operation queue. Failure is a <see cref="StoreError"/> value, never an exception; cancellation is not a failure and propagates as <see cref="OperationCanceledException"/>.
 /// Claims are atomic, so callers on any thread may claim at once without running two operations for one item.
+/// Age (<see cref="Operation.CreatedUtc"/>) is kept to a tenth of a millisecond, so operations of one priority created closer together than that tie and come back in no set order.
 /// </summary>
 public interface IOperationStore
 {

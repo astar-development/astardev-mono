@@ -172,7 +172,7 @@ public sealed class SyncPlanner
         using var planning = WorkflowTelemetry.StartOperationPlan(jobId, state.ItemId);
         var now = timeProvider.GetUtcNow();
         var operations = plan.Operations
-            .Select((planned, index) => new Operation(new OperationId(Guid.NewGuid()), jobId, state.ItemId, planned.Type, priority ?? planned.Priority, OperationStatus.Pending, 0, now, null, now.AddTicks(index), planning?.Id))
+            .Select((planned, index) => new Operation(new OperationId(Guid.NewGuid()), jobId, state.ItemId, planned.Type, priority ?? planned.Priority, OperationStatus.Pending, 0, now, null, now.AddMilliseconds(index), planning?.Id))
             .ToList();
         foreach (var operation in operations) WorkflowTelemetry.StartPublish(operation)?.Dispose();
         busy.Add(state.ItemId);
