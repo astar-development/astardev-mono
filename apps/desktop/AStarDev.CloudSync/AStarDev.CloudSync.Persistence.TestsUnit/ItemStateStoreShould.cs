@@ -13,6 +13,19 @@ public sealed class ItemStateStoreShould
     private static CancellationToken Token => TestContext.Current.CancellationToken;
 
     [Fact]
+    public async Task list_files_for_more_item_ids_than_sqlite_allows_parameters()
+    {
+        await using var host = await PersistenceTestHost.CreateInitialisedAsync(Token);
+        var job = await SyncJobStoreShould.AddAccountAndJobAsync(host, BootstrapMode.Merge);
+        var wanted = await AddItemAsync(host, job.Id, ItemType.File, "remote-a", "a.txt", null, Remote(4, null, null, null));
+        ItemId[] itemIds = [.. Enumerable.Range(0, 40_000).Select(_ => new ItemId(Guid.NewGuid())), wanted];
+
+        var listed = await host.Services.GetRequiredService<IItemStateStore>().ListAsync(job.Id, itemIds, Token);
+
+        listed.Value.ShouldBeOfType<Ok<IReadOnlyList<StoredItem>>>().Value.Select(item => item.ItemId).ShouldBe([wanted]);
+    }
+
+    [Fact]
     public async Task list_a_file_seen_on_both_sides_with_each_side()
     {
         await using var host = await PersistenceTestHost.CreateInitialisedAsync(Token);

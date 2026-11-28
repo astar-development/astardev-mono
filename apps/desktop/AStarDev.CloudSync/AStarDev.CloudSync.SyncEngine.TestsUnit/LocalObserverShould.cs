@@ -19,7 +19,11 @@ public sealed class LocalObserverShould
 
     private LocalObserver Observer() => Observer(new SyncScope(Job.Id, new RemoteItemId("root")));
 
-    private LocalObserver Observer(params SyncScope[] scopes) => new(fileSystem, store, new FakeScopeStore(scopes), Options.Create(new LocalObservationOptions { Debounce = Debounce }), time, NullLogger<LocalObserver>.Instance);
+    private LocalObserver Observer(params SyncScope[] scopes) => Observer(new LocalObservationOptions { Debounce = Debounce }, scopes);
+
+    private LocalObserver Observer(LocalObservationOptions observation, params SyncScope[] scopes) => new(fileSystem, store, new FakeScopeStore(scopes), Options.Create(observation), time, NullLogger<LocalObserver>.Instance);
+
+    private LocalObserver ObserverHashing(int parallelism) => Observer(new LocalObservationOptions { Debounce = Debounce, FingerprintParallelism = parallelism }, new SyncScope(Job.Id, new RemoteItemId("root")));
 
     [Fact]
     public async Task record_new_changed_and_deleted_files_in_one_scan()
@@ -204,6 +208,55 @@ public sealed class LocalObserverShould
         await cancellation.CancelAsync();
 
         await Should.ThrowAsync<OperationCanceledException>(async () => await Observer().ScanAsync(Job, default, cancellation.Token));
+    }
+
+    [Fact]
+    public void hash_two_files_at_once_by_default()
+        => new LocalObservationOptions().FingerprintParallelism.ShouldBe(2);
+
+    [Theory]
+    [InlineData(0, 1)]
+    [InlineData(1, 1)]
+    [InlineData(2, 2)]
+    [InlineData(4, 4)]
+    [InlineData(16, 4)]
+    public async Task hash_at_most_the_configured_number_of_files_at_once_and_never_more_than_four(int configured, int expected)
+    {
+        for (var index = 0; index < 12; index++) fileSystem.Put($"f{index}.txt", 1, Stamp);
+        fileSystem.Hashing = (_, token) => Task.Delay(20, token);
+
+        await ObserverHashing(configured).ScanAsync(Job, default, Token);
+
+        fileSystem.MostHashingAtOnce.ShouldBe(expected);
+        fileSystem.Fingerprinted.ShouldBe(12);
+    }
+
+    [Fact]
+    public async Task record_hashed_files_in_disk_order_whichever_hash_finishes_first()
+    {
+        var names = Enumerable.Range(0, 20).Select(index => $"f{index:D2}.txt").ToList();
+        foreach (var name in names) fileSystem.Put(name, 1, Stamp);
+        fileSystem.Hashing = (path, token) => Task.Delay(names.Count - names.IndexOf(path.Value), token);
+
+        await ObserverHashing(4).ScanAsync(Job, default, Token);
+
+        store.Recorded.SelectMany(recorded => recorded.Present).Select(snapshot => (snapshot.Path.Value, snapshot.Fingerprint!.Value.Value)).ShouldBe(names.Select(name => (name, "fp-" + name)));
+    }
+
+    [Fact]
+    public async Task stop_hashing_in_parallel_when_cancelled_and_record_nothing()
+    {
+        for (var index = 0; index < 8; index++) fileSystem.Put($"f{index}.txt", 1, Stamp);
+        using var cancellation = CancellationTokenSource.CreateLinkedTokenSource(Token);
+        fileSystem.Hashing = (_, token) => Task.Delay(Timeout.Infinite, token);
+
+        var scan = ObserverHashing(4).ScanAsync(Job, default, cancellation.Token);
+        while (fileSystem.Fingerprinted < 4) await Task.Delay(5, Token);
+        await cancellation.CancelAsync();
+
+        await Should.ThrowAsync<OperationCanceledException>(async () => await scan);
+        fileSystem.Fingerprinted.ShouldBe(4);
+        store.Recorded.ShouldBeEmpty();
     }
 
     private async Task<Running> StartAsync()

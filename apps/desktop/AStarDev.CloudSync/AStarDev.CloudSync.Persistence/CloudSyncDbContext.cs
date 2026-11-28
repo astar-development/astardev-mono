@@ -153,6 +153,7 @@ internal sealed class CloudSyncDbContext(DbContextOptions<CloudSyncDbContext> op
         {
             entry.ToTable("EventJournal").HasKey(entity => entity.Id);
             entry.HasIndex(entity => new { entity.AggregateId, entity.OccurredUtc });
+            entry.HasIndex(entity => new { entity.EventType, entity.OccurredUtc });
         });
 
         modelBuilder.Entity<SettingEntity>(setting => setting.ToTable("Settings").HasKey(entity => entity.Name));

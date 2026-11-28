@@ -6,7 +6,7 @@ using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.DependencyInjection.Extensions;
 using Microsoft.Extensions.Logging;
 
-namespace AStarDev.CloudSync.Daemon.TestsUnit;
+namespace AStarDev.CloudSync.Daemon.TestsIntegration;
 
 public sealed class DisconnectAccountHandlerShould
 {

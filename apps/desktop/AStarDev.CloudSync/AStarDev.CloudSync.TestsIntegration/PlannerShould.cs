@@ -157,6 +157,7 @@ public sealed class PlannerShould
         var operations = await Operations(host);
         operations.Select(operation => operation.Type).ShouldBe([OperationType.RenameRemote, OperationType.DownloadFile]);
         operations.ShouldAllBe(operation => operation.ItemId == item);
+        operations[0].CreatedUtc.ShouldBeLessThan(operations[1].CreatedUtc);
     }
 
     [Fact]

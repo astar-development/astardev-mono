@@ -39,7 +39,7 @@ internal sealed class LocalObservationStore(IDbContextFactory<CloudSyncDbContext
             if (!await context.SyncJobs.AnyAsync(row => row.Id == jobId, token).ConfigureAwait(false)) return new Fail<StoreError>(new SyncJobNotFound(jobId));
 
             var paths = present.Select(snapshot => snapshot.Path).Concat(deleted).Distinct().ToList();
-            var known = (await context.Items.Where(row => row.SyncJobId == jobId && paths.Contains(row.LocalPath)).ToListAsync(token).ConfigureAwait(false))
+            var known = (await context.Items.Where(row => row.SyncJobId == jobId && EF.Parameter(paths).Contains(row.LocalPath)).ToListAsync(token).ConfigureAwait(false))
                 .OrderBy(row => row.CreatedUtc)
                 .GroupBy(row => row.LocalPath)
                 .ToDictionary(group => group.Key, group => group.First());

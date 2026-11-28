@@ -59,6 +59,33 @@ public sealed class ChildrenListingShould
     }
 
     [Fact]
+    public async Task page_through_twenty_thousand_pages_served_synchronously()
+    {
+        const int Pages = 20_000;
+        var handler = new FakeGraphHandler(request => FakeGraphHandler.Json(Page("a", NextLink(request.RequestUri!, Pages))));
+        using var telemetry = new OneDriveTelemetry();
+        var enumerator = new RootEnumerator(Client(handler), telemetry);
+
+        var result = await enumerator.ListChildrenAsync(new RemoteItemId("root"), Token);
+
+        result.Value.ShouldBeOfType<Ok<IReadOnlyList<ProviderItem>>>().Value.Count.ShouldBe(Pages);
+    }
+
+    [Fact]
+    public async Task drop_earlier_pages_when_a_later_page_fails()
+    {
+        var handler = new FakeGraphHandler(request => request.RequestUri!.AbsoluteUri.Contains("page=2")
+            ? FakeGraphHandler.Json("{}", System.Net.HttpStatusCode.Unauthorized)
+            : FakeGraphHandler.Json(Page("a", "https://graph.test/next?page=2")));
+        using var telemetry = new OneDriveTelemetry();
+        var enumerator = new RootEnumerator(Client(handler), telemetry);
+
+        var result = await enumerator.ListChildrenAsync(new RemoteItemId("root"), Token);
+
+        result.Value.ShouldBeOfType<Fail<ProviderError>>().Error.Value.ShouldBeOfType<AuthenticationFailed>();
+    }
+
+    [Fact]
     public async Task map_a_graph_failure_to_a_provider_error()
     {
         var handler = new FakeGraphHandler(_ => FakeGraphHandler.Json("{}", System.Net.HttpStatusCode.Unauthorized));
@@ -83,6 +110,13 @@ public sealed class ChildrenListingShould
     }
 
     private static HttpClient Client(HttpMessageHandler handler) => new(handler) { BaseAddress = new Uri("https://graph.test/v1.0/") };
+
+    private static string? NextLink(Uri request, int pages)
+    {
+        var page = request.AbsolutePath.EndsWith("/next") ? int.Parse(request.Query.TrimStart('?').Split('=')[1]) : 1;
+
+        return page < pages ? $"https://graph.test/next?page={page + 1}" : null;
+    }
 
     private static string Page(string id, string? nextLink)
     {

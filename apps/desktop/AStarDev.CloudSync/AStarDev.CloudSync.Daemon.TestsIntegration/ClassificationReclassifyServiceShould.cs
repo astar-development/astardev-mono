@@ -4,7 +4,7 @@ using AStarDev.FunctionalParadigm;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting;
 
-namespace AStarDev.CloudSync.Daemon.TestsUnit;
+namespace AStarDev.CloudSync.Daemon.TestsIntegration;
 
 public sealed class ClassificationReclassifyServiceShould
 {

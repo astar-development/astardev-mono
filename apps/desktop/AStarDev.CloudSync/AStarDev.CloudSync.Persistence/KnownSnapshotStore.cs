@@ -14,7 +14,7 @@ internal sealed class KnownSnapshotStore(IDbContextFactory<CloudSyncDbContext> c
 
     /// <inheritdoc/>
     public Task<Result<IReadOnlyList<KnownEntry>, StoreError>> ListAsync(SyncJobId jobId, IReadOnlyCollection<ItemId> itemIds, CancellationToken cancellationToken)
-        => ListWhereAsync(context => context.KnownSnapshots.Where(row => row.SyncJobId == jobId && itemIds.Contains(row.ItemId)), cancellationToken);
+        => ListWhereAsync(context => context.KnownSnapshots.Where(row => row.SyncJobId == jobId && EF.Parameter(itemIds).Contains(row.ItemId)), cancellationToken);
 
     private async Task<Result<IReadOnlyList<KnownEntry>, StoreError>> ListWhereAsync(Func<CloudSyncDbContext, IQueryable<KnownSnapshotEntity>> baselines, CancellationToken cancellationToken)
     {

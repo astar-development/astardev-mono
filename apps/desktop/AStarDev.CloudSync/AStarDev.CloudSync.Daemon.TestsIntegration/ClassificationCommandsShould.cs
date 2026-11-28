@@ -3,9 +3,9 @@ using AStarDev.CloudSync.IPC;
 using AStarDev.CloudSync.Ports;
 using AStarDev.FunctionalParadigm;
 using Microsoft.Extensions.DependencyInjection;
-using static AStarDev.CloudSync.Daemon.TestsUnit.ClassificationDaemonTestData;
+using static AStarDev.CloudSync.Daemon.TestsIntegration.ClassificationDaemonTestData;
 
-namespace AStarDev.CloudSync.Daemon.TestsUnit;
+namespace AStarDev.CloudSync.Daemon.TestsIntegration;
 
 public sealed class ClassificationCommandsShould
 {

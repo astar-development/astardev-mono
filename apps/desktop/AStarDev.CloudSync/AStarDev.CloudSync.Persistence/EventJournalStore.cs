@@ -42,13 +42,9 @@ internal sealed class EventJournalStore(IDbContextFactory<CloudSyncDbContext> co
         var outcome = await Try.RunAsync<IReadOnlyList<JournalEntry>>(async token =>
         {
             await using var context = await contextFactory.CreateDbContextAsync(token).ConfigureAwait(false);
-            var rows = await context.EventJournal.AsNoTracking().ToListAsync(token).ConfigureAwait(false);
+            var rows = await Matching(context, fromUtc, toUtc, eventTypes).OrderBy(row => row.OccurredUtc).ThenBy(row => row.Id).ToListAsync(token).ConfigureAwait(false);
 
-            return rows
-                .Where(row => row.OccurredUtc >= fromUtc && row.OccurredUtc <= toUtc && (eventTypes.Count == 0 || eventTypes.Contains(row.EventType)))
-                .OrderBy(row => row.OccurredUtc)
-                .Select(row => row.ToEntry())
-                .ToList();
+            return [.. rows.Select(row => row.ToEntry())];
         }, cancellationToken).ConfigureAwait(false);
 
         return outcome.ToResult(ToStorageFailure);
@@ -57,12 +53,10 @@ internal sealed class EventJournalStore(IDbContextFactory<CloudSyncDbContext> co
     /// <inheritdoc/>
     public async Task<Result<Page<JournalEntry>, StoreError>> PageAsync(DateTimeOffset fromUtc, DateTimeOffset toUtc, IReadOnlyList<string> eventTypes, int skip, int take, CancellationToken cancellationToken)
     {
-        var from = fromUtc.ToUniversalTime();
-        var to = toUtc.ToUniversalTime();
         var outcome = await Try.RunAsync<Page<JournalEntry>>(async token =>
         {
             await using var context = await contextFactory.CreateDbContextAsync(token).ConfigureAwait(false);
-            var matching = context.EventJournal.AsNoTracking().Where(row => row.OccurredUtc >= from && row.OccurredUtc <= to && (eventTypes.Count == 0 || eventTypes.Contains(row.EventType)));
+            var matching = Matching(context, fromUtc, toUtc, eventTypes);
             var total = await matching.CountAsync(token).ConfigureAwait(false);
             var rows = await matching.OrderByDescending(row => row.OccurredUtc).ThenByDescending(row => row.Id).Skip(skip).Take(take).ToListAsync(token).ConfigureAwait(false);
 
@@ -75,17 +69,25 @@ internal sealed class EventJournalStore(IDbContextFactory<CloudSyncDbContext> co
     /// <inheritdoc/>
     public async Task<Result<int, StoreError>> PruneAsync(DateTimeOffset olderThanUtc, CancellationToken cancellationToken)
     {
+        var cutoff = olderThanUtc.ToUniversalTime();
         var outcome = await Try.RunAsync<int>(async token =>
         {
             await using var context = await contextFactory.CreateDbContextAsync(token).ConfigureAwait(false);
-            var expired = (await context.EventJournal.ToListAsync(token).ConfigureAwait(false)).Where(row => row.OccurredUtc < olderThanUtc).ToList();
-            context.EventJournal.RemoveRange(expired);
-            await context.SaveChangesAsync(token).ConfigureAwait(false);
 
-            return expired.Count;
+            return await context.EventJournal.Where(row => row.OccurredUtc < cutoff).ExecuteDeleteAsync(token).ConfigureAwait(false);
         }, cancellationToken).ConfigureAwait(false);
 
         return outcome.ToResult(ToStorageFailure);
+    }
+
+    /// <summary>The entries that occurred in <c>[fromUtc, toUtc]</c> and, unless <paramref name="eventTypes"/> is empty, have one of its types, filtered in SQL. Both bounds become UTC first, because the stored binary form of a <see cref="DateTimeOffset"/> orders by instant only at a zero offset; the type filter is left out rather than made optional in SQL, so an <c>(EventType, OccurredUtc)</c> index can serve it.</summary>
+    internal static IQueryable<JournalEntryEntity> Matching(CloudSyncDbContext context, DateTimeOffset fromUtc, DateTimeOffset toUtc, IReadOnlyList<string> eventTypes)
+    {
+        var from = fromUtc.ToUniversalTime();
+        var to = toUtc.ToUniversalTime();
+        var inRange = context.EventJournal.AsNoTracking().Where(row => row.OccurredUtc >= from && row.OccurredUtc <= to);
+
+        return eventTypes.Count == 0 ? inRange : inRange.Where(row => eventTypes.Contains(row.EventType));
     }
 
     private static StoreError ToStorageFailure(Exception exception) => new StorageFailed(exception.Message);
