@@ -11,6 +11,7 @@ internal static class RemoteFolderPaths
 
     /// <summary>Walks the drive from its root, one folder listing at a time, until the folder is found.</summary>
     /// <param name="provider">Lists the folders.</param>
+    /// <param name="account">The provider's identifier for the account whose drive is walked; each listing uses that account's sign-in.</param>
     /// <param name="folder">The provider's id for the folder; the drive root alias <c>root</c> is the drive root and needs no listing.</param>
     /// <param name="cancellationToken">Cancelling abandons the walk and surfaces as <see cref="OperationCanceledException"/>.</param>
     /// <returns>The folder's path from the drive root, empty text for the drive root; <see cref="Permanent"/> when no folder has the id; or the <see cref="ProviderError"/> of the listing that failed.</returns>
