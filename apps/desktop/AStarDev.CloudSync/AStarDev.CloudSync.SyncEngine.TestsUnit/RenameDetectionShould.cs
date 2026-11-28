@@ -40,6 +40,15 @@ public sealed class RenameDetectionShould
     }
 
     [Fact]
+    public void match_a_fingerprint_whose_time_differs_only_below_storage_precision()
+    {
+        var deleted = new DeletedItem(First, Evidence("/a/f.txt", 10, 0, "h", null));
+        var moved = Evidence("/b/f.txt", 10, 0, "h", null) with { ModifiedUtc = Stamp.AddTicks(999) };
+
+        RenameDetector.DetectLocal([deleted], [moved]).ShouldBe([new DetectedRename(First, moved.Path)]);
+    }
+
+    [Fact]
     public void prefer_identity_over_fingerprint()
     {
         var deleted = new DeletedItem(First, Evidence("/a/f.txt", 10, 0, "h", "dev1:ino1"));

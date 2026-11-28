@@ -15,7 +15,6 @@ internal sealed class LocalObserver(ILocalFileSystem fileSystem, ILocalObservati
 {
     private const int BatchSize = 500;
     private const int MaxFingerprintParallelism = 4;
-    private static readonly TimeSpan TimestampTolerance = TimeSpan.FromMilliseconds(1);
 
     /// <summary>Observes the job until cancelled.</summary>
     /// <param name="job">The job whose <see cref="SyncJob.LocalRootPath"/> to observe.</param>
@@ -111,11 +110,9 @@ internal sealed class LocalObserver(ILocalFileSystem fileSystem, ILocalObservati
         return new Ok<Unit>(default);
     }
 
-    private static bool SameInstant(DateTimeOffset stored, DateTimeOffset onDisk) => (stored - onDisk).Duration() < TimestampTolerance;
-
     private async Task<List<LocalSnapshot>> FingerprintChangedAsync(SyncJob job, IReadOnlyList<LocalFile> disk, Dictionary<RelativePath, LocalSnapshot> stored, CancellationToken cancellationToken)
     {
-        var changed = disk.Where(file => !stored.TryGetValue(file.Path, out var last) || last.Size != file.Size || !SameInstant(last.ModifiedUtc, file.ModifiedUtc) || last.Identity != file.Identity).ToList();
+        var changed = disk.Where(file => !stored.TryGetValue(file.Path, out var last) || last.Size != file.Size || !ModifiedTimes.Same(last.ModifiedUtc, file.ModifiedUtc) || last.Identity != file.Identity).ToList();
         var fingerprints = new Result<ContentFingerprint, LocalObservationError>[changed.Count];
         var parallel = new ParallelOptions { MaxDegreeOfParallelism = Parallelism(options.Value), CancellationToken = cancellationToken };
         await Parallel.ForAsync(0, changed.Count, parallel, async (index, token) => fingerprints[index] = await fileSystem.FingerprintAsync(job.LocalRootPath, changed[index].Path, token));
