@@ -1,5 +1,6 @@
 using AStarDev.CloudSync.Domain;
 using AStarDev.CloudSync.IPC;
+using AStarDev.CloudSync.Persistence;
 using AStarDev.CloudSync.Ports;
 using AStarDev.CloudSync.SyncEngine;
 using AStarDev.FunctionalParadigm;
@@ -12,16 +13,29 @@ namespace AStarDev.CloudSync.Daemon;
 /// While a job is indexing, items done and total, throughput and time left are the <see cref="ActivityTracker"/>'s (<see cref="ActivityView.ItemsPerSecond"/>, <see cref="ActivityView.EtaSeconds"/>), the same the Activity screen shows.
 /// Afterwards they describe transfers: operations completed out of all operations, the <see cref="TransferRate"/> and the time left at that rate.
 /// </summary>
-internal sealed class DashboardSnapshotQuery(IOperationStore operations, IConflictStore conflicts, IAccountStore accounts, ISyncJobStore jobs, ISyncScopeStore scopes, IEventJournal journal, CanonicalStateReader states, HealthCheckService health, ActivityTracker tracker, TransferRate transferRate, IIpcServer server, TimeProvider timeProvider)
+internal sealed class DashboardSnapshotQuery(IOperationStore operations, IConflictStore conflicts, IAccountStore accounts, ISyncJobStore jobs, ISyncScopeStore scopes, IEventJournal journal, CanonicalStateReader states, HealthCheckService health, ActivityTracker tracker, TransferRate transferRate, IIpcServer server, TimeProvider timeProvider, IDatabaseWrites writes)
 {
     private static readonly string[] ScopeEvents = ["SyncScopeAdded", "SyncScopeRemoved"];
 
+    private readonly StoreReadCache<DashboardReads> reads = new(writes);
     private readonly object gate = new();
     private Option<DashboardView> published = Option.None<DashboardView>();
 
     /// <summary>Reads the dashboard values now.</summary>
     /// <returns>The snapshot, or <see cref="HandlerFailed"/> carrying the first store failure worded for the user. Cancellation propagates as <see cref="OperationCanceledException"/>.</returns>
     public async Task<Result<DashboardView, IpcError>> HandleAsync(GetDashboardSnapshot query, CancellationToken cancellationToken)
+        => ViewOf(await ReadAsync(cancellationToken));
+
+    /// <summary>Publishes <see cref="DashboardChanged"/> when the dashboard differs from the one published last. The first call always publishes. Skips the database reads while no write was committed since the last one; the <see cref="ActivityTracker"/> and the <see cref="TransferRate"/> are read every call, so progress, throughput and time left keep moving.</summary>
+    /// <returns>Success when nothing needed publishing or the event went out; otherwise the read or publish failure. Cancellation propagates as <see cref="OperationCanceledException"/>.</returns>
+    public async Task<Result<Unit, IpcError>> PublishIfChangedAsync(CancellationToken cancellationToken)
+        => ViewOf(await reads.ReadAsync(ReadAsync, cancellationToken)) switch
+        {
+            Ok<DashboardView> dashboard => HasChanged(dashboard.Value) ? await server.PublishAsync(new DashboardChanged(dashboard.Value), cancellationToken) : new Ok<Unit>(default),
+            Fail<IpcError> fail => fail
+        };
+
+    private async Task<Result<DashboardReads, IpcError>> ReadAsync(CancellationToken cancellationToken)
     {
         var report = await health.CheckHealthAsync(registration => registration.Name == ApplicationConstants.ProviderHealthCheckName, cancellationToken);
         var counts = await operations.CountByStatusAsync(cancellationToken);
@@ -49,19 +63,14 @@ internal sealed class DashboardSnapshotQuery(IOperationStore operations, IConfli
         var running = await RunningAsync(((Ok<IReadOnlyList<Operation>>)runningOperations.Value).Value, cancellationToken);
         if (running.Value is Fail<StoreError> runningFailure) return Failure(runningFailure.Error, "running operations");
 
-        var view = ViewOf(report.Status, ((Ok<IReadOnlyDictionary<OperationStatus, int>>)counts.Value).Value, ((Ok<int>)open.Value).Value, ((Ok<IReadOnlyList<Account>>)accountList.Value).Value, queue, ((Ok<IReadOnlyList<DashboardOperationView>>)running.Value).Value, ((Ok<IReadOnlyList<JournalEntry>>)scopeEntries.Value).Value, ((Ok<DashboardSetup>)setup.Value).Value);
-
-        return new Ok<DashboardView>(view);
+        return new Ok<DashboardReads>(new DashboardReads(report.Status, ((Ok<IReadOnlyDictionary<OperationStatus, int>>)counts.Value).Value, ((Ok<int>)open.Value).Value, ((Ok<IReadOnlyList<Account>>)accountList.Value).Value, queue, ((Ok<IReadOnlyList<DashboardOperationView>>)running.Value).Value, ((Ok<IReadOnlyList<JournalEntry>>)scopeEntries.Value).Value, ((Ok<DashboardSetup>)setup.Value).Value));
     }
 
-    /// <summary>Publishes <see cref="DashboardChanged"/> when the dashboard differs from the one published last. The first call always publishes.</summary>
-    /// <returns>Success when nothing needed publishing or the event went out; otherwise the read or publish failure. Cancellation propagates as <see cref="OperationCanceledException"/>.</returns>
-    public async Task<Result<Unit, IpcError>> PublishIfChangedAsync(CancellationToken cancellationToken)
-        => await HandleAsync(new GetDashboardSnapshot(), cancellationToken) switch
-        {
-            Ok<DashboardView> dashboard => HasChanged(dashboard.Value) ? await server.PublishAsync(new DashboardChanged(dashboard.Value), cancellationToken) : new Ok<Unit>(default),
-            Fail<IpcError> fail => fail
-        };
+    private Result<DashboardView, IpcError> ViewOf(Result<DashboardReads, IpcError> read) => read switch
+    {
+        Ok<DashboardReads> ok => new Ok<DashboardView>(ViewOf(ok.Value.ProviderHealth, ok.Value.Counts, ok.Value.OpenConflicts, ok.Value.Accounts, ok.Value.Newest, ok.Value.Running, ok.Value.ScopeEntries, ok.Value.Setup)),
+        Fail<IpcError> fail => fail
+    };
 
     private async Task<Result<IReadOnlyList<DashboardOperationView>, StoreError>> RunningAsync(IReadOnlyList<Operation> running, CancellationToken cancellationToken)
     {

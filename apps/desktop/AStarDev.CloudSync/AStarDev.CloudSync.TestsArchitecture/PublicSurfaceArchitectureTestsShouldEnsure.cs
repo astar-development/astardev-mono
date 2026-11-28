@@ -53,7 +53,7 @@ public sealed class PublicSurfaceArchitectureTestsShouldEnsure
     [Fact]
     public void persistence_exposes_only_its_approved_public_types()
         => ShouldExposeExactly(typeof(Persistence.DatabaseOptions).Assembly,
-            "DatabaseError", "DatabaseMode", "DatabaseOptions", "DatabaseUnavailable", "IDatabaseInitialiser", "IDatabaseState",
+            "DatabaseError", "DatabaseMode", "DatabaseOptions", "DatabaseUnavailable", "IDatabaseInitialiser", "IDatabaseState", "IDatabaseWrites",
             "MigrationFailed", "PersistenceServiceCollectionExtensions", "TelemetryDatabaseOptions");
 
     [Fact]
