@@ -164,6 +164,7 @@ internal sealed class CloudSyncDbContext(DbContextOptions<CloudSyncDbContext> op
             item.HasOne<SyncJobEntity>().WithMany().HasForeignKey(entity => entity.SyncJobId).OnDelete(DeleteBehavior.Cascade);
             item.HasOne<ItemEntity>().WithMany().HasForeignKey(entity => entity.ParentItemId).OnDelete(DeleteBehavior.Restrict);
             item.HasIndex(entity => new { entity.SyncJobId, entity.RemoteItemId });
+            item.HasIndex(entity => new { entity.SyncJobId, entity.LocalPath });
         });
 
         modelBuilder.Entity<ItemSnapshotEntity>(snapshot =>

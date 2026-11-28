@@ -59,14 +59,16 @@ internal sealed class LocalObservationStore(IDbContextFactory<CloudSyncDbContext
         };
     }
 
-    private static IQueryable<ItemEntity> ItemsUnder(CloudSyncDbContext context, SyncJobId jobId, RelativePath subtree)
+    /// <summary>The items of <paramref name="jobId"/> at <paramref name="subtree"/> or below it; an empty subtree means every item of the job. A sibling that only shares the name prefix (<c>docs2</c> for <c>docs</c>) is not under it. Under SQLite BINARY collation <c>0</c> follows <c>/</c>, so <c>[subtree/, subtree0)</c> holds exactly the paths starting <c>subtree/</c>; bounding the whole match by <c>[subtree, subtree0)</c> lets it seek the <c>(SyncJobId, LocalPath)</c> index as one range.</summary>
+    internal static IQueryable<ItemEntity> ItemsUnder(CloudSyncDbContext context, SyncJobId jobId, RelativePath subtree)
     {
         if (string.IsNullOrEmpty(subtree.Value)) return context.Items.Where(row => row.SyncJobId == jobId);
 
         var path = subtree.Value;
         var prefix = path + "/";
+        var pastPrefix = path + "0";
 
-        return context.Items.FromSql($"SELECT * FROM Items WHERE SyncJobId = {jobId.Value} AND (LocalPath = {path} OR substr(LocalPath, 1, {prefix.Length}) = {prefix})");
+        return context.Items.FromSql($"SELECT * FROM Items WHERE SyncJobId = {jobId.Value} AND LocalPath >= {path} AND LocalPath < {pastPrefix} AND (LocalPath = {path} OR LocalPath >= {prefix})");
     }
 
     private static void AddPresent(CloudSyncDbContext context, SyncJobId jobId, Dictionary<RelativePath, ItemEntity> known, Dictionary<ItemId, ItemSnapshotEntity> latest, LocalSnapshot snapshot, DateTimeOffset observedUtc)
