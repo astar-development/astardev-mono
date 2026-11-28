@@ -45,6 +45,20 @@ public sealed class ChildrenListingShould
     }
 
     [Fact]
+    public async Task request_a_thousand_children_per_page_and_follow_the_next_link_as_given()
+    {
+        var handler = new FakeGraphHandler(request => request.RequestUri!.AbsoluteUri.Contains("page=2")
+            ? FakeGraphHandler.Json(Page("b", null))
+            : FakeGraphHandler.Json(Page("a", "https://graph.test/next?$top=1000&page=2")));
+        using var telemetry = new OneDriveTelemetry();
+        var enumerator = new RootEnumerator(Client(handler), telemetry);
+
+        await enumerator.ListChildrenAsync(new RemoteItemId("root"), Token);
+
+        handler.Requests.Select(uri => uri.AbsoluteUri).ShouldBe(["https://graph.test/v1.0/me/drive/items/root/children?$top=1000", "https://graph.test/next?$top=1000&page=2"]);
+    }
+
+    [Fact]
     public async Task map_a_graph_failure_to_a_provider_error()
     {
         var handler = new FakeGraphHandler(_ => FakeGraphHandler.Json("{}", System.Net.HttpStatusCode.Unauthorized));
