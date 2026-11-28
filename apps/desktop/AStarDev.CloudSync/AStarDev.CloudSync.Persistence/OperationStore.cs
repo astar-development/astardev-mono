@@ -2,15 +2,12 @@ using AStarDev.CloudSync.Domain;
 using AStarDev.CloudSync.Ports;
 using AStarDev.FunctionalParadigm;
 using Microsoft.EntityFrameworkCore;
-using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 
 namespace AStarDev.CloudSync.Persistence;
 
 /// <summary>SQLite implementation of <see cref="IOperationStore"/>. Each call uses its own short-lived context. A claim is one SQL statement, so SQLite serialises concurrent claims and neither the per-item lock nor the per-account limit can be raced. Each job's best candidate is found through its own index range, so an account at its limit costs no scan of its backlog.</summary>
 internal sealed class OperationStore(IDbContextFactory<CloudSyncDbContext> contextFactory) : IOperationStore
 {
-    private static readonly DateTimeOffsetToBinaryConverter TimeConverter = new();
-
     /// <inheritdoc/>
     public async Task<Result<Unit, StoreError>> EnqueueAsync(Operation operation, CancellationToken cancellationToken)
     {
@@ -34,7 +31,7 @@ internal sealed class OperationStore(IDbContextFactory<CloudSyncDbContext> conte
         var outcome = await Try.RunAsync<IReadOnlyList<Operation>>(async token =>
         {
             await using var context = await contextFactory.CreateDbContextAsync(token).ConfigureAwait(false);
-            var due = ToStored(nowUtc);
+            var due = UtcTicksConverter.ToStored(nowUtc);
             var claimed = new List<Operation>();
             while (claimed.Count < limit)
             {
@@ -228,8 +225,6 @@ internal sealed class OperationStore(IDbContextFactory<CloudSyncDbContext> conte
 
         return outcome.ToResult(ToStorageFailure);
     }
-
-    private static long ToStored(DateTimeOffset value) => (long)TimeConverter.ConvertToProvider(value.ToUniversalTime())!;
 
     private static Result<Unit, StoreError> Flatten(Exceptional<Result<Unit, StoreError>> outcome)
         => outcome.ToResult(ToStorageFailure) switch

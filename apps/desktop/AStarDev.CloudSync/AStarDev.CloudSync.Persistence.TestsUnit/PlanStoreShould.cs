@@ -121,7 +121,7 @@ public sealed class PlanStoreShould
     }
 
     private static Operation NewOperation(SyncJobId job, ItemId item, int rank)
-        => new(new OperationId(Guid.NewGuid()), job, item, OperationType.DownloadFile, OperationPriority.Background, OperationStatus.Pending, 0, Stamp, null, Stamp.AddMilliseconds(rank), null);
+        => new(new OperationId(Guid.NewGuid()), job, item, OperationType.DownloadFile, OperationPriority.Background, OperationStatus.Pending, 0, Stamp, null, Stamp.AddTicks(rank), null);
 
     private static PlannedConflict NewConflict(SyncJobId job, ItemId item)
     {

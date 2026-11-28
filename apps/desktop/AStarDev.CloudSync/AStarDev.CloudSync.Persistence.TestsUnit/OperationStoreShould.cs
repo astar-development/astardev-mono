@@ -30,6 +30,64 @@ public sealed class OperationStoreShould
     }
 
     [Fact]
+    public async Task list_operations_created_one_tick_apart_in_creation_order()
+    {
+        await using var host = await PersistenceTestHost.CreateInitialisedAsync(Token);
+        var job = (await SyncJobStoreShould.AddAccountAndJobAsync(host, BootstrapMode.Merge)).Id;
+        var store = host.Services.GetRequiredService<IOperationStore>();
+        var first = NewOperation(job, OperationStatus.Pending, Start);
+        var second = NewOperation(job, OperationStatus.Pending, Start.AddTicks(1));
+        await EnqueueAsync(store, second, first);
+
+        var listed = await store.ListAsync(Token);
+
+        listed.Value.ShouldBeOfType<Ok<IReadOnlyList<Operation>>>().Value.Select(operation => operation.Id).ShouldBe([first.Id, second.Id]);
+    }
+
+    [Fact]
+    public async Task list_the_newest_of_operations_created_one_tick_apart_first()
+    {
+        await using var host = await PersistenceTestHost.CreateInitialisedAsync(Token);
+        var job = (await SyncJobStoreShould.AddAccountAndJobAsync(host, BootstrapMode.Merge)).Id;
+        var store = host.Services.GetRequiredService<IOperationStore>();
+        var first = NewOperation(job, OperationStatus.Pending, Start);
+        var second = NewOperation(job, OperationStatus.Pending, Start.AddTicks(1));
+        await EnqueueAsync(store, first, second);
+
+        var listed = await store.ListNewestAsync([OperationStatus.Pending], 2, Token);
+
+        listed.Value.ShouldBeOfType<Ok<IReadOnlyList<Operation>>>().Value.Select(operation => operation.Id).ShouldBe([second.Id, first.Id]);
+    }
+
+    [Fact]
+    public async Task claim_the_older_of_operations_created_one_tick_apart_first()
+    {
+        await using var host = await PersistenceTestHost.CreateInitialisedAsync(Token);
+        var job = (await SyncJobStoreShould.AddAccountAndJobAsync(host, BootstrapMode.Merge)).Id;
+        var store = host.Services.GetRequiredService<IOperationStore>();
+        var first = NewOperation(job, OperationStatus.Pending, Start);
+        var second = NewOperation(job, OperationStatus.Pending, Start.AddTicks(1));
+        await EnqueueAsync(store, second, first);
+
+        var claimed = await store.ClaimNextAsync(Start.AddTicks(1), 1, Token);
+
+        claimed.Value.ShouldBeOfType<Ok<IReadOnlyList<Operation>>>().Value.Select(operation => operation.Id).ShouldBe([first.Id]);
+    }
+
+    [Fact]
+    public async Task not_claim_an_operation_due_one_tick_after_now()
+    {
+        await using var host = await PersistenceTestHost.CreateInitialisedAsync(Token);
+        var job = (await SyncJobStoreShould.AddAccountAndJobAsync(host, BootstrapMode.Merge)).Id;
+        var store = host.Services.GetRequiredService<IOperationStore>();
+        await EnqueueAsync(store, NewOperation(job, OperationStatus.Pending, Start.AddTicks(1)));
+
+        var claimed = await store.ClaimNextAsync(Start, 1, Token);
+
+        claimed.Value.ShouldBeOfType<Ok<IReadOnlyList<Operation>>>().Value.ShouldBeEmpty();
+    }
+
+    [Fact]
     public async Task count_the_operations_of_each_job_by_status()
     {
         await using var host = await PersistenceTestHost.CreateInitialisedAsync(Token);

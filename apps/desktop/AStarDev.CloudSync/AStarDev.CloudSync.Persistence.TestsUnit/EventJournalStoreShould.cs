@@ -83,7 +83,7 @@ public sealed class EventJournalStoreShould
 
         var sql = EventJournalStore.Matching(context, Stamp, Stamp.AddDays(1), ["SyncScopeAdded", "SyncScopeRemoved"]).ToQueryString();
 
-        sql.ShouldContain("\"e\".\"OccurredUtc\" >= @from AND \"e\".\"OccurredUtc\" <= @to");
+        sql.ShouldContain("\"e\".\"OccurredUtc\" >= @fromUtc AND \"e\".\"OccurredUtc\" <= @toUtc");
         sql.ShouldContain("\"e\".\"EventType\" IN (@eventTypes1, @eventTypes2)");
     }
 
