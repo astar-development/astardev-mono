@@ -10,12 +10,14 @@ namespace AStarDev.CloudSync.OneDrive;
 /// <param name="telemetry">Receives a span and a request count per page.</param>
 internal sealed class RootEnumerator(HttpClient client, OneDriveTelemetry telemetry)
 {
+    private const string PageSizeQuery = "$top=1000";
+
     private readonly PathResolver resolver = new(client, telemetry);
 
-    /// <summary>Fetches one page of the whole tree under a remote root through Graph's delta endpoint, which lists every descendant flat. Paths are built from parent ids and are relative to the drive root, so a scope folder stays in them; <paramref name="root"/> itself and items outside it are left out. The resume token is Graph's next link, used as the request URL.</summary>
+    /// <summary>Fetches one page of the whole tree under a remote root through Graph's delta endpoint, which lists every descendant flat, asking for 1000 items a page. Paths are built from parent ids and are relative to the drive root, so a scope folder stays in them; <paramref name="root"/> itself and items outside it are left out. The resume token is Graph's next link, used as the request URL.</summary>
     /// <returns>The page, with the final page carrying Graph's delta link as the delta token, or the <see cref="ProviderError"/> met. Cancellation propagates as <see cref="OperationCanceledException"/>.</returns>
     public async Task<Result<ProviderSnapshotPage, ProviderError>> GetSnapshotAsync(RemoteItemId root, string? resumeToken, CancellationToken cancellationToken)
-        => await GetPageAsync(resumeToken ?? $"me/drive/items/{Uri.EscapeDataString(root.Value)}/delta", cancellationToken).ConfigureAwait(false) switch
+        => await GetPageAsync(resumeToken ?? $"me/drive/items/{Uri.EscapeDataString(root.Value)}/delta?{PageSizeQuery}", cancellationToken).ConfigureAwait(false) switch
         {
             Ok<GraphChildrenPage> ok => await resolver.ResolveAsync(root, ok.Value.Value ?? [], cancellationToken).ConfigureAwait(false) switch
             {
@@ -45,10 +47,10 @@ internal sealed class RootEnumerator(HttpClient client, OneDriveTelemetry teleme
         return url;
     }
 
-    /// <summary>Fetches every page of children of one folder.</summary>
+    /// <summary>Fetches every page of children of one folder, asking Graph for 1000 items a page instead of its default 200; each next link already carries the page size.</summary>
     /// <returns>All children, or the first <see cref="ProviderError"/> met; items from earlier pages are dropped on failure. Cancellation propagates as <see cref="OperationCanceledException"/>.</returns>
     public Task<Result<IReadOnlyList<ProviderItem>, ProviderError>> ListChildrenAsync(RemoteItemId parent, CancellationToken cancellationToken)
-        => CollectAsync($"me/drive/items/{Uri.EscapeDataString(parent.Value)}/children", [], cancellationToken);
+        => CollectAsync($"me/drive/items/{Uri.EscapeDataString(parent.Value)}/children?{PageSizeQuery}", [], cancellationToken);
 
     /// <summary>Reads the drive quota. Graph has no item count, so the estimate is none.</summary>
     /// <returns>The quota as drive info, or the <see cref="ProviderError"/> met. A drive without a quota reports zeros. Cancellation propagates as <see cref="OperationCanceledException"/>.</returns>

@@ -49,6 +49,16 @@ public sealed class SnapshotEnumerationShould
     }
 
     [Fact]
+    public async Task request_a_thousand_items_on_the_first_delta_page()
+    {
+        var handler = new FakeGraphHandler(_ => FakeGraphHandler.Json(Page("a", null, "https://graph.test/delta?token=t")));
+
+        await Fetch(handler, null);
+
+        handler.Requests.ShouldHaveSingleItem().AbsoluteUri.ShouldBe("https://graph.test/v1.0/me/drive/items/root/delta?$top=1000");
+    }
+
+    [Fact]
     public async Task resume_from_a_token()
     {
         var handler = new FakeGraphHandler(_ => FakeGraphHandler.Json(Page("b", null, "https://graph.test/delta?token=t")));
