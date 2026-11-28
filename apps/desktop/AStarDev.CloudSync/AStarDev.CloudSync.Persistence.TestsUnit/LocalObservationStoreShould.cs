@@ -1,6 +1,8 @@
+using System.Data.Common;
 using AStarDev.CloudSync.Domain;
 using AStarDev.CloudSync.Ports;
 using AStarDev.FunctionalParadigm;
+using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.DependencyInjection;
 
 namespace AStarDev.CloudSync.Persistence.TestsUnit;
@@ -8,6 +10,8 @@ namespace AStarDev.CloudSync.Persistence.TestsUnit;
 public sealed class LocalObservationStoreShould
 {
     private static readonly DateTimeOffset Stamp = new(2026, 11, 22, 0, 0, 0, TimeSpan.Zero);
+
+    private static readonly string[] Paths = ["doc", "docs", "docs!x", "docs-old/y", "docs.txt", "docs/a.txt", "docs/sub", "docs/sub/b.txt", "docs/sub2/c.txt", "docs0", "docs2/x", "docs\u00e9/z", "other/docs/z"];
 
     private static CancellationToken Token => TestContext.Current.CancellationToken;
 
@@ -59,6 +63,40 @@ public sealed class LocalObservationStoreShould
         row.LastLocalIdentity.ShouldBe(new LocalIdentity("2049:1234"));
     }
 
+    [Theory]
+    [InlineData("", new[] { "doc", "docs", "docs!x", "docs-old/y", "docs.txt", "docs/a.txt", "docs/sub", "docs/sub/b.txt", "docs/sub2/c.txt", "docs0", "docs2/x", "docs\u00e9/z", "other/docs/z" })]
+    [InlineData("docs", new[] { "docs", "docs/a.txt", "docs/sub", "docs/sub/b.txt", "docs/sub2/c.txt" })]
+    [InlineData("docs/sub", new[] { "docs/sub", "docs/sub/b.txt" })]
+    [InlineData("doc", new[] { "doc" })]
+    [InlineData("missing", new string[0])]
+    public async Task list_only_the_subtree_folder_and_the_paths_under_it(string subtree, string[] expected)
+    {
+        await using var host = await PersistenceTestHost.CreateInitialisedAsync(Token);
+        var job = await SyncJobStoreShould.AddAccountAndJobAsync(host, BootstrapMode.Merge);
+        var store = host.Services.GetRequiredService<ILocalObservationStore>();
+        await store.RecordAsync(job.Id, [.. Paths.Select(path => new LocalSnapshot(new RelativePath(path), 1, Stamp, null, null))], [], Stamp, Token);
+
+        var listed = await store.ListPresentAsync(job.Id, new RelativePath(subtree), Token);
+
+        listed.Value.ShouldBeOfType<Ok<IReadOnlyList<LocalSnapshot>>>().Value.Select(snapshot => snapshot.Path.Value).Order(StringComparer.Ordinal).ShouldBe(expected);
+    }
+
+    [Fact]
+    public async Task find_the_subtree_through_the_local_path_index()
+    {
+        await using var host = await PersistenceTestHost.CreateInitialisedAsync(Token);
+        var job = await SyncJobStoreShould.AddAccountAndJobAsync(host, BootstrapMode.Merge);
+        await using var context = await host.Services.GetRequiredService<IDbContextFactory<CloudSyncDbContext>>().CreateDbContextAsync(Token);
+        await using var command = LocalObservationStore.ItemsUnder(context, job.Id, new RelativePath("docs")).CreateDbCommand();
+        command.CommandText = "EXPLAIN QUERY PLAN " + command.CommandText;
+        await context.Database.OpenConnectionAsync(Token);
+
+        var plan = await QueryPlanAsync(command);
+
+        plan.ShouldContain(detail => detail.Contains("USING INDEX IX_Items_SyncJobId_LocalPath (SyncJobId=? AND LocalPath>? AND LocalPath<?)"));
+        plan.ShouldNotContain(detail => detail.StartsWith("SCAN"));
+    }
+
     [Fact]
     public async Task honour_cancellation()
     {
@@ -68,5 +106,15 @@ public sealed class LocalObservationStoreShould
         await cancelled.CancelAsync();
 
         await Should.ThrowAsync<OperationCanceledException>(() => host.Services.GetRequiredService<ILocalObservationStore>().ListPresentAsync(job.Id, default, cancelled.Token));
+    }
+
+    private static async Task<List<string>> QueryPlanAsync(DbCommand command)
+    {
+        var plan = new List<string>();
+        await using var reader = await command.ExecuteReaderAsync(Token);
+        while (await reader.ReadAsync(Token))
+            plan.Add(reader.GetString(3));
+
+        return plan;
     }
 }
